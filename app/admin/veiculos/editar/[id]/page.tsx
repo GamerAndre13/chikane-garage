@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
+import { VehicleGallery } from "@/components/ui/vehicle-gallery";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -247,6 +248,12 @@ export default function EditarVeiculo() {
         </div>
 
         <div style={{ marginTop: "1rem" }}><label style={labelStyle}>URL Imagem Capa</label><input style={inputStyle} value={form.cover_image_url} onChange={handleChange("cover_image_url")} /></div>
+
+        {/* Galeria de imagens (R2) */}
+        <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid #2a2a2a" }}>
+          <VehicleGallery vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => handleChange("cover_image_url")({ target: { value: url } } as any)} />
+        </div>
+
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />

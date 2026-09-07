@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { MyRequests } from "@/components/ui/my-requests";
+import { uploadAvatar } from "@/app/actions/upload";
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -114,27 +115,17 @@ export default function PerfilPage() {
     setSaving(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const formData = new FormData();
+      formData.append("file", file);
 
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const result = await uploadAvatar(formData);
 
-      const { error: uploadError } = await supabase.storage
-        .from("avatars").upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: urlData.publicUrl, updated_at: new Date().toISOString() })
-        .eq("id", user.id);
-      if (updateError) throw updateError;
-
-      setProfile(prev => ({ ...prev, avatar_url: urlData.publicUrl }));
-      setSuccess("Foto atualizada!");
+      if (result.error) throw new Error(result.error);
+      if (result.url) {
+        const newUrl = result.url;
+        setProfile(prev => ({ ...prev, avatar_url: newUrl }));
+        setSuccess("Foto atualizada!");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar foto");
     } finally {

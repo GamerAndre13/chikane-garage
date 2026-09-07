@@ -14,7 +14,7 @@ function reducer(state: FormState, action: Action): FormState {
     case "SET_FIELD":
       return { ...state, [action.field]: action.value };
     case "SET_MULTIPLE":
-      return { ...state, ...action.fields };
+      return { ...state, ...action.fields } as FormState;
     case "RESET":
       return action.initial;
     default:
@@ -29,7 +29,7 @@ export function useVehicleForm(initial: FormState) {
     dispatch({ type: "SET_FIELD", field, value });
   }, []);
 
-  const setMultiple = useCallback((fields: Partial<FormState>) => {
+  const setMultiple = useCallback((fields: FormState) => {
     dispatch({ type: "SET_MULTIPLE", fields });
   }, []);
 
