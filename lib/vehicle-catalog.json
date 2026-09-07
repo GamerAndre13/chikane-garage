@@ -1,0 +1,156 @@
+{
+  "BMW": {
+    "models": {
+      "118d": {
+        "engine": "2.0d",
+        "power_hp": 150,
+        "torque_nm": 360,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "120d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "218d": {
+        "engine": "2.0d",
+        "power_hp": 150,
+        "torque_nm": 360,
+        "transmission": "automatic",
+        "drivetrain": "fwd"
+      },
+      "220d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "fwd"
+      },
+      "318d": {
+        "engine": "2.0d",
+        "power_hp": 150,
+        "torque_nm": 360,
+        "transmission": "manual",
+        "drivetrain": "rwd"
+      },
+      "320d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "330d": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "330d xDrive": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      },
+      "420d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "430d": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "430d xDrive": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      },
+      "520d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "530d": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "530d xDrive": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      },
+      "730d": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "rwd"
+      },
+      "X1 18d": {
+        "engine": "2.0d",
+        "power_hp": 150,
+        "torque_nm": 360,
+        "transmission": "automatic",
+        "drivetrain": "fwd"
+      },
+      "X1 20d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "fwd"
+      },
+      "X3 20d": {
+        "engine": "2.0d",
+        "power_hp": 190,
+        "torque_nm": 400,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      },
+      "X3 30d": {
+        "engine": "3.0d",
+        "power_hp": 265,
+        "torque_nm": 620,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      },
+      "X5 30d": {
+        "engine": "3.0d",
+        "power_hp": 286,
+        "torque_nm": 650,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      },
+      "X5 40d": {
+        "engine": "3.0d",
+        "power_hp": 340,
+        "torque_nm": 700,
+        "transmission": "automatic",
+        "drivetrain": "awd"
+      }
+    }
+  },
+  "Outra": {
+    "models": {}
+  }
+}

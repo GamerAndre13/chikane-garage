@@ -1,0 +1,267 @@
+"use client";
+
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
+import vehicleCatalog from "@/lib/vehicle-catalog.json";
+import { useVehicleForm } from "@/hooks/use-vehicle-form";
+
+const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
+
+const STATUS_OPTIONS = [
+  { value: "available", label: "Disponível" },
+  { value: "reserved", label: "Reservada" },
+  { value: "sold", label: "Vendida" },
+] as const;
+
+const FUEL_OPTIONS = [
+  { value: "diesel", label: "Diesel" },
+  { value: "gasoline", label: "Gasolina" },
+  { value: "hybrid", label: "Híbrido" },
+  { value: "electric", label: "Elétrico" },
+] as const;
+
+const SERVICE_BOOK_OPTIONS = [
+  { value: "full_dealer", label: "Completa (Concessionário)" },
+  { value: "full", label: "Completa" },
+  { value: "partial", label: "Parcial" },
+  { value: "none", label: "Sem caderneta" },
+] as const;
+
+const ORIGIN_OPTIONS = [
+  { value: "imported", label: "Importação" },
+  { value: "national", label: "Nacional" },
+] as const;
+
+const initialForm = {
+  brand: "",
+  model: "",
+  trim: "",
+  registration_year: "",
+  registration_month: "",
+  engine: "",
+  power_hp: "",
+  torque_nm: "",
+  transmission: "automatic",
+  drivetrain: "rwd",
+  fuel_type: "diesel",
+  combined_consumption: "",
+  co2_emissions: "",
+  exterior_color: "",
+  interior_color: "",
+  mileage_km: "",
+  previous_owners: "1",
+  service_book: "full_dealer",
+  origin: "imported",
+  origin_country: "DE",
+  price: "",
+  warranty_months: "6",
+  cover_image_url: "",
+  description: "",
+  is_featured: "false",
+  status: "available",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "0.5rem 0.75rem",
+  borderRadius: "0.375rem",
+  border: "1px solid #2a2a2a",
+  backgroundColor: "#0a0a0a",
+  color: "#f5f5f0",
+  fontSize: "0.875rem",
+} as const;
+
+const selectStyle = { ...inputStyle, appearance: "none" as const };
+
+const labelStyle = {
+  display: "block",
+  marginBottom: "0.25rem",
+  fontSize: "0.75rem",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.05em",
+  color: "#9a9a94",
+} as const;
+
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div><label style={labelStyle}>{label}</label>{children}</div>
+);
+
+export default function EditarVeiculo() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+  const { form, handleChange, handleCheckboxChange, setMultiple } = useVehicleForm(initialForm);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const brands = useMemo(() => Object.keys(CATALOG), []);
+  const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
+  const modelNames = useMemo(() => Object.keys(models).sort(), [models]);
+
+  // Carregar viatura existente
+  useEffect(() => {
+    const fetchVehicle = async () => {
+      const { data } = await supabase.from("vehicles").select("*").eq("id", id).single();
+      if (data) {
+        setMultiple({
+          brand: data.brand || "BMW",
+          model: data.model || "",
+          trim: data.trim || "",
+          registration_year: data.registration_year?.toString() || "",
+          registration_month: data.registration_month?.toString() || "",
+          engine: data.engine || "",
+          power_hp: data.power_hp?.toString() || "",
+          torque_nm: data.torque_nm?.toString() || "",
+          transmission: data.transmission || "automatic",
+          drivetrain: data.drivetrain || "rwd",
+          fuel_type: data.fuel_type || "diesel",
+          combined_consumption: data.combined_consumption?.toString() || "",
+          co2_emissions: data.co2_emissions?.toString() || "",
+          exterior_color: data.exterior_color || "",
+          interior_color: data.interior_color || "",
+          mileage_km: data.mileage_km?.toString() || "",
+          previous_owners: data.previous_owners?.toString() || "1",
+          service_book: data.service_book || "full_dealer",
+          origin: data.origin || "imported",
+          origin_country: data.origin_country || "DE",
+          price: data.price?.toString() || "",
+          warranty_months: data.warranty_months?.toString() || "6",
+          cover_image_url: data.cover_image_url || "",
+          description: data.description || "",
+          is_featured: data.is_featured ? "true" : "false",
+          status: data.status || "available",
+        });
+      }
+      setLoading(false);
+    };
+    fetchVehicle();
+  }, [id, setMultiple]);
+
+  // Quando muda a marca, limpa modelo e specs
+  const handleBrandChange = useCallback((brand: string) => {
+    handleChange("brand")({ target: { value: brand } } as any);
+    setMultiple({ model: "", engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
+  }, [handleChange, setMultiple]);
+
+  // Quando muda o modelo, pré-preenche specs
+  const handleModelChange = useCallback((model: string) => {
+    handleChange("model")({ target: { value: model } } as any);
+    const specs = models[model];
+    if (specs) {
+      setMultiple({
+        engine: specs.engine,
+        power_hp: String(specs.power_hp),
+        torque_nm: String(specs.torque_nm),
+        transmission: specs.transmission,
+        drivetrain: specs.drivetrain,
+      });
+    }
+  }, [handleChange, setMultiple, models]);
+
+  const generateSlug = (brand: string, model: string, trim: string, year: string) => {
+    return `${brand}-${model}-${trim}-${year}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
+    const { error } = await supabase.from("vehicles").update({
+      ...form,
+      slug,
+      registration_year: form.registration_year ? parseInt(form.registration_year) : null,
+      registration_month: form.registration_month ? parseInt(form.registration_month) : null,
+      power_hp: form.power_hp ? parseInt(form.power_hp) : null,
+      torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
+      combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
+      co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
+      mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
+      previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
+      price: form.price ? parseFloat(form.price) : null,
+      warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
+      is_featured: form.is_featured === "true",
+      status: form.status,
+    }).eq("id", id);
+    setSaving(false);
+    if (!error) router.push("/admin/veiculos");
+    else alert("Erro ao guardar: " + error.message);
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-64"><p style={{ color: "#9a9a94" }}>A carregar...</p></div>;
+
+  return (
+    <div>
+      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>Editar Viatura</h1>
+      <form onSubmit={handleSubmit} style={{ backgroundColor: "#141414", border: "1px solid #2a2a2a", borderRadius: "0.5rem", padding: "1.5rem" }}>
+        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "#b87333" }}>Identificação</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <Field label="Marca *">
+            <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
+              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </Field>
+          <Field label="Modelo *">
+            <select style={selectStyle} value={form.model} onChange={(e) => handleModelChange(e.target.value)}>
+              <option value="">— Selecciona marca primeiro —</option>
+              {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </Field>
+          <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
+          <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
+          <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
+        </div>
+
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Especificações Técnicas</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <Field label="Motor"><input style={inputStyle} value={form.engine} onChange={handleChange("engine")} /></Field>
+          <Field label="Potência (CV)"><input type="number" min="0" style={inputStyle} value={form.power_hp} onChange={handleChange("power_hp")} /></Field>
+          <Field label="Binário (Nm)"><input type="number" min="0" style={inputStyle} value={form.torque_nm} onChange={handleChange("torque_nm")} /></Field>
+          <Field label="Caixa"><select style={selectStyle} value={form.transmission} onChange={handleChange("transmission")}><option value="automatic">Automática</option><option value="manual">Manual</option></select></Field>
+          <Field label="Tração"><select style={selectStyle} value={form.drivetrain} onChange={handleChange("drivetrain")}><option value="rwd">RWD</option><option value="awd">AWD/xDrive</option><option value="fwd">FWD</option></select></Field>
+          <Field label="Combustível"><select style={selectStyle} value={form.fuel_type} onChange={handleChange("fuel_type")}>{FUEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          <Field label="Consumo (l/100km)"><input type="number" step="0.1" min="0" style={inputStyle} value={form.combined_consumption} onChange={handleChange("combined_consumption")} /></Field>
+          <Field label="CO₂ (g/km)"><input type="number" min="0" style={inputStyle} value={form.co2_emissions} onChange={handleChange("co2_emissions")} /></Field>
+        </div>
+
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Veículo</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
+          <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
+          <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
+          <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
+          <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+        </div>
+
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Origem & Legalização</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
+        </div>
+
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Preço & Status</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
+          <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
+          <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+        </div>
+
+        <div style={{ marginTop: "1rem" }}><label style={labelStyle}>URL Imagem Capa</label><input style={inputStyle} value={form.cover_image_url} onChange={handleChange("cover_image_url")} /></div>
+        <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
+        <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />
+          <label htmlFor="featured" style={{ color: "#f5f5f0", fontSize: "0.875rem" }}>Destaque</label>
+        </div>
+
+        <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem" }}>
+          <button type="submit" disabled={saving} className="px-4 py-2 rounded text-sm font-medium transition-opacity" style={{ backgroundColor: "#b87333", color: "#0a0a0a", opacity: saving ? 0.6 : 1 }}>
+            {saving ? "A guardar..." : "Guardar Alterações"}
+          </button>
+          <button type="button" onClick={() => router.push("/admin/veiculos")} className="px-4 py-2 rounded text-sm transition-colors" style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}>
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
