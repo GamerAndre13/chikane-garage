@@ -1,5 +1,17 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
+async function getR2Binding(): Promise<R2Bucket | undefined> {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    return env.VEHICLE_IMAGES;
+  } catch {
+    // `next dev` runs outside the Workers runtime. Keep the S3-compatible
+    // fallback below so local development continues to work with .env.local.
+    return undefined;
+  }
+}
 
 // Cliente R2 (S3-compatível)
 function getR2Client() {
@@ -31,17 +43,20 @@ export async function uploadToR2(
   contentType: string,
   bucket?: string
 ): Promise<string> {
-  const { client, bucket: defaultBucket } = getR2Client();
-  const targetBucket = bucket || defaultBucket;
-
-  const command = new PutObjectCommand({
-    Bucket: targetBucket,
-    Key: key,
-    Body: body as any,
-    ContentType: contentType,
-  });
-
-  await client.send(command);
+  const targetBucket = bucket || process.env.R2_BUCKET || "vehicle-images";
+  const r2 = await getR2Binding();
+  if (r2) {
+    await r2.put(key, body, { httpMetadata: { contentType } });
+  } else {
+    const { client, bucket: defaultBucket } = getR2Client();
+    const command = new PutObjectCommand({
+      Bucket: bucket || defaultBucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    });
+    await client.send(command);
+  }
 
   // URL pública (assumindo bucket público ou domínio customizado configurado)
   const publicUrl = process.env.R2_PUBLIC_URL
@@ -53,28 +68,26 @@ export async function uploadToR2(
 
 // Delete de ficheiro do R2
 export async function deleteFromR2(key: string, bucket?: string): Promise<void> {
+  const r2 = await getR2Binding();
+  if (r2) {
+    await r2.delete(key);
+    return;
+  }
+
   const { client, bucket: defaultBucket } = getR2Client();
-  const targetBucket = bucket || defaultBucket;
-
-  const command = new DeleteObjectCommand({
-    Bucket: targetBucket,
-    Key: key,
-  });
-
-  await client.send(command);
+  await client.send(new DeleteObjectCommand({ Bucket: bucket || defaultBucket, Key: key }));
 }
 
 // Verificar se objeto existe
 export async function objectExists(key: string, bucket?: string): Promise<boolean> {
-  const { client, bucket: defaultBucket } = getR2Client();
-  const targetBucket = bucket || defaultBucket;
-
   try {
-    const command = new HeadObjectCommand({
-      Bucket: targetBucket,
-      Key: key,
-    });
-    await client.send(command);
+    const r2 = await getR2Binding();
+    if (r2) {
+      return Boolean(await r2.head(key));
+    }
+
+    const { client, bucket: defaultBucket } = getR2Client();
+    await client.send(new HeadObjectCommand({ Bucket: bucket || defaultBucket, Key: key }));
     return true;
   } catch {
     return false;

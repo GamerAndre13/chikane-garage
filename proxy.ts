@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+export async function proxy(request: NextRequest) {
+  const supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,13 +22,10 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refresh the session — this calls setAll internally which updates cookies
   const { data: { user } } = await supabase.auth.getUser();
-
   const pathname = request.nextUrl.pathname;
-  const isAdminRoute = pathname.startsWith("/admin");
 
-  if (isAdminRoute) {
+  if (pathname.startsWith("/admin")) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = "/conta";

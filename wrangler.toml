@@ -1,16 +1,15 @@
 name = "chikane-garage"
-type = "javascript"
-compatibility_date = "2024-12-02"
+main = ".open-next/worker.js"
+compatibility_date = "2026-09-17"
+compatibility_flags = ["nodejs_compat"]
 
-[env.production]
-name = "chikane-garage-prod"
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
-[build]
-command = "npm run build"
-cwd = "./"
-watch_paths = []
+[[r2_buckets]]
+binding = "VEHICLE_IMAGES"
+bucket_name = "vehicle-images"
 
-[build.upload]
-format = "modules"
-dir = ".next/standalone/.next"
-main = ".next/standalone/server.js"
+[observability]
+enabled = true

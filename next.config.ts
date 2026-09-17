@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cloudflare Pages suporta Next.js nativamente com output standalone
-  output: "standalone",
   // Imagens: permitir domínios externos (Unsplash, R2 public URL)
   images: {
     remotePatterns: [
@@ -27,3 +25,7 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+void import("@opennextjs/cloudflare").then(({ initOpenNextCloudflareForDev }) =>
+  initOpenNextCloudflareForDev(),
+);
