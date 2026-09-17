@@ -1,0 +1,664 @@
+================================================================================
+CHIKANE GARAGE — DOCUMENTO COMPLETO DO PROJETO
+================================================================================
+Data: 2026-09-12  ·  Última atualização
+Projeto: chikane-garage-novo
+Branch: main (remotes/origin/main)
+
+Este documento descreve o estado atual do projeto (o que já foi feito, como foi
+feito, o que falta fazer), com contexto completo e objetivos. Está organizado
+por FASES para facilitar a leitura e a manutenção.
+
+--------------------------------------------------------------------------------
+FASE 0 — CONTEXTO DO PROJETO E OBJETIVOS
+--------------------------------------------------------------------------------
+
+O QUE É
+-------
+A Chikane Garage é uma garagem/stand online especializada em viaturas diesel
+BMW de PERFORMANCE, importadas da Europa (Alemanha, Bélgica, Holanda) e
+entregues em Portugal com garantia. A identidade é "de nicho": não é um stand
+convencional — é uma garagem privada que seleciona, inspeciona (140 pontos de
+verificação), documenta com transparência e entrega com garantia Chikane.
+
+OBJETIVOS DO PROJETO
+--------------------
+1. Lançar um site público profissional que apresente o catálogo de viaturas,
+   a história/processo da garagem, uma loja de acessórios e um formulário de
+   contacto/test drive.
+2. Funcionar como um "backoffice" para o proprietário gerir conteúdo:
+   - Viaturas (CRUD completo, galeria de fotos, specs técnicas, estado).
+   - Produtos da loja (CRUD).
+   - Pedidos de contacto e test drives recebidos (gerir estados).
+   - Conteúdo do site (CMS simples por secção).
+   - Estatísticas/Analytics do stock.
+3. Apoiar utilizadores registados:
+   - Conta própria (perfil, password, avatar).
+   - Guardar viaturas favoritas (local sem login / base de dados com login).
+   - Ver os próprios pedidos de contacto e test drives.
+4. Ser fácil de manter e de colocar em produção (Next.js + Supabase + Vercel).
+
+STACK E TECNOLOGIAS
+-------------------
+- Framework: Next.js 16.3.4 (App Router, React 19.2.8).
+- Linguagem: TypeScript (strict).
+- Estilo: Tailwind CSS v4 (via @tailwindcss/postcss) + CSS vars customizadas
+  (tema escuro + cobre).
+- Fontes: Google Fonts via next/font — Oswald (display) + Inter (sans).
+- Backend/BD/Auth: Supabase (PostgreSQL + Auth + Storage com RLS).
+- Armazenamento de imagens: Cloudflare R2 (S3-compatible) — galerias e avatares.
+  @aws-sdk/client-s3 + @aws-sdk/s3-request-presigner.
+- Deploy: Vercel (framework nextjs; output: standalone). Houve uma transição
+  desde Cloudflare Pages (ver Fase G).
+
+ESTRUTURA DE PASTAS (raiz do projeto, SEM pasta src/)
+------------------------------------------------------
+app/               — Páginas e rotas (App Router)
+  layout.tsx       — Layout raiz (Header + Footer + fontes + metadata)
+  page.tsx         — Homepage (landing)
+  globals.css      — Tailwind + tema (cores, fontes)
+  catalogo/        — Lista de viaturas + página de detalhe /[slug]
+  loja/            — Loja de acessórios
+  sobre/           — Página "Sobre Nós" / história / processo
+  contacto/        — Formulário de contacto + test drive (?testdrive=&vehicle=)
+  conta/           — Login/Registo (/) + Perfil (/perfil)
+  admin/           — Área restrita (backoffice)
+    layout.tsx     — Sidebar admin
+    page.tsx       — Dashboard (KPIs + contactos/test drives recentes)
+    veiculos/      — Lista, novo, editar/[id]
+    loja/          — Lista + novo produto
+    pedidos/       — Contactos + test drives (tabs) com gestão de estado
+    conteudo/      — CMS de textos por secção (site_content)
+    analytics/     — Estatísticas do stock (gross/médias/distribuições)
+  actions/         — Server Actions (auth.ts, upload.ts)
+  auth/callback/   — Route handler para callback de auth (exchangeCodeForSession)
+components/
+  layout/          — header.tsx (client), footer.tsx (server)
+  newsletter-form.tsx
+  ui/              — favorite-button, favorites-list, my-requests, vehicle-gallery
+hooks/
+  use-favorites.ts          — Gestão de favoritos (localStorage + Supabase)
+  use-vehicle-form.ts       — useReducer para formulários de veículo
+lib/
+  supabase/client.ts        — Cliente browser (@supabase/ssr)
+  supabase/server.ts        — Cliente server (cookies)
+  r2.ts                     — Upload/delete/exists/presign para Cloudflare R2
+  vehicle-catalog.json      — Catálogo de specs BMW (motor/cv/Nm/caixa/tração)
+supabase/                   — Scripts SQL (schema, seed, migrações)
+.gitignore
+.env.local / .env.local.example
+middleware.ts               — Proteção de rotas /admin + refresh de sessão
+next.config.ts              — output standalone, imagens remotas, headers
+package.json / package-lock.json / tsconfig.json / postcss.config.mjs
+
+--------------------------------------------------------------------------------
+FASE A — SETUP INICIAL E BASE DE DADOS (SUPABASE)
+--------------------------------------------------------------------------------
+
+COMO FOI FEITO
+--------------
+O schema foi desenhado em scripts SQL dentro de supabase/, para serem corridos
+manualmente no SQL Editor do Supabase. Há 6 ficheiros:
+
+1) setup.sql (446 linhas) — O schema V2, mais completo e estruturado.
+   Contém 10 tabelas com RLS, triggers, grants e storage. É o ficheiro
+   CANÓNICO atual. Tabelas:
+   - profiles        — Perfil do user ligado a auth.users (id FK). role
+                       ('user'/'admin'), full_name, phone, avatar_url, email.
+                       Trigger handle_new_user cria profile no registo.
+   - vehicles        — Tabela principal de viaturas com TODOS os campos:
+                       identificação (brand/model/trim/reg_year/reg_month/status),
+                       specs (engine/power/torque/transmission/drivetrain/fuel/
+                       consumption/co2/cor/quilometragem),
+                       histórico (previous_owners/service_book/accident_*/
+                       last_service/tires_condition),
+                       origem (origin/origin_country/coc_confirmed/isv_paid/
+                       legalization_date),
+                       comercial (price/financing/warranty/trade_in),
+                       media (cover_image_url/video_url),
+                       meta (description/is_featured/published_at/timestamps).
+                       Slugs únicos. RLS: leitura pública, escrita só admin.
+   - vehicle_features — Extras/equipamento por viatura (label).
+   - vehicle_images   — Galeria (url, position, alt_text; FK veic. CASCADE).
+   - shop_products    — Produtos da loja (name, slug, price, stock, active...).
+   - favorites        — Favoritos (user_id × vehicle_id, UNIQUE juntos).
+   - contact_requests — Pedidos de info (status new/read/confirmed/archived).
+   - test_drives      — Test drives (vehicle_id, user_id, preferred_date/time,
+                       status pending/confirmed/completed/cancelled).
+   - site_content     — CMS de textos (section_key UNIQUE + title/subtitle/
+                       body/image_url/link_url/link_text).
+   - site_settings    — Definições globais (phone/email/address/location/sociais).
+   RLS: leitura pública nas tabelas públicas; escrita/gestão só admin;
+   contactos/test drives inseríveis por anon (posteriormente refinado).
+   Storage: bucket 'avatars' público + policies.
+
+2) 002_full_site.sql (238 linhas) — Schema V1 ANTIGO (mais simples, colunas
+   diferentes: year, featured, vehicle_slug em vez de vehicle_id, site_settings
+   em formato key/value). MANTIDO por histórico, mas NÃO é o schema atual.
+
+3) favorites.sql (32 linhas) — Criação isolada da tabela favorites + RLS.
+
+4) newsletter.sql (50 linhas) — Tabela newsletter_subscribers (email UNIQUE,
+   status active/unsubscribed), RLS: select/update/delete só admin, insert
+   anon. Inclui honeypot anti-bot no front.
+
+5) migracao_perfil_e_fotos.sql (117 linhas) — Migração que:
+   - (re)cria a newsletter.
+   - adiciona contact_requests.user_id (FK auth.users, ON DELETE SET NULL)
+     para ligar pedidos ao user.
+   - RLS dos contact_requests: cada user vê os seus OU admin vê todos
+     ("contact_requests_select_own_or_admin"); insert permite user_id NULL ou
+     próprio.
+   - idem para test_drives ("test_drives_select_own_or_admin").
+   - cria bucket storage 'vehicle-images' público + policies (leitura pública,
+     escrita/update/delete só admin).
+   - revê grants.
+
+6) seed.sql (177 linhas) — Dados de demonstração:
+   - 7 viaturas BMW diesel (320d, 420d, 530d, 330d xDrive, X5, 218d, 730d) com
+     specs completas, preços, imagens Unsplash e states disponível/reservada/
+     vendida.
+   - vehicle_features de exemplo.
+   - vehicle_images de exemplo (3 fotos da 320d).
+   - 6 produtos de loja.
+   - site_content (hero/garage/shop/newsletter) com section_keys modernos
+     ('hero.tagline', 'hero.slogan', ...) — note: são keys com ponto, que são
+     as usadas pelo page.tsx da homepage (lê 'hero.slogan').
+   - site_settings (telefone/email/localização/redes).
+
+NOTAS IMPORTANTES / RISCOS CONHECIDOS (schema)
+-----------------------------------------------
+- Existem DUAS gerações de schema (002_full_site.sql V1 vs setup.sql V2) que
+  usam nomes de colunas diferentes. A app atual espera o V2 (vehicle_id,
+  site_settings com colunas planas phone/email/..., site_content com keys com
+  ponto). O 002_full_site.sql é legacy e deve ser considerado descontinuado.
+- A homepage lê site_content com keys "hero.slogan", "hero.intro", "garage.title"
+  etc. e usa um FALLBACK em código se não existirem — logo a app funciona mesmo
+  sem seed.
+- .env.local contém as keys reais (NEXT_PUBLIC_SUPABASE_URL, anon key, e as R2
+  vars). O .env.local.example documenta apenas as do Supabase (R2 não está no
+  example).
+
+--------------------------------------------------------------------------------
+FASE B — PÁGINAS PÚBLICAS (front, não autenticado)
+--------------------------------------------------------------------------------
+
+LAYOUT GLOBAL (app/layout.tsx)
+------------------------------
+- Fontes Oswald (--font-oswald, pesos 500/600/700) e Inter via next/font/google.
+- Metadata global: "Chikane Garage" / "Viaturas de performance escolhidas a dedo."
+- <html lang="pt"> com h-full e antialiased + variáveis das fontes no className.
+- <body> flex column (min-h-full) com Header no topo, <main className="flex-1">
+  com o conteúdo, e Footer no fim. Tema escuro (bg-background = #0a0a0a).
+
+HOME (app/page.tsx) — Server Component (async)
+----------------------------------------------
+- Busca em paralelo (Promise.all):
+  - vehicles com status 'available', mais recentes, limite 4.
+  - shop_products ativos, limite 4.
+  - site_content (section_key, body) → constrói contentMap e função t(key) com
+    FALLBACK em código caso a chave não exista.
+- Secções:
+  1. HERO: imagem bg Unsplash, overlay preto, tagline/slogan/intro vêm do CMS,
+     dois CTAs (Ver Catálogo / A Nossa História), e 3 estatísticas
+     (100% Verificadas · 6 Mo Garantia · 0 € Comissões).
+  2. DESTAQUE: grid de 4 viaturas disponíveis (cards com imagem, badge
+     SPOTLIGHT, KM, potência, caixa, preço em pt-PT).
+  3. A GARAGEM: texto CMS + imagem + CTA para /sobre.
+  4. PROCESSO: 4 passos (Seleção · Inspecção · Transparência · Entrega).
+  5. LOJA: grid de 4 produtos.
+  6. NEWSLETTER: NewsletterForm.
+- Estilo: cores hardcoded (#0a0a0a, #141414) + classes Tailwind com tokens do
+  tema (copper, foreground, muted, border, silver). Usa <img> (não next/image)
+  com eslint-disable por serem URLs remotas de origem desconhecida.
+
+CATÁLOGO (app/catalogo/page.tsx) — Server Component
+---------------------------------------------------
+- Busca todas as viaturas (order created_at desc), com try/catch que resulta em
+  lista vazia em caso de falha (graceful).
+- Função statusLabel() → badge colorido: available=verde, reserved=âmbar,
+  sold=cinza.
+- Grid de cards (3 colunas) com: imagem, FavoriteButton (overlay), badge de
+  estado, KM, potência, caixa, cor, preço. Cada card é um <Link> para
+  /catalogo/[slug].
+- Contador "X viaturas em stock". Estado vazio com mensagem amigável.
+
+DETALHE DA VIATURA (app/catalogo/[slug]/page.tsx) — Server
+----------------------------------------------------------
+- generateMetadata: busca brand/model/trim/year/price/cover para título/descrição
+  e openGraph (SEO por viatura). Tudo num try/catch (seguro).
+- Página: busca vehicles com relacionamentos `vehicle_images(*)` e
+  `vehicle_features(*)` pelo slug; .single(); notFound() se não existir.
+- Monta: heroImage (cover_image_url), gallery (imagens ordenadas por position),
+  features (extras), e 3 grupos de specs:
+  - TechSpecs (motor, cv, Nm, caixa, tração, combustível, consumo, CO2).
+  - InfoSpecs (ano, mês, km, cor ext/int, donos, caderneta).
+  - OriginSpecs (origem, país, COC confirmado ✓, ISV pago ✓).
+- Exibe preço grande, condições comerciais (garantia, financiamento, troca,
+  acidentes), descrição.
+- CTAs: "Contactar" → /contacto?vehicle=<slug>; "Marcar Test Drive" →
+  /contacto?testdrive=<slug>.
+- Breadcrumb, status badge, favoritos, miniaturas (grid de 5).
+
+LOJA (app/loja/page.tsx) — Server
+---------------------------------
+- Busca shop_products ativos. Grid de cards (até 4 colunas) com imagem, nome,
+  preço, botão "Contactar" para /contacto. Estado vazio "Em breve".
+
+SOBRE (app/sobre/page.tsx) — Static/Server (sem BD)
+---------------------------------------------------
+- Hero + 2 colunas (texto de história/processo) + grid de 4 passos + CTA final.
+- NÃO depende de Supabase (conteúdo estático no código). Links para /catalogo.
+
+CONTACTO (app/contacto/page.tsx) — Client + Suspense
+----------------------------------------------------
+- useSearchParams → lê ?vehicle= e ?testdrive=. O modo test-drive ativa quando
+  existe ?testdrive=.
+- Ao entrar com slug, busca a viatura (id, brand, model, slug) para preencher o
+  formulário e usar o vehicle_id correto nas tabelas.
+- Formulário comum: nome*, email*, telefone.
+  - Modo contacto: acrescenta message* → insert em contact_requests (com
+    user_id = user logado ou null) e vehicle_id.
+  - Modo test drive: exige preferred_date (mínimo hoje), preferred_time e
+    notes → insert em test_drives (status pending) + vehicle_id.
+- Envolvido em <Suspense> (necessário por causa do useSearchParams), com
+  fallback "A carregar...".
+
+FASE C — AUTENTICAÇÃO, SESSÃO E PERFIS
+--------------------------------------
+
+MIDDLEWARE (middleware.ts)
+--------------------------
+- Cria um server client de Supabase com cookies getAll/setAll (padrão SSR do
+  Supabase) e faz supabase.auth.getUser() para refrescar/validar a sessão.
+- Proteção: qualquer rota que comece por /admin:
+  - Sem user → redirect para /conta?redirect=<pathname>.
+  - Com user mas role != 'admin' no profiles → redirect para /.
+- matcher exclui _next/static, _next/image, favicon e ficheiros estáticos
+  (.svg/.png/...).
+
+INFRAESTRUTURA SUPABASE (lib/supabase)
+--------------------------------------
+- client.ts (browser): createBrowserClient, atira erro dev se faltarem vars.
+  Guarda a sessão em cookies (sb-<ref>-auth-token) — o que permite ao middleware
+  e às server components autenticarem o mesmo user.
+- server.ts: createServerClient com cookies() (next/headers). Usada em todas as
+  server components/actions.
+
+LOGIN / REGISTO (app/conta/page.tsx) — Client
+---------------------------------------------
+- Alterna login/register. No registo pede full_name (mandado via
+  options.data.full_name, que o trigger handle_new_user usa para criar o
+  profile).
+- Login: signInWithPassword → redirecciona para redirect param (ou /).
+- Registo: signUp; se o user estiver criado mas SEM sessão (email não
+  confirmado), mostra mensagem para verificar o email; senão segue.
+- Se já logado (getUser), reencaminha para /conta/perfil.
+- Envolvido em Suspense (game de useSearchParams).
+
+CALLBACK AUTH (app/auth/callback/route.ts)
+------------------------------------------
+- GET com ?code e ?next. Troca o code por sessão (exchangeCodeForSession) e
+  redirecciona para next / ou /conta?error=auth em caso de falha.
+
+PERFIL (app/conta/perfil/page.tsx) — Client
+-------------------------------------------
+- Carrega profile (full_name, email, phone, avatar_url) do user logado.
+- Secções:
+  1. Definições: avatar (upload via Server Action → R2 → gravado em avatar_url),
+     nome (editable), email (disabled), telefone. Guarda via update profiles.
+  2. Alterar Password (supabase.auth.updateUser).
+  3. Os Teus Pedidos (MyRequests — ver Fase E).
+  4. Sidebar: Viaturas Guardadas (FavoritesList) + Zona de Perigo (botão
+     "Eliminar Conta" — por enquanto apenas um alert "A implementar").
+
+LOGIN/LOGOUT (header + app/actions/auth.ts)
+--------------------------------------------
+- Header (client) ouve onAuthStateChange → mostra Backoffice (se admin),
+  ícone de perfil, botão Sair; senão botão "Conta".
+- logout() é uma Server Action (app/actions/auth.ts): supabase.auth.signOut() +
+  redirect("/").
+
+--------------------------------------------------------------------------------
+FASE D — ÁREA ADMIN (BACKOFFICE)
+--------------------------------------------------------------------------------
+
+LAYOUT ADMIN (app/admin/layout.tsx) — Server
+---------------------------------------------
+- Sidebar fixa (w-60) com links para Dashboard, Analytics, Viaturas, Loja,
+  Conteúdo, Pedidos + link "← Voltar ao site". Conteúdo em flex-1.
+- A proteção é feita pelo middleware (não duplicada aqui).
+
+DASHBOARD (app/admin/page.tsx) — Server
+---------------------------------------
+- Recolhe contagens em paralelo (Promise.all, head:true para eficiência):
+  total/disponíveis/reservadas/vendidas viaturas, produtos, contactos novos,
+  test drives pendentes.
+- Stats grid clicáveis (link para a área respetiva).
+- Quick actions: Nova Viatura, Novo Produto, Editar Conteúdo.
+- Contactos + test drives recentes (5 cada) com badges de estado.
+
+VIATURAS — LISTA (app/admin/veiculos/page.tsx) — Client
+--------------------------------------------------------
+- Tabela com modelo/ano/preço/status (select colorido, editable)/ações.
+- Alterar status in-place (update). Apagar (confirm). Link "Nova Viatura".
+- Ligado direto ao Supabase (useEffect + .select()).
+
+VIATURAS — NOVO (app/admin/veiculos/novo/page.tsx) — Client
+-----------------------------------------------------------
+- Usa useVehicleForm + vehicle-catalog.json:
+  - Select de marca (BMW/Outra) → select de modelo com preenchimento automático
+    de specs (motor, cv, Nm, caixa, tração) a partir do JSON.
+  - Campos: identificação, specs técnicas, veículo, origem, preço/status,
+    cover_image_url, descrição, checkbox destaque.
+  - generateSlug(brand, model, trim, year) → slug único (lowercase, hífen).
+  - Insert em vehicles com casts de inteiros/decimais adequados.
+- Não faz upload de fotos aqui (só URL de capa manual).
+
+VIATURAS — EDITAR (app/admin/veiculos/editar/[id]/page.tsx) — Client
+-------------------------------------------------------------------
+- Igual ao "novo" mas carrega a viatura existente (useEffect + .single()) e faz
+  update pelo id. Inclui ainda o componente <VehicleGallery/> para gerir fotos
+  do R2 (upload múltiplo, definir capa, reordenar, apagar).
+
+LOJA — LISTA (app/admin/loja/page.tsx) — Client
+-----------------------------------------------
+- Tabela produtos (nome/preço/categoria/stock/ativo toggle/apagar).
+
+LOJA — NOVO (app/admin/loja/novo/page.tsx) — Client
+---------------------------------------------------
+- Formulário de produto (nome, descrição, preço, stock, categoria, imagem URL,
+  ativo) → insert shop_products.
+
+PEDIDOS (app/admin/pedidos/page.tsx) — Client
+---------------------------------------------
+- Duas tabs: Contactos e Test Drives, com contadores de novos/pendentes.
+- Contactos: tabela (nome/email/tel/mensagem/status/data) com ações
+  "Marcar Lido" (new→read) e "Confirmar" (read→confirmed).
+- Test drives: tabela com data preferida; "Confirmar" (pending→confirmed) e
+  "Concluir" (confirmed→completed).
+- update por id + refetch.
+
+CONTEÚDO / CMS (app/admin/conteudo/page.tsx) — Client
+-----------------------------------------------------
+- Lista site_content (section_key + título). Cada item abre um editor inline
+  (title, subtitle, body, image_url, link_url, link_text) → update. Guardar/
+  Cancelar. Estado vazio: mensagem para criar tabelas no Supabase.
+- Nota: o CMS edita TODAS as keys de site_content, mas a homepage lê apenas as
+  que existem no page.tsx (hero.*, garage.title, shop.title, newsletter.title).
+  As keys do antigo 002_full_site.sql (hero_tagline, garage_heading...) são
+  ignoradas pela app atual — risco de confusão.
+
+ANALYTICS (app/admin/analytics/page.tsx) — Server
+-------------------------------------------------
+- Busca todas as viaturas + contagens (contactos/test drives/produtos).
+- KPIs: preço médio (min/max), KM médio (min/max), potência média, ano médio.
+- Gráficos de barras em CSS puro ("pure CSS bars", sem lib de charts):
+  distribuição por preço (<30k/30-40/40-50/>50k), por KM, por ano.
+- Legendas: por estado, por combustível, por caixa; lista por cor.
+- Resumo geral: totais + valor total do stock.
+- Tabela "viaturas mais recentes".
+
+--------------------------------------------------------------------------------
+FASE E — FUNCIONALIDADES TRANSVERSAIS
+--------------------------------------------------------------------------------
+
+FAVORITOS (hooks/use-favorites.ts + components/ui/favorite-button.tsx +
+           components/ui/favorites-list.tsx)
+-------------------------------------------------------------------------------
+- Estratégia de dupla persistência:
+  - Sem login → localStorage ("chikane_favorites").
+  - Com login → tabela favorites (BD), com MIGRAÇÃO: no init, carrega da BD e
+    junta com os locais (merged), sincroniza os locais para a BD e limpa o
+    localStorage.
+- FavoriteButton: coração/cor da mancha no canto da imagem; preventDefault/
+  stopPropagation para não navegar. Disabled até loaded.
+- FavoritesList (no perfil): lista as viaturas favoritas do user, com join
+  vehicles(brand, model, trim, price, cover_image_url, slug); normaliza o
+  relacionamento vindo como array.
+
+MEUS PEDIDOS (components/ui/my-requests.tsx)
+--------------------------------------------
+- Mostra no perfil os contactos e test drives do user (select por user_id, com
+  join vehicles). Lista test drives com data/hora/estado colorido, e contactos
+  com mensagem. Estado vazio amigável.
+
+NEWSLETTER (components/newsletter-form.tsx + supabase/newsletter.sql)
+----------------------------------------------------------------------
+- Formulário client com: honeypot (campo "website" escondido → if preenchido,
+  trata como sucesso sem gravar), validação regex de email, insert em
+  newsletter_subscribers. Trata duplicados (erro 23505 UNIQUE) como "já estás
+  na lista". RLS: insert anon OK, leitura/gestão só admin.
+
+--------------------------------------------------------------------------------
+FASE F — MEDIA E ARMAZENAMENTO (CLOUDFLARE R2 + SUPABASE STORAGE)
+--------------------------------------------------------------------------------
+
+LIB R2 (lib/r2.ts)
+------------------
+- Cliente S3Config para Cloudflare R2 (region "auto", endpoint
+  https://<ACCOUNT_ID>.r2.cloudflarestorage.com).
+- Funções:
+  - uploadToR2(key, body, contentType) → URL pública (R2_PUBLIC_URL se
+    definida, senão URL .r2.cloudflarestorage.com/<bucket>/<key>).
+  - deleteFromR2(key), objectExists(key).
+  - getPresignedUploadUrl(key, ct, expiresIn) — URL assinada (não usada ainda
+    no front, mas pronta para uploads grandes/diretos).
+- Variáveis env: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+  R2_BUCKET (default "vehicle-images"), R2_PUBLIC_URL (opcional).
+
+SERVER ACTIONS UPLOAD (app/actions/upload.ts)
+---------------------------------------------
+- uploadAvatar(formData): exige user; valida tipo (jpeg/png/webp/gif) e <=5MB;
+  key "avatars/<user>-<ts>.<ext>"; upload R2; update profiles.avatar_url;
+  revalidatePath /conta/perfil.
+- uploadVehicleImages(formData): exige admin; ler files[] (jpeg/png/webp, máx
+  10MB cada); key "vehicles/<vehicleId>/<ts>-<i>.<ext>"; insere em
+  vehicle_images com position; se a viatura não tiver cover, usa a 1ª como capa;
+  revalidate nas páginas.
+- setCoverImage(vehicleId, url): admin → update vehicles.cover_image_url.
+- reorderVehicleImages(vehicleId, ids): admin → atualiza position em loop.
+- deleteVehicleImage(imageId, vehicleId): admin → extrai key da URL e apaga do
+  R2 (best effort) + delete do registo.
+
+COMPONENTE GALERIA (components/ui/vehicle-gallery.tsx) — Client
+---------------------------------------------------------------
+- Carrega vehicle_images do veículo (order position). Upload múltiplo via
+  Server Action. Definir capa, subir/descer (reorder), apagar. Mostra badge
+  "CAPA" na imagem atual. Estado de carregamento/erro.
+
+NOTA: Existe TAMBÉM um bucket Supabase 'vehicle-images' (criado na migração
+migracao_perfil_e_fotos.sql) — mas a app atual usa R2 (lib/r2.ts), não o
+Supabase Storage para as fotos das viaturas. O avatar usa R2 também (o bucket
+'avatars' do Supabase no setup.sql é legacy não usado).
+
+--------------------------------------------------------------------------------
+FASE G — DEPLOY E PRODUÇÃO
+--------------------------------------------------------------------------------
+
+HISTÓRICO DE DEPLOY (git)
+-------------------------
+- 0d6d2f9 "Primeiro deploy" — commit inicial (incluiu todos os skills de
+  .claude, plugin).
+- d7a1745 "Corrije erros e atualiza projeto" — correções e atualizações da app.
+- 102322b "Remove @cloudflare/next-on-pages + wrangler (use native output:
+  standalone)" — REMOVEU a integração Cloudflare Pages (next-on-pages +
+  wrangler.toml) em favor de output standalone nativo.
+- 12a4922 "Update package-lock.json after removing @cloudflare/next-on-pages" —
+  sync do lockfile.
+
+CONFIG ATUAL (next.config.ts)
+-----------------------------
+- output: "standalone" (Next.js em modo standalone para o servidor Node).
+- images.remotePatterns: images.unsplash.com, *.r2.cloudflarestorage.com,
+  *.r2.dev.
+- headers(): X-Content-Type-Options: nosniff, X-Frame-Options: DENY,
+  Referrer-Policy: strict-origin-when-cross-origin em toda a app.
+- NOTA: apesar do histórico Cloudflare, hoje existe uma pasta .vercel/ com
+  {"framework":"nextjs"} → o deploy é no VERCEL. O package.json ainda inclui
+  wrangler nos devDependencies (pode ser removido depois).
+
+COMANDOS
+--------
+npm run dev     — servidor de desenvolvimento (next dev)
+npm run build   — build de produção (next build)
+npm run start   — servidor de produção (next start)
+npm run lint    — eslint
+
+--------------------------------------------------------------------------------
+FASE H — O QUE AINDA FALTA FAZER (PRÓXIMOS PASSOS)
+--------------------------------------------------------------------------------
+
+HÁ FEATURED / CONCLUÍDO
+-----------------------
+✔ Landing profissional (hero, destaque, garagem, processo, loja, newsletter).
+✔ Catálogo + detalhe de viatura com specs completas e SEO por slug.
+✔ Autenticação (login/registo/callback), sessão, middleware.
+✔ Perfil com edição, password, avatar (R2), favoritos, "meus pedidos".
+✔ Favoritos com dupla persistência (localStorage + BD).
+✔ Newsletter com honeypot anti-bot.
+✔ Contacto + test drive inseríveis (linkados ao user).
+✔ Backoffice completo: dashboard, viaturas CRUD + galeria R2, loja CRUD,
+  pedidos (gestão de estado), CMS, analytics.
+✔ Segurança: RLS no Supabase, middleware de proteção admin, headers seguros.
+✔ Imagens: upload gestão via Cloudflare R2.
+✔ Deploy configurado para Vercel (output standalone).
+
+POR FAZER / MELHORIAS IDENTIFICADAS
+-----------------------------------
+P1 — Funcionalidades que faltam/estão incompletas:
+ 1. "Eliminar Conta" no perfil é apenas um placeholder (alert "A implementar").
+    Falta o fluxo real (delete auth + profiles + dados associados, com
+    confirmação; considerar ON DELETE CASCADE para dependências).
+ 2. Não existe gestão de newsletter no admin (só a tabela + insert público);
+    falta uma página admin para ver/exportar/unsub de subscritores.
+ 3. A loja não tem página de detalhe de produto, carrinho/checkout nem "encerrar"
+    pedidos de shop_products; só mostra produtos + CTA de contacto.
+ 4. A página de detalhe de viatura não tem outros CTAs comerciais avançados
+    (financiamento/consulta de troca) nem formulário de reserva (só test drive).
+ 5. vehicle-gallery: reordenar faz N updates sequenciais (pode otimizar com
+    batch); não há limite explícito de nº de imagens nem alt_text editável na UI.
+ 6. Falta referência de foto/vídeo YouTube na ficha (video_url existe no schema
+    mas não é mostrado nem gerido no admin).
+
+P2 — Limpeza / débito técnico:
+ 7. Remover schema legado 002_full_site.sql (V1) e/ou alinhar seed/setup para
+    evitar confusão de colunas. Documentar que setup.sql é o canónico.
+ 8. Remover wrangler dos devDependencies (já não é usado; só resta no
+    package.json).
+ 9. Considerar mudar imagens de <img> para next/image (otimização) — hoje são
+    todas <img> com eslint-disable por serem remotas.
+10. Unificar estilos: mistura de classes Tailwind com cores hardcoded inline
+    (#0a0a0a, #141414, #b87333). Poderiam ser tokens (já existem vars --copper,
+    --surface...). Manter consistência para menos manutenção.
+11. middleware: atualmente protege só /admin. Quem gerir devia também validar
+    user nas server components de admin (embora as actions valide admin).
+12. O fetch da home faz 3 queries; com o tempo e mais dados, adicionar caching
+    (revalidate), ou usar uma routine com stale-while-revalidate.
+
+P3 — Produto / negócio:
+13. Falta configurar domínio/email de produção real (o site_settings/seed tem
+    valores placeholder: +351 912 000 000, garage@chikane.pt, Porto).
+14. Falta política de privacidade/termos/livro reclamações reais (links apontam
+    para /sobre).
+15. Fazer build+deploy real e testar fluxos completos (login, admin, upload R2)
+    em produção (URLs de callback no Supabase / redirect de Vercel).
+
+REGRESSÕES / CHECKS RECOMENDADOS ANTES DE CONTINUAR
+---------------------------------------------------
+- Rerun npm run build para garantir que compila (strict TS + lint).
+- Verificar que o site_content da BD tem as keys com ponto esperadas pela home
+  (hero.tagline, hero.slogan, hero.intro, garage.title, garage.text,
+  shop.title, shop.text, newsletter.title, newsletter.text) — ou que os
+  FALLBACKs cobrem.
+- Confirmar variáveis de ambiente completas no Vercel (Supabase + R2).
+- Confirmar URL de callback de auth no dashboard Supabase apontando para o domínio
+  de produção (ex: https://<dominio>/auth/callback).
+
+================================================================================
+ANEXO — INFORMAÇÃO EXTRAÍDA DA SESSÃO ANTERIOR (chat 2b481a6a-1791-4049-9fa9-7abd6aadf310)
+================================================================================
+AVISO: esta secção foi reconstruída a partir do transcript e dos snapshots de
+ficheiros (file-history) daquele chat, NÃO do texto integral da conversa. Serve
+como contexto adicional/histórico do projeto.
+
+CONTEXTO DA SESSÃO ANTERIOR
+---------------------------
+- Esse chat decorreu numa pasta DIFERENTE da atual:
+  chikane-garage-chikane-garage (e a sub-pasta .../chikane-garage/chikane-garage
+  no código da máquina). O projeto atual (chikane-garage-novo, onde este
+  documento vive) é o RESULTADO de um "restart" — ver abaixo.
+- ORIGEM/OBJETIVO: o utilizador tinha um PROTÓTIPO no Lovable.dev e pediu para
+  "limpar o projeto e começar do zero igual ao Lovable", deixando tudo
+  orientado e com USER + BACKOFFICE 100% funcionais. Mensagem literal:
+  "tens o meu prototipo do lovable .dev e quero que alimines este projeto e
+  comeces um do zero igual ao que está no lovable e depois quero tambem que
+  deixes tudo +- orientado (...) o importante é ter +- o que temos agora mas ter
+  a parte de user e backoffice 100% a func[ionar]".
+  Depois: "vamos começar do zero faz o que achas que é necessario para ter um
+  bom resultado". → É a génese do projeto atual (chikane-garage-novo).
+
+SERVIÇOS CRIADOS NESSA SESSÃO
+-----------------------------
+- Novo projeto Supabase criado: ref = osaymbxltezwezmruijn (.supabase.co),
+  com admin de teste: admin@chikane.pt. (Credenciais/anon key redigidas por
+  segurança — são de OUTRO projeto, não as da pasta atual.)
+- O utilisedor forneceu as vars (url + anon key) para configurar o .env.local
+  daquela cópia. NOTA: verificar se o .env.local da pasta atual aponta para o
+  MESMO projeto ou para outro — se apontar para outro, reproduzir o schema na
+  nova BD (usar os scripts em supabase/ deste projeto).
+
+REQUISITOS DE UI/UX PEDIDOS PELO UTILIZADOR (nessa sessão)
+----------------------------------------------------------
+1. "Página do user para poder alterar a sua info pessoal" → hoje implementada no
+   projeto atual (app/conta/perfil — Fase C).
+2. "Se o user for admin, ter mais um botão ao lado do ícone do user com algo
+   relacionado ao backoffice" → hoje implementado no header atual (mostra
+   "Backoffice"/perfil quando admin — ver Fase C).
+3. "abre o site para eu poder ver" — pedido para abrir/preview da app.
+4. "eu sou admin e não aparece nada disso, há alguma maneira de veres o que está
+   no Supabase?" — diagnóstico/inspeção da BD.
+5. Criação de um artefacto de design public/preview.html nessa cópia.
+
+PROBLEMAS TÉCNICOS LEVANTADOS E COMO FORAM RESOLVIDOS
+-----------------------------------------------------
+- RLS "infinite recursion" na tabela profiles: ocorria quando as políticas de
+  profiles consultavam profiles (ex.: SUBQUERY em profiles dentro de uma
+  política de profiles), causando loop. Foi resolvido com um "FIX CRÍTICO":
+  - Desligar RLS temporariamente; DROP de triggers/funções/políticas antigas.
+  - Recriar a função handle_new_user() como SECURITY DEFINER SET search_path =
+    public (o trigger on_auth_user_created depois de INSERT em auth.users cria
+    o profile) — evita INSERT direto em profiles.
+  - Recriar o trigger de timestamp.
+  - Políticas simples SEM recursão: SELECT (true); INSERT (false, só via
+    trigger); UPDATE/DELETE só do próprio (auth.uid() = id).
+  - Grants SELECT/UPDATE/DELETE a authenticated + EXECUTE nas funções.
+  - SQL de validação final (contar triggers/policies).
+  Nessa copia estes scripts ficaram em supabase/migrations/: AUTH_FIX_V3.sql,
+  CRITICAL_FIX_RLS.sql, FIX_RLS_CLEAN.sql, 001_updates.sql.
+  → O setup.sql ATUAL deste projeto (Fase A) já nasce com estas boas práticas
+  (INSERT policy = false + funções SECURITY DEFINER), o que evita a recursão.
+- Erro ERRO 42710 (policy ainda existente) ao reexecutar fixes de RLS → os
+  scripts passaram a usar DROP POLICY IF EXISTS ... primeiro.
+
+DIVERGÊNCIA NOTADA ENTRE A SESSÃO ANTERIOR E O PROJETO ATUAL
+-------------------------------------------------------------
+- Em snapshots dessa sessão surgiu um HEADER em SERVER COMPONENT (async, com
+  createClient/getUser), com gestão de LOJA condicional via
+  NEXT_PUBLIC_SHOP_ENABLED, ícone de CARRINHO e rota /carrinho, e com o
+  logout() importado como Server Action (form action). O projeto ATUAL
+  (chikane-garage-novo) NÃO tem carrinho nem a flag SHOP_ENABLED — o header é um
+  Client Component simples sem carrinho. >>> Decisão a confirmar: manter o site
+  SEM loja/carrinho (só com CTA "Contactar" na /loja) ou reintroduzir o fluxo de
+  compras do protótipo Lovable. (Está como item P1/P3 na Fase H.)
+
+================================================================================
+CHANGELOG — REGISTO AUTOMÁTICO DE ALTERAÇÕES (hook PostToolUse)
+================================================================================
+[2026-09-12 19:45:00 UTC] Write: .claude/settings.json
+[2026-09-12 19:45:00 UTC] Edit: DOCUMENTO_PROJETO.txt (added CHANGELOG section)
+[2026-09-12 19:45:30 UTC] Edit: DOCUMENTO_PROJETO.txt (test hook)
+
+================================================================================
+FIM DO DOCUMENTO
+================================================================================
