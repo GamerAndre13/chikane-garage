@@ -61,6 +61,7 @@ const initialForm = {
   description: "",
   is_featured: "false",
   status: "available",
+  sold_at: "",
 };
 
 const inputStyle = {
@@ -96,7 +97,7 @@ export default function EditarVeiculo() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const brands = useMemo(() => Object.keys(CATALOG), []);
+  const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
   const modelNames = useMemo(() => Object.keys(models).sort(), [models]);
 
@@ -132,6 +133,7 @@ export default function EditarVeiculo() {
           description: data.description || "",
           is_featured: data.is_featured ? "true" : "false",
           status: data.status || "available",
+          sold_at: data.sold_at || "",
         });
       }
       setLoading(false);
@@ -141,24 +143,34 @@ export default function EditarVeiculo() {
 
   // Quando muda a marca, limpa modelo e specs
   const handleBrandChange = useCallback((brand: string) => {
-    handleChange("brand")({ target: { value: brand } } as any);
-    setMultiple({ model: "", engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
-  }, [handleChange, setMultiple]);
+    setMultiple({ brand, model: "", engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
+  }, [setMultiple]);
 
   // Quando muda o modelo, pré-preenche specs
   const handleModelChange = useCallback((model: string) => {
-    handleChange("model")({ target: { value: model } } as any);
     const specs = models[model];
     if (specs) {
       setMultiple({
+        model,
         engine: specs.engine,
         power_hp: String(specs.power_hp),
         torque_nm: String(specs.torque_nm),
         transmission: specs.transmission,
         drivetrain: specs.drivetrain,
       });
+    } else {
+      setMultiple({ model, engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
     }
-  }, [handleChange, setMultiple, models]);
+  }, [setMultiple, models]);
+
+  const handleStatusChange = useCallback((status: string) => {
+    setMultiple({
+      status,
+      sold_at: status === "sold"
+        ? form.status === "sold" ? form.sold_at : new Date().toISOString()
+        : "",
+    });
+  }, [form.status, form.sold_at, setMultiple]);
 
   const generateSlug = (brand: string, model: string, trim: string, year: string) => {
     return `${brand}-${model}-${trim}-${year}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -183,6 +195,7 @@ export default function EditarVeiculo() {
       warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
       is_featured: form.is_featured === "true",
       status: form.status,
+      sold_at: form.status === "sold" ? form.sold_at || new Date().toISOString() : null,
     }).eq("id", id);
     setSaving(false);
     if (!error) router.push("/admin/veiculos");
@@ -203,10 +216,10 @@ export default function EditarVeiculo() {
             </select>
           </Field>
           <Field label="Modelo *">
-            <select style={selectStyle} value={form.model} onChange={(e) => handleModelChange(e.target.value)}>
-              <option value="">— Selecciona marca primeiro —</option>
-              {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <>
+              <input required list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
+              <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
+            </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
           <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
@@ -244,14 +257,14 @@ export default function EditarVeiculo() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
-          <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          <Field label="Status"><select style={selectStyle} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
         <div style={{ marginTop: "1rem" }}><label style={labelStyle}>URL Imagem Capa</label><input style={inputStyle} value={form.cover_image_url} onChange={handleChange("cover_image_url")} /></div>
 
         {/* Galeria de imagens (R2) */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid #2a2a2a" }}>
-          <VehicleGallery vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => handleChange("cover_image_url")({ target: { value: url } } as any)} />
+          <VehicleGallery vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => setMultiple({ cover_image_url: url })} />
         </div>
 
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>

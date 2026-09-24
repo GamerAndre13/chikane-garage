@@ -9,7 +9,6 @@ export default async function AdminDashboard() {
     { count: availableVehicles },
     { count: reservedVehicles },
     { count: soldVehicles },
-    { count: totalProducts },
     { count: newContacts },
     { count: pendingTestDrives },
   ] = await Promise.all([
@@ -17,7 +16,6 @@ export default async function AdminDashboard() {
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "available"),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "reserved"),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "sold"),
-    supabase.from("shop_products").select("*", { count: "exact", head: true }),
     supabase.from("contact_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
     supabase.from("test_drives").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
@@ -41,7 +39,6 @@ export default async function AdminDashboard() {
     { label: "Disponíveis", value: availableVehicles ?? 0, color: "#22c55e", href: "/admin/veiculos" },
     { label: "Reservadas", value: reservedVehicles ?? 0, color: "#f59e0b", href: "/admin/veiculos" },
     { label: "Vendidas", value: soldVehicles ?? 0, color: "#ef4444", href: "/admin/veiculos" },
-    { label: "Produtos Loja", value: totalProducts ?? 0, color: "#3b82f6", href: "/admin/loja" },
     { label: "Contactos Novos", value: newContacts ?? 0, color: "#ec4899", href: "/admin/pedidos" },
     { label: "Test Drives", value: pendingTestDrives ?? 0, color: "#8b5cf6", href: "/admin/pedidos" },
   ];
@@ -81,7 +78,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <Link
           href="/admin/veiculos/novo"
           className="block border p-4 rounded text-center transition-colors hover:border-[#22c55e]"
@@ -90,16 +87,6 @@ export default async function AdminDashboard() {
           <span className="text-2xl">🚗</span>
           <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#22c55e" }}>
             Nova Viatura
-          </p>
-        </Link>
-        <Link
-          href="/admin/loja/novo"
-          className="block border p-4 rounded text-center transition-colors hover:border-[#3b82f6]"
-          style={{ borderColor: "#2a2a2a", backgroundColor: "#141414" }}
-        >
-          <span className="text-2xl">📦</span>
-          <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#3b82f6" }}>
-            Novo Produto
           </p>
         </Link>
         <Link

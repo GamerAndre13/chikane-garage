@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import NewsletterForm from "@/components/newsletter-form";
 
 export const metadata = {
@@ -13,8 +14,6 @@ const FALLBACK = {
   "hero.intro": "Viaturas diesel BMW de performance, selecionadas a dedo na Europa e entregues em Portugal com garantia completa.",
   "garage.title": "A Garagem",
   "garage.text": "Cada viatura na Chikane Garage passou por um processo de seleção rigoroso. Compramos com cuidado, inspecionamos com pormenor, documentamos com transparência e entregamos com garantia.",
-  "shop.title": "Equipe o Seu BMW",
-  "shop.text": "Peças, acessórios e produtos que acreditamos para o teu BMW.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
   "newsletter.text": "Alguns clientes são informados antes de as viaturas serem anunciadas.",
 };
@@ -40,14 +39,8 @@ type Vehicle = {
   price?: number | null;
   status?: string | null;
   cover_image_url?: string | null;
+  vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
   description?: string | null;
-};
-
-type Product = {
-  id: string;
-  name?: string | null;
-  price?: number | null;
-  image_url?: string | null;
 };
 
 type SiteContent = { section_key: string; body: string | null };
@@ -55,24 +48,17 @@ type SiteContent = { section_key: string; body: string | null };
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [vehiclesRes, productsRes, contentRes] = await Promise.all([
+  const [vehiclesRes, contentRes] = await Promise.all([
     supabase
       .from("vehicles")
-      .select("*")
+      .select("*, vehicle_images(url, position, alt_text)")
       .eq("status", "available")
-      .order("created_at", { ascending: false })
-      .limit(4),
-    supabase
-      .from("shop_products")
-      .select("*")
-      .eq("active", true)
       .order("created_at", { ascending: false })
       .limit(4),
     supabase.from("site_content").select("section_key, body"),
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
-  const products = (productsRes.data || []) as Product[];
 
   const contentMap: Record<string, string> = {};
   for (const row of (contentRes.data || []) as SiteContent[]) {
@@ -143,21 +129,14 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {vehicles.map((v) => (
-              <Link key={v.id} href={`/catalogo/${v.slug}`} className="group block overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#141414" }}>
-                <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: "#1c1c1c" }}>
-                  {v.cover_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={v.cover_image_url} alt={`${v.brand ?? ""} ${v.model ?? ""}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center">
-                      <span className="text-4xl">🚗</span>
-                      <span className="mt-2 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span>
-                    </div>
-                  )}
-                  <span className="absolute left-3 top-3 z-10 bg-copper px-2.5 py-1 font-display text-[10px] font-semibold uppercase tracking-widest text-white">SPOTLIGHT</span>
-                </div>
-                <div className="p-4">
+            {vehicles.map((v) => {
+              const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 4);
+              return (
+              <article key={v.id} className="group overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#141414" }}>
+                <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}>
+                  <span className="pointer-events-none absolute left-3 top-3 z-10 bg-copper px-2.5 py-1 font-display text-[10px] font-semibold uppercase tracking-widest text-white">SPOTLIGHT</span>
+                </VehicleCardGallery>
+                <Link href={`/catalogo/${v.slug}`} className="block p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper">
                   <p className="text-xs text-muted">{v.brand} · {v.registration_year}</p>
                   <h3 className="mt-1 font-display text-lg font-bold uppercase tracking-wide text-foreground">{v.model}</h3>
                   {v.trim && <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-muted">{v.trim}</p>}
@@ -187,9 +166,9 @@ export default async function HomePage() {
                     </span>
                     <span className="font-display text-xs font-semibold uppercase tracking-widest text-copper">Ver Viatura</span>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              </article>
+            )})}
           </div>
         )}
       </section>
@@ -234,48 +213,6 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ─── LOJA ─── */}
-      <section style={{ backgroundColor: "#141414" }}>
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">{t("shop.title")}</p>
-              <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">Peças &amp; Acessórios</h2>
-            </div>
-            <Link href="/loja" className="hidden font-display text-xs font-semibold uppercase tracking-widest text-copper hover:text-copper-light transition-colors sm:inline">
-              Entrar na loja →
-            </Link>
-          </div>
-          <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted">{t("shop.text")}</p>
-          {products.length === 0 ? (
-            <div className="mt-12 rounded border border-border p-12 text-center" style={{ backgroundColor: "#0a0a0a" }}>
-              <p className="text-sm text-muted">A preparar a loja. Fica atento.</p>
-            </div>
-          ) : (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {products.map((p) => (
-                <div key={p.id} className="group overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#0a0a0a" }}>
-                  <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: "#1c1c1c" }}>
-                    {p.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt={p.name ?? ""} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center"><span className="text-4xl">📦</span></div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-display text-sm font-semibold uppercase tracking-wide text-foreground">{p.name || "Produto"}</h3>
-                    <p className="mt-2 font-display text-base font-bold text-copper">
-                      {p.price != null ? `${p.price.toLocaleString("pt-PT")} €` : "Sob consulta"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </section>
 

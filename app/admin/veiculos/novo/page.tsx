@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
@@ -92,30 +92,31 @@ export default function NovoVeiculo() {
   const { form, handleChange, handleCheckboxChange, setMultiple } = useVehicleForm(initialForm);
   const [saving, setSaving] = useState(false);
 
-  const brands = useMemo(() => Object.keys(CATALOG), []);
+  const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
   const modelNames = useMemo(() => Object.keys(models).sort(), [models]);
 
   // Quando muda a marca, limpa modelo e specs
   const handleBrandChange = useCallback((brand: string) => {
-    handleChange("brand")({ target: { value: brand } } as any);
-    setMultiple({ model: "", engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
-  }, [handleChange, setMultiple]);
+    setMultiple({ brand, model: "", engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
+  }, [setMultiple]);
 
   // Quando muda o modelo, pré-preenche specs
   const handleModelChange = useCallback((model: string) => {
-    handleChange("model")({ target: { value: model } } as any);
     const specs = models[model];
     if (specs) {
       setMultiple({
+        model,
         engine: specs.engine,
         power_hp: String(specs.power_hp),
         torque_nm: String(specs.torque_nm),
         transmission: specs.transmission,
         drivetrain: specs.drivetrain,
       });
+    } else {
+      setMultiple({ model, engine: "", power_hp: "", torque_nm: "", transmission: "automatic", drivetrain: "rwd" });
     }
-  }, [handleChange, setMultiple, models]);
+  }, [setMultiple, models]);
 
   const generateSlug = (brand: string, model: string, trim: string, year: string) => {
     return `${brand}-${model}-${trim}-${year}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -140,6 +141,7 @@ export default function NovoVeiculo() {
       warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
       is_featured: form.is_featured === "true",
       status: form.status,
+      sold_at: form.status === "sold" ? new Date().toISOString() : null,
     });
     setSaving(false);
     if (!error) router.push("/admin/veiculos");
@@ -159,10 +161,10 @@ export default function NovoVeiculo() {
             </select>
           </Field>
           <Field label="Modelo *">
-            <select style={selectStyle} value={form.model} onChange={(e) => handleModelChange(e.target.value)}>
-              <option value="">— Selecciona marca primeiro —</option>
-              {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <>
+              <input required list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
+              <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
+            </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
           <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>

@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FavoriteButton } from "@/components/ui/favorite-button";
+import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
+import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -14,15 +16,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     registration_year?: number | null;
     price?: number | null;
     cover_image_url?: string | null;
+    status?: string | null;
+    sold_at?: string | null;
+    updated_at?: string | null;
+    created_at?: string | null;
   } | null = null;
   try {
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")
-      .select("brand, model, trim, registration_year, price, cover_image_url")
+      .select("brand, model, trim, registration_year, price, cover_image_url, status, sold_at, updated_at, created_at")
       .eq("slug", slug)
       .maybeSingle();
-    if (data) vehicle = data;
+    if (data && isVehiclePubliclyVisible(data)) vehicle = data;
   } catch {
     vehicle = null;
   }
@@ -90,6 +96,9 @@ type Vehicle = {
   isv_paid?: boolean | null;
   vehicle_images?: VehicleImage[] | null;
   vehicle_features?: VehicleFeature[] | null;
+  sold_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
 };
 
 function statusBadge(status?: string | null): { label: string; color: string } | null {
@@ -125,13 +134,16 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
     vehicle = (data || null) as Vehicle | null;
   } catch { vehicle = null; }
 
-  if (!vehicle) notFound();
+  if (!vehicle || !isVehiclePubliclyVisible(vehicle)) notFound();
 
-  const heroImage = vehicle.cover_image_url || null;
   const gallery = ((vehicle.vehicle_images || []) as VehicleImage[])
     .filter((img) => img.url)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map((img) => ({ url: img.url as string, alt: img.alt_text || "" }));
+  const photos = [
+    ...(vehicle.cover_image_url ? [{ url: vehicle.cover_image_url, alt: `${vehicle.brand} ${vehicle.model}` }] : []),
+    ...gallery,
+  ].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index);
 
   const features = (vehicle.vehicle_features || []) as VehicleFeature[];
   const badge = statusBadge(vehicle.status);
@@ -176,35 +188,15 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
       <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-16">
         {/* Left: images */}
         <div>
-          <div className="relative aspect-[4/3] overflow-hidden rounded border border-border" style={{ backgroundColor: "#141414" }}>
-            {heroImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={heroImage} alt={`${vehicle.brand} ${vehicle.model}`} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center">
-                <span className="text-6xl">🚗</span>
-                <span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span>
-              </div>
-            )}
-            <FavoriteButton vehicleId={vehicle.id} />
+          <div className="relative">
+            <VehicleDetailGallery photos={photos} title={`${vehicle.brand ?? ""} ${vehicle.model ?? ""}`} />
+            <div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={vehicle.id} /></div>
             {badge && (
               <span className="absolute bottom-4 left-4 z-10 rounded-full px-4 py-1.5 font-display text-xs font-semibold uppercase tracking-widest" style={{ backgroundColor: "rgba(10,10,10,0.85)", color: badge.color, border: `1px solid ${badge.color}` }}>
                 {badge.label}
               </span>
             )}
           </div>
-
-          {/* Thumbnails */}
-          {gallery.length > 0 && (
-            <div className="mt-3 grid grid-cols-5 gap-2">
-              {gallery.map((img, i) => (
-                <div key={i} className="aspect-square overflow-hidden rounded border border-border">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={img.alt} className="h-full w-full object-cover" />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Right: details */}

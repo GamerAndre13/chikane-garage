@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { FavoriteButton } from "@/components/ui/favorite-button";
+import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
+import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 
 export const metadata = {
   title: "Catálogo | Chikane Garage",
@@ -21,7 +23,11 @@ type Vehicle = {
   exterior_color?: string | null;
   price?: number | null;
   status?: string | null;
+  sold_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
   cover_image_url?: string | null;
+  vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
   description?: string | null;
 };
 
@@ -38,8 +44,8 @@ export default async function CatalogoPage() {
   let vehicles: Vehicle[] = [];
   try {
     const supabase = await createClient();
-    const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-    vehicles = (data || []) as Vehicle[];
+    const { data } = await supabase.from("vehicles").select("*, vehicle_images(url, position, alt_text)").order("created_at", { ascending: false });
+    vehicles = ((data || []) as Vehicle[]).filter(isVehiclePubliclyVisible);
   } catch { vehicles = []; }
 
   return (
@@ -69,26 +75,18 @@ export default async function CatalogoPage() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {vehicles.map((v) => {
             const status = statusLabel(v.status);
+            const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 4);
             return (
-              <Link key={v.id} href={`/catalogo/${v.slug}`} className="group block overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#141414" }}>
-                <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: "#1c1c1c" }}>
-                  {v.cover_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={v.cover_image_url} alt={`${v.brand ?? ""} ${v.model ?? ""}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center">
-                      <span className="text-5xl">🚗</span>
-                      <span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span>
-                    </div>
-                  )}
-                  <FavoriteButton vehicleId={v.id} />
+              <article key={v.id} className="group overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#141414" }}>
+                <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}>
+                  <div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id} /></div>
                   {status.label && (
                     <span className="absolute bottom-3 left-3 z-10 rounded-full px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-widest" style={{ backgroundColor: "rgba(10,10,10,0.85)", color: status.color, border: `1px solid ${status.color}` }}>
                       {status.label}
                     </span>
                   )}
-                </div>
-                <div className="p-5">
+                </VehicleCardGallery>
+                <Link href={`/catalogo/${v.slug}`} className="block p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper">
                   <p className="text-xs text-muted">{v.brand} · {v.registration_year}</p>
                   <h2 className="mt-1 font-display text-lg font-bold uppercase tracking-wide text-foreground">{v.model}</h2>
                   {v.trim && <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-muted">{v.trim}</p>}
@@ -124,8 +122,8 @@ export default async function CatalogoPage() {
                     </span>
                     <span className="font-display text-xs font-semibold uppercase tracking-widest text-copper">Ver mais →</span>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </article>
             );
           })}
         </div>

@@ -45,6 +45,11 @@ export async function uploadToR2(
 ): Promise<string> {
   const targetBucket = bucket || process.env.R2_BUCKET || "vehicle-images";
   const r2 = await getR2Binding();
+  const publicBaseUrl = process.env.R2_PUBLIC_URL?.replace(/\/+$/, "");
+  if (!publicBaseUrl) {
+    throw new Error("Configure R2_PUBLIC_URL com o domínio público do bucket R2 antes de carregar imagens.");
+  }
+
   if (r2) {
     await r2.put(key, body, { httpMetadata: { contentType } });
   } else {
@@ -59,11 +64,7 @@ export async function uploadToR2(
   }
 
   // URL pública (assumindo bucket público ou domínio customizado configurado)
-  const publicUrl = process.env.R2_PUBLIC_URL
-    ? `${process.env.R2_PUBLIC_URL}/${key}`
-    : `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${targetBucket}/${key}`;
-
-  return publicUrl;
+  return `${publicBaseUrl}/${key}`;
 }
 
 // Delete de ficheiro do R2

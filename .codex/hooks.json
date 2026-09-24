@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_name + \"|\" + (.tool_input.file_path // .tool_input.file) + \"|\" + (.tool_response.success // \"true\")' | { read -r payload; IFS='|' read -r tool file success <<< \"$payload\"; if [ \"$success\" = \"true\" ] && [ -n \"$file\" ] && [[ \"$file\" != *\"DOCUMENTO_PROJETO.txt\"* ]]; then printf \"[%s] %s: %s\\n\" \"$(date -u +'%%Y-%%m-%%d %%H:%%M:%%S UTC')\" \"$tool\" \"$file\" >> \"C:/Users/Public/Documents/chikane-garage-novo/DOCUMENTO_PROJETO.txt\"; fi; } 2>/dev/null || true",
+            "timeout": 10,
+            "statusMessage": "A atualizar DOCUMENTO_PROJETO.txt"
+          }
+        ]
+      }
+    ]
+  }
+}

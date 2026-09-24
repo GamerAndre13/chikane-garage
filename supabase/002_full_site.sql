@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   color TEXT DEFAULT '',
   price NUMERIC NOT NULL DEFAULT 0,
   status TEXT DEFAULT 'available' CHECK (status IN ('available', 'reserved', 'sold')),
+  sold_at TIMESTAMPTZ,
   cover_image_url TEXT DEFAULT '',
   featured BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -41,23 +42,7 @@ CREATE TABLE IF NOT EXISTS public.vehicle_images (
 );
 
 -- =====================
--- 3. TABELA: shop_products (peças e acessórios)
--- =====================
-CREATE TABLE IF NOT EXISTS public.shop_products (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT DEFAULT '',
-  price NUMERIC NOT NULL DEFAULT 0,
-  image_url TEXT DEFAULT '',
-  category TEXT DEFAULT 'acessorios',
-  stock INTEGER DEFAULT 0,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- =====================
--- 4. TABELA: site_content (CMS - textos editáveis)
+-- 3. TABELA: site_content (CMS - textos editáveis)
 -- =====================
 CREATE TABLE IF NOT EXISTS public.site_content (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -116,14 +101,17 @@ CREATE TABLE IF NOT EXISTS public.test_drives (
 -- =====================
 ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicle_images ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.shop_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_content ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contact_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.test_drives ENABLE ROW LEVEL SECURITY;
 
 -- vehicles: público para leitura, admin para escrita
-CREATE POLICY "vehicles_select" ON public.vehicles FOR SELECT USING (true);
+CREATE POLICY "vehicles_select" ON public.vehicles FOR SELECT USING (
+  status IS DISTINCT FROM 'sold'
+  OR sold_at >= NOW() - INTERVAL '7 days'
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
 CREATE POLICY "vehicles_insert_admin" ON public.vehicles FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
@@ -134,24 +122,37 @@ CREATE POLICY "vehicles_delete_admin" ON public.vehicles FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
 
+CREATE OR REPLACE FUNCTION public.set_vehicle_sold_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'sold' THEN
+      NEW.sold_at := COALESCE(NEW.sold_at, NOW());
+    ELSE
+      NEW.sold_at := NULL;
+    END IF;
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    IF NEW.status = 'sold' THEN
+      NEW.sold_at := NOW();
+    ELSE
+      NEW.sold_at := NULL;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_set_vehicle_sold_at ON public.vehicles;
+CREATE TRIGGER trigger_set_vehicle_sold_at
+  BEFORE INSERT OR UPDATE ON public.vehicles
+  FOR EACH ROW EXECUTE FUNCTION public.set_vehicle_sold_at();
+
 -- vehicle_images: público leitura, admin escrita
 CREATE POLICY "vehicle_images_select" ON public.vehicle_images FOR SELECT USING (true);
 CREATE POLICY "vehicle_images_insert_admin" ON public.vehicle_images FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
 CREATE POLICY "vehicle_images_delete_admin" ON public.vehicle_images FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-);
-
--- shop_products: público leitura, admin escrita
-CREATE POLICY "shop_products_select" ON public.shop_products FOR SELECT USING (true);
-CREATE POLICY "shop_products_insert_admin" ON public.shop_products FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "shop_products_update_admin" ON public.shop_products FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "shop_products_delete_admin" ON public.shop_products FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
 
@@ -201,7 +202,6 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT INSERT, UPDATE, DELETE ON public.vehicles TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.vehicle_images TO authenticated;
-GRANT INSERT, UPDATE, DELETE ON public.shop_products TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.site_content TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.site_settings TO authenticated;
 GRANT INSERT ON public.contact_requests TO anon, authenticated;
@@ -216,8 +216,7 @@ INSERT INTO public.site_content (section_key, title, subtitle, body, link_url, l
 ('hero_tagline', 'Seleção Rigorosa · Garantia Chikane', '', '', '', '', 1),
 ('hero_slogan', 'Precision. Imported. Passion Delivered.', '', 'Uma garagem privada especializada em BMWs diesel de performance. Cada viatura é selecionada a dedo, inspecionada detalhadamente e vendida com garantia Chikane.', '', '', 2),
 ('garage_heading', 'A garagem', 'Compramos como se fosse para nós. Porque já foi.', 'Cada viatura é comprada como se fosse para a nossa própria coleção. Revisamos o histórico, o estado mecânico e estético, aplicamos uma inspecção de 140 pontos e atribuímos um número de série Chikane.', '/sobre', 'LER A HISTÓRIA COMPLETA →', 3),
-('shop_heading', 'Equipe o seu', '', '', '/loja', 'Entrar na loja', 4),
-('newsletter_heading', 'As viaturas saem antes de chegarem ao site', '', 'Receba primeiro cada unidade que entra na garagem. Com fotografias e preço, 48 horas antes de ser publicada.', '', 'SUBSCREVER', 5);
+('newsletter_heading', 'As viaturas saem antes de chegarem ao site', '', 'Receba primeiro cada unidade que entra na garagem. Com fotografias e preço, 48 horas antes de ser publicada.', '', 'SUBSCREVER', 4);
 
 INSERT INTO public.site_settings (key, value) VALUES
 ('site_name', 'Chikane Garage'),
@@ -228,11 +227,5 @@ INSERT INTO public.site_settings (key, value) VALUES
 ('social_instagram', 'https://instagram.com'),
 ('social_youtube', 'https://youtube.com'),
 ('footer_text', '© 2026 Chikane Garage. Todos os direitos reservados.');
-
-INSERT INTO public.shop_products (name, description, price, image_url, category) VALUES
-('Jante Forjada CG-01 19"', 'Jante forjada de alta performance', 1890, '', 'jantes'),
-('Splitter Frontal em Carbono', 'Splitter em fibra de carbono', 640, '', 'aerodinamica'),
-('Volante Alcantara Chikane', 'Volante personalizado em Alcantara', 980, '', 'interior'),
-('Ponteiras Inox Quad', 'Ponteiras de escape em aço inoxidável', 420, '', 'escape');
 
 SELECT '✅ SETUP COMPLETO DO SITE!' AS resultado;

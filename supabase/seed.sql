@@ -143,16 +143,6 @@ INSERT INTO public.vehicle_images (vehicle_id, url, position, alt_text)
 SELECT id, 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=1200&q=80', 2, 'BMW 320d M Sport - Traseira'
 FROM public.vehicles WHERE slug = 'bmw-320d-msport-2021';
 
--- ============================================================
--- PRODUTOS DA LOJA
--- ============================================================
-INSERT INTO public.shop_products (slug, name, description, price, image_url, category, stock, active) VALUES
-('jante-cg01-19', 'Jante Forjada CG-01 19"', 'Jante forjada de alumínio 19" design exclusivo Chikane.', 1890, 'https://images.unsplash.com/photo-1611821064430-0d40291d0f0b?w=600&q=80', 'Jantes', 5, true),
-('filtro-ar-kn', 'Filtro de Ar Performance K&N', 'Filtro de ar lavável de alta performance.', 89, 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80', 'Motor', 15, true),
-('kit-freios-brembo', 'Kit de Freios Brembo Sport', 'Disco + Pastilha Brembo. Travagem premium.', 450, 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&q=80', 'Freios', 8, true),
-('escape-miltek', 'Escapamento Miltek Sport', 'Sistema de escape completo. Mais potência e som.', 1250, 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80', 'Escape', 3, true),
-('oleo-bmw-5w30', 'Óleo Motor BMW TwinPower 5W-30', 'Óleo original BMW TwinPower Turbo. 5 litros.', 65, 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80', 'Manutenção', 25, true),
-('volante-mp', 'Volante M Performance', 'Volante M Performance carbono + couro.', 890, 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&q=80', 'Interior', 4, true);
 
 -- ============================================================
 -- CONTEÚDO CMS
@@ -162,7 +152,6 @@ INSERT INTO public.site_content (section_key, title, body) VALUES
   ('hero.slogan', 'Precision. Imported. Passion Delivered.', ''),
   ('hero.intro', 'Viaturas diesel BMW de performance, selecionadas a dedo na Europa e entregues em Portugal com garantia completa.', ''),
   ('garage.title', 'A Garagem', 'Cada viatura passou por seleção rigorosa.'),
-  ('shop.title', 'Equipe o Seu BMW', 'Peças e acessórios selecionados.'),
   ('newsletter.title', 'As viaturas saem antes de chegarem ao site', 'Regista-te para novidades.')
 ON CONFLICT (section_key) DO NOTHING;
 

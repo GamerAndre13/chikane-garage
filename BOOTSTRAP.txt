@@ -1,0 +1,144 @@
+================================================================================
+CHIKANE GARAGE — BOOTSTRAP PARA NOVO AMBIENTE
+================================================================================
+Copie este ficheiro para a raiz do projeto (mesmo nível do package.json).
+Execute os comandos EM ORDEM, um a um, no terminal (PowerShell ou Bash).
+
+--------------------------------------------------------------------------------
+PRÉ-REQUISITOS (instale uma vez no PC)
+--------------------------------------------------------------------------------
+- Node.js 20+  (verifique: node -v)
+- pnpm OU npm (o projeto usa npm)
+- Conta Supabase + projeto criado
+- Conta Cloudflare R2 (bucket + credentials) — opcional se só testar local sem imagens
+- Conta Vercel (para deploy) — opcional
+
+--------------------------------------------------------------------------------
+PASSO 1 — DEPENDÊNCIAS
+--------------------------------------------------------------------------------
+npm install
+
+--------------------------------------------------------------------------------
+PASSO 2 — VARIÁVEIS DE AMBIENTE
+--------------------------------------------------------------------------------
+# Copie o exemplo e edite com as SUAS chaves reais
+cp .env.local.example .env.local
+
+# Abra o .env.local no editor e preencha:
+# NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
+# R2_ACCOUNT_ID=...
+# R2_ACCESS_KEY_ID=...
+# R2_SECRET_ACCESS_KEY=...
+# R2_BUCKET=vehicle-images
+# R2_PUBLIC_URL=https://pub-xxx.r2.dev   (opcional, se tiver domínio público no R2)
+
+# DICA PowerShell: notepad .env.local
+# DICA Bash:      nano .env.local
+
+--------------------------------------------------------------------------------
+PASSO 3 — BASE DE DADOS (SUPABASE)
+--------------------------------------------------------------------------------
+# No dashboard do Supabase → SQL Editor, execute ESTA ORDEM:
+
+# 1) Schema canónico (tabelas, RLS, triggers, storage)
+#    Copie/cole TODO o conteúdo de: supabase/setup.sql
+
+# 2) Dados de demonstração (viaturas, produtos, CMS, settings)
+#    Copie/cole TODO o conteúdo de: supabase/seed.sql
+
+# 3) (Opcional) Migração de perfis/fotos — só se quiser bucket Supabase 'vehicle-images'
+#    Copie/cole: supabase/migracao_perfil_e_fotos.sql
+
+# NOTA: O ficheiro supabase/002_full_site.sql é LEGACY (V1) — NÃO execute.
+#       Os ficheiros favorites.sql e newsletter.sql já estão incluídos no setup.sql.
+
+--------------------------------------------------------------------------------
+PASSO 4 — CALLBACK DE AUTH NO SUPABASE
+--------------------------------------------------------------------------------
+# No Supabase Dashboard → Authentication → URL Configuration:
+# Site URL: http://localhost:3000
+# Redirect URLs (adicione):
+#   http://localhost:3000/auth/callback
+#   http://localhost:3000/conta
+#   (em produção: https://SEU-DOMINIO/auth/callback, etc.)
+
+--------------------------------------------------------------------------------
+PASSO 5 — RODAR EM DESENVOLVIMENTO
+--------------------------------------------------------------------------------
+npm run dev
+
+# Abra http://localhost:3000
+# Deve ver a homepage com hero, catálogo, newsletter, etc.
+
+--------------------------------------------------------------------------------
+PASSO 6 — ACTIVAR HOOK DE AUTO-UPDATE DO DOCUMENTO
+--------------------------------------------------------------------------------
+# O hook está em .claude/settings.json mas precisa de recarregar config.
+# Dentro da sessão claude (este terminal), faça:
+
+# Opção A (rápido): digite /hooks e Enter → o menu abre e recarrega
+# Opção B: saia (ctrl+c / exit) e volte a entrar com `claude`
+
+# Teste: edite qualquer ficheiro (ex: README.md) e veja o CHANGELOG
+# no final de DOCUMENTO_PROJETO.txt a atualizar sozinho.
+
+--------------------------------------------------------------------------------
+PASSO 7 — (OPCIONAL) BUILD DE PRODUÇÃO LOCAL
+--------------------------------------------------------------------------------
+npm run build
+npm run start
+
+# Testa em http://localhost:3000 modo produção (output standalone)
+
+--------------------------------------------------------------------------------
+CHECKLIST RÁPIDO "TUDO OK?"
+--------------------------------------------------------------------------------
+[ ] npm install passou sem erros
+[ ] .env.local preenchido com chaves reais
+[ ] setup.sql + seed.sql corridos no Supabase SQL Editor
+[ ] Redirect URLs configuradas no Supabase Auth
+[ ] npm run dev abre homepage sem erros 500
+[ ] Login/Registo funciona (/conta)
+[ ] Área admin acessível só com role=admin (/admin)
+[ ] Upload de avatar no perfil grava no R2
+[ ] Criar viatura no admin com fotos funciona
+[ ] /hooks recarregado → CHANGELOG auto-atualiza ao editar ficheiros
+
+--------------------------------------------------------------------------------
+COMANDOS ÚTEIS DIA-A-DIA
+--------------------------------------------------------------------------------
+npm run dev       # desenvolvimento (hot reload)
+npm run build     # build produção
+npm run start     # servidor produção local
+npm run lint      # eslint
+git status        # ver alterações
+git diff          # ver diffs
+
+--------------------------------------------------------------------------------
+ESTRUTURA CHAVE (para orientação)
+--------------------------------------------------------------------------------
+app/              # Páginas Next.js (App Router)
+  admin/          # Backoffice (protegido por middleware)
+  api/            # Route handlers (auth/callback)
+  actions/        # Server Actions (upload, logout)
+components/       # React components (client + server)
+hooks/            # Custom hooks (favorites, vehicle-form)
+lib/              # Utils (supabase clients, R2)
+supabase/         # Scripts SQL (setup.sql = canónico)
+middleware.ts     # Proteção /admin + refresh sessão
+.claude/settings.json  # Hook PostToolUse → auto CHANGELOG
+DOCUMENTO_PROJETO.txt  # Documentação completa do projeto
+
+--------------------------------------------------------------------------------
+SE ALGO FALHAR
+--------------------------------------------------------------------------------
+- Erro "Missing Supabase env vars" → .env.local mal preenchido ou não reiniciou dev
+- Erro 401/RLS no admin → user não tem role='admin' na tabela profiles
+- Imagens não aparecem → R2 credentials erradas ou bucket não público
+- Hook não dispara → execute PASSO 6 (/hooks ou restart claude)
+- "policy already exists" no SQL → use DROP POLICY IF EXISTS antes (setup.sql já faz)
+
+================================================================================
+FIM — BOA SORTE!
+================================================================================

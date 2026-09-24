@@ -1,0 +1,316 @@
+<title>Fix: Cloudflare Pages Hello World</title>
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --text: #1a1a1a;
+    --border: #ddd;
+    --code-bg: #2d2d2d;
+    --code-text: #f8f8f2;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --blue: #3b82f6;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a1a;
+      --text: #f5f5f5;
+      --border: #333;
+      --code-bg: #0f0f0f;
+      --code-text: #f8f8f2;
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    padding: 20px;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    margin-top: 0;
+    font-size: 2em;
+    color: var(--error);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  h2 {
+    font-size: 1.5em;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    color: var(--text);
+  }
+
+  .step-box {
+    background: rgba(59, 130, 246, 0.05);
+    border-left: 4px solid var(--blue);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+  }
+
+  .step-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    color: var(--blue);
+  }
+
+  code {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "Courier New", monospace;
+    font-size: 0.95em;
+  }
+
+  .code-block {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: "Courier New", monospace;
+    font-size: 0.85em;
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .warning-box {
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 4px solid var(--warning);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+  }
+
+  .success-box {
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 4px solid var(--success);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+  }
+
+  .error-box {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid var(--error);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+  }
+
+  ol {
+    margin: 12px 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin: 8px 0;
+  }
+
+  strong {
+    color: var(--text);
+  }
+
+  a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    background: rgba(59, 130, 246, 0.1);
+    font-weight: bold;
+  }
+</style>
+
+<div class="container">
+  <h1>🔴 Cloudflare Pages mostra "Hello World"</h1>
+
+  <div class="error-box">
+    <strong>Problema encontrado:</strong> O Next.js não está a ser servido corretamente no Cloudflare Pages. O build passou, mas a app não está a funcionar.
+  </div>
+
+  <h2>Causa raiz (provável):</h2>
+  <ol>
+    <li>Variáveis de ambiente <strong>não configuradas</strong> no Cloudflare Pages (Supabase + R2)</li>
+    <li><code>output: "standalone"</code> precisa de <strong>wrangler.toml</strong> correto</li>
+    <li>Ou o Cloudflare Pages está a servir um ficheiro estático em vez da app</li>
+  </ol>
+
+  <h2>Solução — 2 passos</h2>
+
+  <div class="step-box">
+    <div class="step-title">✓ Passo 1: Configurar variáveis de ambiente no Cloudflare</div>
+    <div style="margin-top: 12px;">
+      <ol>
+        <li>Abra <strong>https://dash.cloudflare.com</strong></li>
+        <li>Selecione o site <strong>chikanegarage.blog</strong></li>
+        <li>Vá a <strong>Pages</strong> → projeto <strong>chikane-garage</strong></li>
+        <li>Clique em <strong>Settings</strong> → <strong>Environment variables</strong></li>
+        <li>Clique em <strong>Production</strong></li>
+        <li><strong>Adicione as 7 variáveis:</strong>
+          <table>
+            <tr>
+              <th>Nome</th>
+              <th>Valor</th>
+            </tr>
+            <tr>
+              <td><code>NEXT_PUBLIC_SUPABASE_URL</code></td>
+              <td><code>https://osaymbxltezwezmruijn.supabase.co</code></td>
+            </tr>
+            <tr>
+              <td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td>
+              <td><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code> (completa)</td>
+            </tr>
+            <tr>
+              <td><code>R2_ACCOUNT_ID</code></td>
+              <td><code>41dbcbca3f7ce50365523f5e5503253b</code></td>
+            </tr>
+            <tr>
+              <td><code>R2_ACCESS_KEY_ID</code></td>
+              <td><code>aa9dcb7b7f57841ff83bce1716501205</code></td>
+            </tr>
+            <tr>
+              <td><code>R2_SECRET_ACCESS_KEY</code></td>
+              <td><code>1cbe40afb75db5e2619ff4d8b7ee79af1ccf00d5033ed69203935aa05a4127e4</code></td>
+            </tr>
+            <tr>
+              <td><code>R2_BUCKET</code></td>
+              <td><code>vehicle-images</code></td>
+            </tr>
+            <tr>
+              <td><code>R2_PUBLIC_URL</code></td>
+              <td><code>https://pub-44978f3d48d64618815b4f7834cc7f06.r2.dev</code></td>
+            </tr>
+          </table>
+        </li>
+        <li>Clique em <strong>Deploy</strong> ou aguarde que Pages redeploy automaticamente (5-10 min)</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="step-box">
+    <div class="step-title">✓ Passo 2: Confirmar/atualizar wrangler.toml</div>
+    <div style="margin-top: 12px;">
+      <p>Verifique se o <code>wrangler.toml</code> no repositório está correto para Cloudflare Pages + Next.js standalone:</p>
+
+      <p><strong>O ficheiro deve ser:</strong></p>
+      <div class="code-block">name = "chikane-garage"
+type = "javascript"
+compatibility_date = "2024-12-02"
+
+[build]
+command = "npm run build"
+cwd = "./"
+
+[env.production]
+name = "chikane-garage-prod"</div>
+
+      <p style="margin-top: 12px;"><strong>OU, se Pages ainda não encontra a app, use:</strong></p>
+      <div class="code-block">name = "chikane-garage"
+type = "javascript"
+compatibility_date = "2024-12-02"
+pages_build_output_dir = ".next/standalone"
+
+[build]
+command = "npm run build"
+cwd = "./"
+
+[env.production]
+name = "chikane-garage-prod"</div>
+
+      <p style="margin-top: 12px;"><strong>Se usou a segunda versão:</strong></p>
+      <ol>
+        <li>Commit e push o <code>wrangler.toml</code> atualizado</li>
+        <li>Pages redeploy automaticamente (webhook GitHub → Pages)</li>
+        <li>Aguarde 2-4 min que o build termine</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>Verificar se está a funcionar</h2>
+
+  <div class="warning-box">
+    <strong>⏱ Aguarde 2-3 minutos</strong> após o Cloudflare Pages marcar o deploy como "Success" antes de abrir o site.
+  </div>
+
+  <div class="step-box">
+    <div class="step-title">✓ Testar o site</div>
+    <ol>
+      <li>Abra <a href="https://chikanegarage.blog" target="_blank">https://chikanegarage.blog</a></li>
+      <li><strong>Esperado (NÃO "hello world"):</strong>
+        <ul>
+          <li>Hero com imagem de fundo</li>
+          <li>Tagline: "Seleção Rigorosa · Garantia Chikane"</li>
+          <li>Grid de 4 viaturas BMW</li>
+          <li>Seções: A Garagem, Processo, Loja, Newsletter</li>
+        </ul>
+      </li>
+      <li>Se ainda mostra "hello world":
+        <ul>
+          <li>Limpe cache do navegador (Ctrl+Shift+Delete)</li>
+          <li>Verifique o <strong>Build Log</strong> em Pages → Deployments → último build</li>
+          <li>Procure erros relacionados a variáveis de ambiente ou build</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <h2>Troubleshooting avançado</h2>
+
+  <div class="error-box">
+    <strong>Se o Build Log mostra erro:</strong><br>
+    <ul>
+      <li><strong>"Missing Supabase":</strong> variáveis não foram configuradas no Cloudflare (repetir Passo 1)</li>
+      <li><strong>"Cannot find module":</strong> dependências não instaladas (Pages usa <code>npm ci</code>, confirme que <code>package-lock.json</code> está no git)</li>
+      <li><strong>"Next.js error":</strong> build falha localmente também (testar com <code>npm run build</code> local)</li>
+    </ul>
+  </div>
+
+  <div class="success-box">
+    <strong>✓ Após o site funcionar:</strong><br>
+    Teste as rotas principais:<br>
+    <code>/catalogo</code> (lista de viaturas)<br>
+    <code>/conta</code> (login/registo)<br>
+    <code>/admin</code> (redireciona para /conta, correto)<br>
+    <code>/loja</code> (produtos)
+  </div>
+
+  <h2>Próximo passo (após "hello world" ser corrigido)</h2>
+  <p>Me avisa quando o site estiver a correr em <code>chikanegarage.blog</code> — depois podemos:</p>
+  <ol>
+    <li>Testar upload de imagens (R2)</li>
+    <li>Testar login/registo (Supabase)</li>
+    <li>Corrigir os 19 erros de lint (débito técnico)</li>
+    <li>Avançar para a Fase H (novas funcionalidades)</li>
+  </ol>
+</div>

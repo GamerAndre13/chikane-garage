@@ -25,15 +25,21 @@ export default function VeiculosList() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchVehicles();
-  }, []);
-
   const fetchVehicles = async () => {
     const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
     setVehicles(data || []);
     setLoading(false);
   };
+
+  useEffect(() => {
+    let active = true;
+    supabase.from("vehicles").select("*").order("created_at", { ascending: false }).then(({ data }) => {
+      if (!active) return;
+      setVehicles(data || []);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja apagar esta viatura?")) return;
@@ -43,7 +49,10 @@ export default function VeiculosList() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setUpdating(id);
-    const { error } = await supabase.from("vehicles").update({ status: newStatus }).eq("id", id);
+    const { error } = await supabase.from("vehicles").update({
+      status: newStatus,
+      sold_at: newStatus === "sold" ? new Date().toISOString() : null,
+    }).eq("id", id);
     if (error) alert("Erro ao atualizar status: " + error.message);
     else fetchVehicles();
     setUpdating(null);

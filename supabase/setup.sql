@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   registration_year INT,
   registration_month INT,
   status TEXT DEFAULT 'available' CHECK (status IN ('available', 'reserved', 'sold')),
+  sold_at TIMESTAMPTZ,
 
   -- Especificações técnicas
   engine TEXT,
@@ -132,7 +133,11 @@ DO $$ BEGIN
   DROP POLICY IF EXISTS "vehicles_update_admin" ON public.vehicles;
   DROP POLICY IF EXISTS "vehicles_delete_admin" ON public.vehicles;
 END $$;
-CREATE POLICY "vehicles_select" ON public.vehicles FOR SELECT USING (true);
+CREATE POLICY "vehicles_select" ON public.vehicles FOR SELECT USING (
+  status <> 'sold'
+  OR sold_at >= NOW() - INTERVAL '7 days'
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
 CREATE POLICY "vehicles_insert_admin" ON public.vehicles FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
@@ -157,6 +162,31 @@ DROP TRIGGER IF EXISTS trigger_update_vehicle_timestamp ON public.vehicles;
 CREATE TRIGGER trigger_update_vehicle_timestamp
   BEFORE UPDATE ON public.vehicles
   FOR EACH ROW EXECUTE FUNCTION public.update_vehicle_timestamp();
+
+CREATE OR REPLACE FUNCTION public.set_vehicle_sold_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'sold' THEN
+      NEW.sold_at := COALESCE(NEW.sold_at, NOW());
+    ELSE
+      NEW.sold_at := NULL;
+    END IF;
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    IF NEW.status = 'sold' THEN
+      NEW.sold_at := NOW();
+    ELSE
+      NEW.sold_at := NULL;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_set_vehicle_sold_at ON public.vehicles;
+CREATE TRIGGER trigger_set_vehicle_sold_at
+  BEFORE INSERT OR UPDATE ON public.vehicles
+  FOR EACH ROW EXECUTE FUNCTION public.set_vehicle_sold_at();
 
 CREATE INDEX IF NOT EXISTS idx_vehicles_status ON public.vehicles(status);
 CREATE INDEX IF NOT EXISTS idx_vehicles_brand_model ON public.vehicles(brand, model);
@@ -210,57 +240,7 @@ CREATE POLICY "vehicle_images_delete_admin" ON public.vehicle_images FOR DELETE 
 );
 
 -- ============================================================
--- 5. shop_products
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.shop_products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug TEXT UNIQUE,
-  name TEXT NOT NULL,
-  description TEXT DEFAULT '',
-  price NUMERIC,
-  image_url TEXT DEFAULT '',
-  category TEXT DEFAULT '',
-  stock INTEGER DEFAULT 0,
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-ALTER TABLE public.shop_products ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  DROP POLICY IF EXISTS "shop_products_select" ON public.shop_products;
-  DROP POLICY IF EXISTS "shop_products_insert_admin" ON public.shop_products;
-  DROP POLICY IF EXISTS "shop_products_update_admin" ON public.shop_products;
-  DROP POLICY IF EXISTS "shop_products_delete_admin" ON public.shop_products;
-END $$;
-CREATE POLICY "shop_products_select" ON public.shop_products FOR SELECT USING (true);
-CREATE POLICY "shop_products_insert_admin" ON public.shop_products FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "shop_products_update_admin" ON public.shop_products FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "shop_products_delete_admin" ON public.shop_products FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
-);
-
-CREATE OR REPLACE FUNCTION public.update_shop_product_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-DROP TRIGGER IF EXISTS trigger_update_shop_product_timestamp ON public.shop_products;
-CREATE TRIGGER trigger_update_shop_product_timestamp
-  BEFORE UPDATE ON public.shop_products
-  FOR EACH ROW EXECUTE FUNCTION public.update_shop_product_timestamp();
-
--- ============================================================
--- 6. favorites
+-- 5. favorites
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.favorites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -416,7 +396,6 @@ GRANT DELETE ON public.profiles TO authenticated;
 GRANT SELECT ON public.vehicles TO authenticated;
 GRANT SELECT ON public.vehicle_features TO authenticated;
 GRANT SELECT ON public.vehicle_images TO authenticated;
-GRANT SELECT ON public.shop_products TO authenticated;
 GRANT SELECT ON public.favorites TO authenticated;
 GRANT SELECT ON public.site_content TO authenticated;
 GRANT SELECT ON public.site_settings TO authenticated;

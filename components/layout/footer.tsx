@@ -14,7 +14,6 @@ type SiteSettings = {
 const NAV_LINKS = [
   { label: "Catálogo", href: "/catalogo" },
   { label: "Sobre Nós", href: "/sobre" },
-  { label: "Loja", href: "/loja" },
   { label: "Contacto", href: "/contacto" },
 ];
 

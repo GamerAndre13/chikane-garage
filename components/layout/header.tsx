@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 
 export function Header() {
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
 
@@ -15,35 +15,19 @@ export function Header() {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) checkAdmin(session.user.id);
     });
 
     // Listen for auth changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        checkAdmin(session.user.id);
-      } else {
-        setIsAdmin(false);
-      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  async function checkAdmin(userId: string) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
-    setIsAdmin(data?.role === "admin");
-  }
-
   async function handleLogout() {
     await supabase.auth.signOut();
     setUser(null);
-    setIsAdmin(false);
     router.push("/");
     router.refresh();
   }
@@ -63,9 +47,6 @@ export function Header() {
           </Link>
           <Link href="/sobre" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper transition-colors">
             Sobre Nós
-          </Link>
-          <Link href="/loja" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper transition-colors">
-            Loja
           </Link>
         </nav>
 
@@ -128,9 +109,6 @@ export function Header() {
             </Link>
             <Link href="/sobre" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
               Sobre Nós
-            </Link>
-            <Link href="/loja" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
-              Loja
             </Link>
             <Link href="/contacto" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
               Contacto

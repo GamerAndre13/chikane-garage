@@ -35,10 +35,6 @@ export default async function AnalyticsPage() {
     .from("test_drives")
     .select("*", { count: "exact", head: true });
 
-  const { count: totalProducts } = await supabase
-    .from("shop_products")
-    .select("*", { count: "exact", head: true });
-
   const v = (vehicles || []) as Vehicle[];
 
   // ─── Stats Calculation ───
@@ -156,7 +152,7 @@ export default async function AnalyticsPage() {
             📊 Analytics
           </h1>
           <p className="text-xs mt-1" style={{ color: "#9a9a94" }}>
-            Dados importantes sobre viaturas e atividade da loja
+            Dados de viaturas, contactos e test drives
           </p>
         </div>
         <Link href="/admin" className="text-xs uppercase tracking-widest px-4 py-2 border rounded" style={{ borderColor: "#2a2a2a", color: "#9a9a94" }}>
@@ -368,7 +364,7 @@ export default async function AnalyticsPage() {
         <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "#f5f5f0" }}>
           Resumo Geral
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-xs" style={{ color: "#9a9a94" }}>Total Viaturas</p>
             <p className="font-display text-xl" style={{ color: "#b87333" }}>{v.length}</p>
@@ -380,10 +376,6 @@ export default async function AnalyticsPage() {
           <div>
             <p className="text-xs" style={{ color: "#9a9a94" }}>Test Drives</p>
             <p className="font-display text-xl" style={{ color: "#8b5cf6" }}>{totalTestDrives ?? 0}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "#9a9a94" }}>Produtos Loja</p>
-            <p className="font-display text-xl" style={{ color: "#3b82f6" }}>{totalProducts ?? 0}</p>
           </div>
           <div>
             <p className="text-xs" style={{ color: "#9a9a94" }}>Valor Total Stock</p>
