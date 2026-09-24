@@ -11,5 +11,8 @@ binding = "ASSETS"
 binding = "VEHICLE_IMAGES"
 bucket_name = "vehicle-images"
 
+[vars]
+R2_PUBLIC_URL = "https://pub-44978f3d48d64618815b4f7834cc7f06.r2.dev"
+
 [observability]
 enabled = true
