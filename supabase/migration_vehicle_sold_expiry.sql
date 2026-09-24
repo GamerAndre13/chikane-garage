@@ -37,3 +37,5 @@ CREATE POLICY "vehicles_select" ON public.vehicles FOR SELECT USING (
   OR sold_at >= NOW() - INTERVAL '7 days'
   OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
+
+NOTIFY pgrst, 'reload schema';

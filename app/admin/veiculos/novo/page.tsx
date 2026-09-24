@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
+import { VehiclePhotoPicker } from "@/components/ui/vehicle-photo-picker";
+import { setCoverImage, uploadVehicleImages } from "@/app/actions/upload";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -91,6 +93,8 @@ export default function NovoVeiculo() {
   const router = useRouter();
   const { form, handleChange, handleCheckboxChange, setMultiple } = useVehicleForm(initialForm);
   const [saving, setSaving] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
 
   const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
@@ -125,27 +129,54 @@ export default function NovoVeiculo() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
-    const { error } = await supabase.from("vehicles").insert({
-      ...form,
-      slug,
-      registration_year: form.registration_year ? parseInt(form.registration_year) : null,
-      registration_month: form.registration_month ? parseInt(form.registration_month) : null,
-      power_hp: form.power_hp ? parseInt(form.power_hp) : null,
-      torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
-      combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
-      co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
-      mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
-      previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
-      price: form.price ? parseFloat(form.price) : null,
-      warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
-      is_featured: form.is_featured === "true",
-      status: form.status,
-      sold_at: form.status === "sold" ? new Date().toISOString() : null,
-    });
-    setSaving(false);
-    if (!error) router.push("/admin/veiculos");
-    else alert("Erro ao guardar: " + error.message);
+    try {
+      const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
+      const { data: vehicle, error } = await supabase.from("vehicles").insert({
+        ...form,
+        slug,
+        registration_year: form.registration_year ? parseInt(form.registration_year) : null,
+        registration_month: form.registration_month ? parseInt(form.registration_month) : null,
+        power_hp: form.power_hp ? parseInt(form.power_hp) : null,
+        torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
+        combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
+        co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
+        mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
+        previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
+        price: form.price ? parseFloat(form.price) : null,
+        warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
+        is_featured: form.is_featured === "true",
+        status: form.status,
+      }).select("id").single();
+
+      if (error || !vehicle) {
+        alert("Erro ao guardar: " + (error?.message || "Não foi possível criar a viatura."));
+        return;
+      }
+
+      if (photos.length) {
+        const formData = new FormData();
+        formData.append("vehicleId", vehicle.id);
+        photos.forEach((photo) => formData.append("files", photo));
+        const upload = await uploadVehicleImages(formData);
+        if (upload.error || !upload.urls?.length) {
+          alert(`A viatura foi criada, mas as fotografias não foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
+          router.push(`/admin/veiculos/editar/${vehicle.id}`);
+          return;
+        }
+        const coverUrl = upload.urls[Math.min(coverPhotoIndex, upload.urls.length - 1)];
+        const coverResult = await setCoverImage(vehicle.id, coverUrl);
+        if (coverResult.error) {
+          alert(`A viatura e as fotografias foram guardadas, mas não foi possível definir a imagem principal: ${coverResult.error}`);
+          router.push(`/admin/veiculos/editar/${vehicle.id}`);
+          return;
+        }
+      }
+      router.push("/admin/veiculos");
+    } catch (error) {
+      alert("Erro ao guardar: " + (error instanceof Error ? error.message : "erro inesperado"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -209,11 +240,7 @@ export default function NovoVeiculo() {
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
-        {/* Media */}
-        <div style={{ marginTop: "1rem" }}>
-          <label style={labelStyle}>URL Imagem Capa</label>
-          <input style={inputStyle} value={form.cover_image_url} onChange={handleChange("cover_image_url")} />
-        </div>
+        <VehiclePhotoPicker onChange={(files, coverIndex) => { setPhotos(files); setCoverPhotoIndex(coverIndex); }} />
         <div style={{ marginTop: "0.75rem" }}>
           <label style={labelStyle}>Descrição</label>
           <textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} />

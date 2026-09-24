@@ -65,6 +65,7 @@ export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: 
   const maxSize = 10 * 1024 * 1024; // 10MB por imagem
 
   const urls: string[] = [];
+  let uploadError: string | null = null;
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -80,12 +81,12 @@ export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: 
     try {
       const url = await uploadToR2(key, buffer, file.type);
       urls.push(url);
-    } catch {
-      // Continuar com as outras
+    } catch (err) {
+      uploadError = err instanceof Error ? err.message : "Erro ao enviar imagem para o R2";
     }
   }
 
-  if (!urls.length) return { error: "Nenhuma imagem válida para upload" };
+  if (!urls.length) return { error: uploadError || "Nenhuma imagem válida para upload" };
 
   // Inserir na tabela vehicle_images
   const imagesToInsert = urls.map((url, idx) => ({

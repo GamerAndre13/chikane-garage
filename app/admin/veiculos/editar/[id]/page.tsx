@@ -61,7 +61,6 @@ const initialForm = {
   description: "",
   is_featured: "false",
   status: "available",
-  sold_at: "",
 };
 
 const inputStyle = {
@@ -133,7 +132,6 @@ export default function EditarVeiculo() {
           description: data.description || "",
           is_featured: data.is_featured ? "true" : "false",
           status: data.status || "available",
-          sold_at: data.sold_at || "",
         });
       }
       setLoading(false);
@@ -164,13 +162,8 @@ export default function EditarVeiculo() {
   }, [setMultiple, models]);
 
   const handleStatusChange = useCallback((status: string) => {
-    setMultiple({
-      status,
-      sold_at: status === "sold"
-        ? form.status === "sold" ? form.sold_at : new Date().toISOString()
-        : "",
-    });
-  }, [form.status, form.sold_at, setMultiple]);
+    setMultiple({ status });
+  }, [setMultiple]);
 
   const generateSlug = (brand: string, model: string, trim: string, year: string) => {
     return `${brand}-${model}-${trim}-${year}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -195,7 +188,6 @@ export default function EditarVeiculo() {
       warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
       is_featured: form.is_featured === "true",
       status: form.status,
-      sold_at: form.status === "sold" ? form.sold_at || new Date().toISOString() : null,
     }).eq("id", id);
     setSaving(false);
     if (!error) router.push("/admin/veiculos");
@@ -259,8 +251,6 @@ export default function EditarVeiculo() {
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
-
-        <div style={{ marginTop: "1rem" }}><label style={labelStyle}>URL Imagem Capa</label><input style={inputStyle} value={form.cover_image_url} onChange={handleChange("cover_image_url")} /></div>
 
         {/* Galeria de imagens (R2) */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid #2a2a2a" }}>
