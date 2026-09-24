@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
-import { VehicleGallery } from "@/components/ui/vehicle-gallery";
+import { VehicleGallery, type VehicleGalleryHandle } from "@/components/ui/vehicle-gallery";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -93,6 +93,7 @@ export default function EditarVeiculo() {
   const params = useParams();
   const id = params.id as string;
   const { form, handleChange, handleCheckboxChange, setMultiple } = useVehicleForm(initialForm);
+  const galleryRef = useRef<VehicleGalleryHandle>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -189,9 +190,15 @@ export default function EditarVeiculo() {
       is_featured: form.is_featured === "true",
       status: form.status,
     }).eq("id", id);
+    if (error) {
+      setSaving(false);
+      alert("Erro ao guardar: " + error.message);
+      return;
+    }
+    const galleryResult = await galleryRef.current?.save();
     setSaving(false);
-    if (!error) router.push("/admin/veiculos");
-    else alert("Erro ao guardar: " + error.message);
+    if (galleryResult?.error) alert("Os dados da viatura foram guardados, mas a galeria não: " + galleryResult.error);
+    else router.push("/admin/veiculos");
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><p style={{ color: "#9a9a94" }}>A carregar...</p></div>;
@@ -254,7 +261,7 @@ export default function EditarVeiculo() {
 
         {/* Galeria de imagens (R2) */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid #2a2a2a" }}>
-          <VehicleGallery vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => setMultiple({ cover_image_url: url })} />
+          <VehicleGallery ref={galleryRef} vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => setMultiple({ cover_image_url: url })} />
         </div>
 
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
