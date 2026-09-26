@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cropVehicleImage } from "@/lib/crop-vehicle-image";
 
 export function VehiclePhotoPicker({ onChange }: { onChange: (files: File[], coverIndex: number) => void }) {
   const [files, setFiles] = useState<File[]>([]);
@@ -20,12 +21,19 @@ export function VehiclePhotoPicker({ onChange }: { onChange: (files: File[], cov
     onChange(nextFiles, nextCover);
   };
 
-  const addFiles = (selected: FileList | null) => {
+  const addFiles = async (selected: FileList | null) => {
     if (!selected) return;
     const incoming = Array.from(selected);
     const accepted = incoming.filter((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 10 * 1024 * 1024);
     setNotice(accepted.length < incoming.length ? "Só são aceites JPG, PNG ou WebP até 10 MB cada." : null);
-    const next = [...files, ...accepted];
+    let cropped: File[];
+    try {
+      cropped = await Promise.all(accepted.map(cropVehicleImage));
+    } catch {
+      setNotice("Não foi possível preparar uma das fotografias. Tenta novamente.");
+      return;
+    }
+    const next = [...files, ...cropped];
     update(next, files.length === 0 ? 0 : coverIndex);
   };
 
@@ -68,7 +76,7 @@ export function VehiclePhotoPicker({ onChange }: { onChange: (files: File[], cov
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {files.map((file, index) => (
             <article key={`${file.name}-${file.lastModified}-${index}`} className={`overflow-hidden rounded border ${coverIndex === index ? "border-[#b87333]" : "border-[#333]"}`}>
-              <div className="relative aspect-square bg-[#0a0a0a]">
+              <div className="relative aspect-[4/3] bg-[#0a0a0a]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {previews[index] && <img src={previews[index]} alt={`Pré-visualização ${index + 1}: ${file.name}`} className="h-full w-full object-cover" />}
                 {coverIndex === index && <span className="absolute left-2 top-2 rounded bg-[#b87333] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">Capa</span>}

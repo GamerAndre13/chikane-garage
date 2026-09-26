@@ -2,6 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { cropVehicleImage } from "@/lib/crop-vehicle-image";
 import {
   uploadVehicleImages,
   setCoverImage,
@@ -119,12 +120,17 @@ export const VehicleGallery = forwardRef<VehicleGalleryHandle, {
 
   useImperativeHandle(ref, () => ({ save }), [save]);
 
-  const addFiles = (fileList: FileList | null) => {
+  const addFiles = async (fileList: FileList | null) => {
     if (!fileList) return;
     const incoming = Array.from(fileList);
     const accepted = incoming.filter((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 10 * 1024 * 1024);
     setNotice(accepted.length < incoming.length ? "Só são aceites JPG, PNG ou WebP até 10 MB cada." : null);
-    setItems((current) => [...current, ...accepted.map((file) => ({ id: crypto.randomUUID(), url: URL.createObjectURL(file), file }))]);
+    try {
+      const cropped = await Promise.all(accepted.map(cropVehicleImage));
+      setItems((current) => [...current, ...cropped.map((file) => ({ id: crypto.randomUUID(), url: URL.createObjectURL(file), file }))]);
+    } catch {
+      setNotice("Não foi possível preparar uma das fotografias. Tenta novamente.");
+    }
   };
 
   const move = (index: number, delta: number) => {

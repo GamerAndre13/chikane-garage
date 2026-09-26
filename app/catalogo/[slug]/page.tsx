@@ -185,8 +185,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
         <span className="text-copper">{vehicle.brand} {vehicle.model}</span>
       </nav>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-16">
-        {/* Left: images */}
+      <div className="mt-6">
+        {/* Galeria principal em largura total */}
         <div>
           <div className="relative">
             <VehicleDetailGallery photos={photos} title={`${vehicle.brand ?? ""} ${vehicle.model ?? ""}`} />
@@ -199,8 +199,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
-        {/* Right: details */}
-        <div>
+        {/* Nome e preço à esquerda, logo abaixo da fotografia */}
+        <div className="mt-8 max-w-4xl">
           <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">
             {vehicle.trim ? vehicle.trim : "Viatura"} {vehicle.reference_code && `· ${vehicle.reference_code}`}
           </p>
@@ -214,9 +214,13 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             </span>
           </div>
 
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <div className="space-y-6">
           {/* Specs Técnicos */}
           {techSpecs.length > 0 && (
-            <div className="mt-8">
+            <div>
               <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Especificações Técnicas</h2>
               <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded border border-border">
                 {techSpecs.map((spec) => (
@@ -231,7 +235,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {/* Info Veículo */}
           {infoSpecs.length > 0 && (
-            <div className="mt-6">
+            <div>
               <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Informação do Veículo</h2>
               <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded border border-border">
                 {infoSpecs.map((spec) => (
@@ -246,7 +250,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {/* Origem */}
           {originSpecs.length > 0 && (
-            <div className="mt-6">
+            <div>
               <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Origem & Legalização</h2>
               <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded border border-border">
                 {originSpecs.map((spec) => (
@@ -261,7 +265,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {/* Extras */}
           {features.length > 0 && (
-            <div className="mt-6">
+            <div>
               <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Equipamento & Extras</h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 {features.map((f) => (
@@ -292,16 +296,19 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
 
+          </div>
+          <div className="space-y-6">
+
           {/* Descrição */}
           {vehicle.description && (
-            <div className="mt-6">
+            <div>
               <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Descrição</h2>
               <p className="mt-3 text-sm leading-relaxed text-silver">{vehicle.description}</p>
             </div>
           )}
 
           {/* CTA */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex-1 bg-copper px-6 py-4 text-center font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
               Contactar
             </Link>
@@ -310,8 +317,9 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             </Link>
           </div>
 
-          <div className="mt-6 rounded border border-border p-5 text-sm text-muted" style={{ backgroundColor: "#141414" }}>
+          <div className="rounded border border-border p-5 text-sm text-muted" style={{ backgroundColor: "#141414" }}>
             Garantia Chikane incluída em todas as viaturas. Inspeção pormenorizada e histórico documentado.
+          </div>
           </div>
         </div>
       </div>
