@@ -69,26 +69,26 @@ export default async function HomePage() {
   return (
     <div style={{ backgroundColor: "#0a0a0a" }}>
       {/* ─── HERO ─── */}
-      <section className="relative flex min-h-[85vh] items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-[82vh] items-center overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1920&q=80')" }}
         />
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/50" />
 
-        <div className="relative z-10 mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="font-display text-xs uppercase tracking-[0.4em] text-copper">
+        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-5 text-left sm:px-8 lg:px-12">
+          <p className="font-display text-[11px] uppercase tracking-[0.32em] text-copper">
             {t("hero.tagline")}
           </p>
-          <h1 className="mt-6 font-display text-5xl font-bold uppercase leading-[1.1] tracking-wide text-white sm:text-6xl lg:text-8xl">
+          <h1 className="mt-7 max-w-5xl font-display text-6xl font-bold uppercase leading-[0.94] tracking-tight text-white sm:text-7xl lg:text-[7.5rem]">
             {t("hero.slogan").split("\n").map((line, i) => (
               <span key={i} className="block">{line}</span>
             ))}
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-gray-300 sm:text-lg">
+          <p className="mt-6 max-w-xl text-sm leading-relaxed text-gray-300 sm:text-base">
             {t("hero.intro")}
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row">
             <Link href="/catalogo" className="inline-flex items-center justify-center bg-copper px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-hover hover:bg-copper-light">
               Ver Catálogo
             </Link>
@@ -96,23 +96,11 @@ export default async function HomePage() {
               A Nossa História
             </Link>
           </div>
-          <div className="mx-auto mt-20 grid max-w-md grid-cols-3 gap-8 border-t border-white/20 pt-10">
-            {[
-              { value: "100%", label: "Verificadas" },
-              { value: "6 Mo.", label: "Garantia" },
-              { value: "0 €", label: "Comissões" },
-            ].map((s) => (
-              <div key={s.label}>
-                <p className="font-display text-2xl font-bold text-copper">{s.value}</p>
-                <p className="mt-1 text-xs uppercase tracking-widest text-gray-400">{s.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* ─── DESTAQUE ─── */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
         <div className="flex items-end justify-between">
           <div>
             <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Em destaque esta semana</p>
@@ -174,8 +162,8 @@ export default async function HomePage() {
       </section>
 
       {/* ─── A GARAGEM ─── */}
-      <section style={{ backgroundColor: "#141414" }}>
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section style={{ backgroundColor: "#10100f" }}>
+        <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
           <div className="grid items-center gap-16 lg:grid-cols-2">
             <div>
               <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">{t("garage.title")}</p>

@@ -177,152 +177,48 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   if (vehicle.isv_paid) originSpecs.push({ label: "ISV", value: "Pago ✓" });
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8" style={{ backgroundColor: "#0a0a0a" }}>
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted">
-        <Link href="/catalogo" className="text-muted hover:text-copper transition-colors">Catálogo</Link>
-        <span>/</span>
-        <span className="text-copper">{vehicle.brand} {vehicle.model}</span>
-      </nav>
+    <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
+      <Link href="/catalogo" className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">← Voltar ao catálogo</Link>
 
-      <div className="mt-6">
-        {/* Galeria principal em largura total */}
-        <div>
+      <div className="mt-8 grid items-start gap-10 lg:grid-cols-[1.35fr_1fr] xl:gap-12">
+        <div className="min-w-0">
           <div className="relative">
             <VehicleDetailGallery photos={photos} title={`${vehicle.brand ?? ""} ${vehicle.model ?? ""}`} />
             <div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={vehicle.id} /></div>
-            {badge && (
-              <span className="absolute bottom-4 left-4 z-10 rounded-full px-4 py-1.5 font-display text-xs font-semibold uppercase tracking-widest" style={{ backgroundColor: "rgba(10,10,10,0.85)", color: badge.color, border: `1px solid ${badge.color}` }}>
-                {badge.label}
-              </span>
-            )}
+            {badge && <span className="absolute left-0 top-5 z-10 bg-copper px-4 py-2 font-display text-[10px] font-semibold uppercase tracking-[0.24em] text-black">{badge.label}</span>}
           </div>
         </div>
 
-        {/* Nome e preço à esquerda, logo abaixo da fotografia */}
-        <div className="mt-8 max-w-4xl">
-          <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">
-            {vehicle.trim ? vehicle.trim : "Viatura"} {vehicle.reference_code && `· ${vehicle.reference_code}`}
-          </p>
-          <h1 className="mt-2 font-display text-4xl font-bold uppercase tracking-wide text-foreground sm:text-5xl">
-            {vehicle.brand} {vehicle.model}
-          </h1>
+        <div className="min-w-0">
+          <p className="font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">{vehicle.reference_code ? `Chikane selection · ${vehicle.reference_code}` : "Seleção Chikane · Histórico verificado"}</p>
+          <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-[0.98] tracking-tight text-foreground sm:text-6xl">{vehicle.brand} {vehicle.model}</h1>
+          {vehicle.trim && <p className="mt-2 font-display text-sm uppercase tracking-[0.2em] text-silver">{vehicle.trim}</p>}
+          <p className="mt-7 font-display text-4xl font-medium text-copper sm:text-5xl">{vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
+          <p className="mt-1 text-xs text-muted">Preço final. Fala connosco para confirmar todos os detalhes.</p>
 
-          <div className="mt-5 flex items-end justify-between">
-            <span className="font-display text-3xl font-bold text-foreground">
-              {vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}
-            </span>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex-1 bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
+            <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex-1 border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Marcar test-drive</Link>
           </div>
 
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <div className="space-y-6">
-          {/* Specs Técnicos */}
-          {techSpecs.length > 0 && (
-            <div>
-              <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Especificações Técnicas</h2>
-              <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded border border-border">
-                {techSpecs.map((spec) => (
-                  <div key={spec.label} className="p-4" style={{ backgroundColor: "#141414" }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">{spec.label}</p>
-                    <p className="mt-1 font-display text-lg text-foreground">{spec.value}</p>
-                  </div>
-                ))}
+          <div className="mt-8 grid grid-cols-2 border-l border-t border-border bg-surface">
+            {[...infoSpecs, ...techSpecs, ...originSpecs, ...(vehicle.warranty_months ? [{ label: "Garantia", value: `${vehicle.warranty_months} meses` }] : [])].map((spec) => (
+              <div key={spec.label} className="min-h-[78px] border-b border-r border-border px-4 py-3.5 sm:px-5">
+                <p className="font-display text-[9px] uppercase tracking-[0.22em] text-muted">{spec.label}</p>
+                <p className="mt-1 font-display text-base text-foreground">{spec.value}</p>
               </div>
-            </div>
-          )}
-
-          {/* Info Veículo */}
-          {infoSpecs.length > 0 && (
-            <div>
-              <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Informação do Veículo</h2>
-              <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded border border-border">
-                {infoSpecs.map((spec) => (
-                  <div key={spec.label} className="p-4" style={{ backgroundColor: "#141414" }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">{spec.label}</p>
-                    <p className="mt-1 font-display text-lg text-foreground">{spec.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Origem */}
-          {originSpecs.length > 0 && (
-            <div>
-              <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Origem & Legalização</h2>
-              <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded border border-border">
-                {originSpecs.map((spec) => (
-                  <div key={spec.label} className="p-4" style={{ backgroundColor: "#141414" }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">{spec.label}</p>
-                    <p className="mt-1 font-display text-lg text-foreground">{spec.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Extras */}
-          {features.length > 0 && (
-            <div>
-              <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Equipamento & Extras</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {features.map((f) => (
-                  <span key={f.id} className="rounded border border-border px-3 py-1.5 text-xs font-medium text-silver" style={{ backgroundColor: "#141414" }}>
-                    {f.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Condições Comerciais */}
-          <div className="mt-6 rounded border border-border p-4" style={{ backgroundColor: "#141414" }}>
-            <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted mb-3">Condições Comerciais</h2>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {vehicle.warranty_months != null && vehicle.warranty_months > 0 && (
-                <div><span className="text-muted">Garantia:</span> <span className="text-foreground">{vehicle.warranty_months} meses</span></div>
-              )}
-              {vehicle.financing_available && (
-                <div><span className="text-muted">Financiamento:</span> <span className="text-green-400">Disponível ✓</span></div>
-              )}
-              {vehicle.trade_in_accepted && (
-                <div><span className="text-muted">Troca:</span> <span className="text-green-400">Aceite ✓</span></div>
-              )}
-              {vehicle.accident_history && (
-                <div><span className="text-muted">Acidentes:</span> <span className="text-red-400">Sim ⚠</span></div>
-              )}
-            </div>
+            ))}
           </div>
 
-          </div>
-          <div className="space-y-6">
+          {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Estado e histórico</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
 
-          {/* Descrição */}
-          {vehicle.description && (
-            <div>
-              <h2 className="font-display text-xs font-semibold uppercase tracking-widest text-muted">Descrição</h2>
-              <p className="mt-3 text-sm leading-relaxed text-silver">{vehicle.description}</p>
-            </div>
-          )}
+          {features.length > 0 && <section className="mt-7 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Equipamento & extras</h2><div className="mt-3 flex flex-wrap gap-2">{features.map((f) => <span key={f.id} className="border border-border px-3 py-2 text-xs text-silver">{f.label}</span>)}</div></section>}
 
-          {/* CTA */}
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex-1 bg-copper px-6 py-4 text-center font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
-              Contactar
-            </Link>
-            <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex-1 border border-copper px-6 py-4 text-center font-display text-sm font-semibold uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-white">
-              Marcar Test Drive
-            </Link>
-          </div>
-
-          <div className="rounded border border-border p-5 text-sm text-muted" style={{ backgroundColor: "#141414" }}>
-            Garantia Chikane incluída em todas as viaturas. Inspeção pormenorizada e histórico documentado.
-          </div>
-          </div>
+          <p className="mt-7 border-l-2 border-copper bg-surface px-4 py-3 text-xs leading-5 text-muted">Inspecionada e documentada. Contacta a equipa Chikane para conhecer o processo de reserva e entrega.</p>
         </div>
       </div>
+
+      {(vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history) && <section className="mt-8 grid gap-3 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">{vehicle.financing_available ? <p className="text-sm text-silver">Financiamento disponível</p> : null}{vehicle.trade_in_accepted ? <p className="text-sm text-silver">Retoma aceite</p> : null}{vehicle.accident_history ? <p className="text-sm text-silver">Histórico de acidente declarado</p> : null}</section>}
     </div>
   );
 }

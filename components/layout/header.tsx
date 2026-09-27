@@ -33,19 +33,19 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
         <Link href="/" className="flex items-center gap-2">
-          <span className="font-display text-lg font-bold uppercase tracking-wider text-foreground">
+          <span className="font-display text-lg font-bold uppercase tracking-[0.18em] text-foreground">
             Chikane <span className="text-copper">Garage</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
-          <Link href="/catalogo" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper transition-colors">
+        <nav className="hidden items-center gap-9 md:flex">
+          <Link href="/catalogo" className="font-display text-xs font-medium uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">
             Catálogo
           </Link>
-          <Link href="/sobre" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper transition-colors">
+          <Link href="/sobre" className="font-display text-xs font-medium uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">
             Sobre Nós
           </Link>
         </nav>

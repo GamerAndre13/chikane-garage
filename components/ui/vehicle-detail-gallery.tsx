@@ -10,14 +10,14 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
   const move = (delta: number) => setActive((index) => (index + delta + photos.length) % photos.length);
 
   if (!current) return (
-    <div className="flex aspect-[4/3] w-full items-center justify-center rounded border border-border bg-[#141414]">
+    <div className="flex aspect-[3/2] w-full items-center justify-center border border-border bg-[#141414]">
       <div className="flex flex-col items-center"><span className="text-6xl">🚗</span><span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span></div>
     </div>
   );
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <div className="relative order-1 aspect-[4/3] w-full min-w-0 overflow-hidden rounded border border-border bg-[#141414]">
+      <div className="relative order-1 aspect-[3/2] w-full min-w-0 overflow-hidden border border-border bg-[#141414]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img key={current.url} src={current.url} alt={current.alt || title} className="h-full w-full object-cover" />
         {photos.length > 1 && <>
@@ -28,7 +28,7 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
       </div>
       <div className="order-2 flex gap-2 overflow-x-auto pb-1">
         {photos.map((photo, index) => (
-          <button key={`${photo.url}-${index}`} type="button" onClick={() => setActive(index)} aria-label={`Ver fotografia ${index + 1}`} aria-pressed={active === index} className={`aspect-[4/3] w-24 shrink-0 overflow-hidden rounded border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:w-28 ${active === index ? "border-copper" : "border-border hover:border-muted"}`}>
+          <button key={`${photo.url}-${index}`} type="button" onClick={() => setActive(index)} aria-label={`Ver fotografia ${index + 1}`} aria-pressed={active === index} className={`aspect-[4/3] w-24 shrink-0 overflow-hidden border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:w-28 ${active === index ? "border-copper" : "border-border hover:border-muted"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo.url} alt={photo.alt || `${title}, fotografia ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />
           </button>

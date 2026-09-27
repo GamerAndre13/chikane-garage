@@ -49,10 +49,10 @@ export default async function CatalogoPage() {
   } catch { vehicles = []; }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8" style={{ backgroundColor: "#0a0a0a" }}>
+    <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 lg:px-12">
       <div className="max-w-2xl">
-        <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">A Nossa Seleção</p>
-        <h1 className="mt-3 font-display text-5xl font-bold uppercase tracking-wide text-foreground">Catálogo</h1>
+        <p className="font-display text-[11px] uppercase tracking-[0.28em] text-copper">A nossa seleção</p>
+        <h1 className="mt-3 font-display text-5xl font-bold uppercase tracking-tight text-foreground sm:text-6xl">Catálogo</h1>
         <p className="mt-4 text-base leading-relaxed text-muted">
           Cada viatura é inspecionada, fotografada e documentada antes de ser anunciada. O que vês é exatamente o que recebes.
         </p>
@@ -77,7 +77,7 @@ export default async function CatalogoPage() {
             const status = statusLabel(v.status);
             const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 4);
             return (
-              <article key={v.id} className="group overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#141414" }}>
+              <article key={v.id} className="group overflow-hidden border border-border bg-surface transition-colors hover:border-copper/60">
                 <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}>
                   <div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id} /></div>
                   {status.label && (
