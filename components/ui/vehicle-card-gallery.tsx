@@ -1,28 +1,25 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
 import type { ReactNode } from "react";
 
 type Photo = { url: string; alt?: string };
 
 export function VehicleCardGallery({ photos, href, title, children }: { photos: Photo[]; href: string; title: string; children?: ReactNode }) {
-  const [active, setActive] = useState(0);
-  const current = photos[active];
-  const move = (delta: number) => setActive((index) => (index + delta + photos.length) % photos.length);
+  const [first, second] = photos;
 
   return (
-    <div className="relative aspect-[4/3] overflow-hidden bg-[#1c1c1c]">
-      {current ? <Link href={href} aria-label={`Ver ${title}`} className="group/image block h-full w-full">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img key={current.url} src={current.url} alt={current.alt || title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover/image:scale-[1.03]" />
-      </Link> : <Link href={href} className="flex h-full w-full flex-col items-center justify-center"><span className="text-5xl">🚗</span><span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span></Link>}
+    <div className="group/gallery relative aspect-[4/3] overflow-hidden bg-[#1c1c1c]">
+      <Link href={href} aria-label={`Ver ${title}`} className="absolute inset-0 block">
+        {first ? <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={first.url} alt={first.alt || title} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 group-hover/gallery:scale-[1.045]" />
+          {second && <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={second.url} alt={second.alt || title} loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-0 transition-[opacity,transform] duration-700 group-hover/gallery:scale-[1.045] group-hover/gallery:opacity-100" />
+          </>}
+        </> : <span className="flex h-full w-full flex-col items-center justify-center"><span className="text-5xl">🚗</span><span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span></span>}
+      </Link>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 border border-transparent transition-all duration-300 group-hover/gallery:border-copper/80 group-hover/gallery:shadow-[inset_0_0_30px_rgba(244,119,36,0.18),0_0_22px_rgba(244,119,36,0.25)]" />
       {children}
-      {photos.length > 1 && <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5">
-        <button type="button" aria-label={`Fotografia anterior de ${title}`} onClick={() => move(-1)} className="grid h-8 w-8 place-items-center rounded-full border border-white/25 bg-black/70 text-xl leading-none text-white hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">‹</button>
-        <span className="min-w-10 rounded bg-black/70 px-2 py-1 text-center text-[11px] text-white">{active + 1}/{photos.length}</span>
-        <button type="button" aria-label={`Fotografia seguinte de ${title}`} onClick={() => move(1)} className="grid h-8 w-8 place-items-center rounded-full border border-white/25 bg-black/70 text-xl leading-none text-white hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">›</button>
-      </div>}
     </div>
   );
 }

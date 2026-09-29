@@ -19,10 +19,10 @@ const FALLBACK = {
 };
 
 const PROCESS_STEPS = [
-  { num: "01", title: "Seleção", text: "Viaturas escolhidas a dedo, de fornecedores de confiança na Europa." },
-  { num: "02", title: "Inspecção", text: "Revisão completa com 140 pontos de verificação. Documentamos tudo." },
-  { num: "03", title: "Transparência", text: "Quilómetros verificados, histórico real, sem surpresas." },
-  { num: "04", title: "Entrega", text: "Com garantia Chikane e documentação completa." },
+  { num: "01", title: "Selecção", text: "Critérios rigorosos de escolha: histórico, estado e equipamento." },
+  { num: "02", title: "Inspecção", text: "140 pontos verificados, relatório fotográfico e histórico validado." },
+  { num: "03", title: "Transparência", text: "Documentação completa e acompanhamento de todo o processo." },
+  { num: "04", title: "Entrega", text: "Viatura pronta a rolar, com garantia Chikane e apoio contínuo." },
 ];
 
 type Vehicle = {
@@ -100,65 +100,57 @@ export default async function HomePage() {
       </section>
 
       {/* ─── DESTAQUE ─── */}
-      <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
-        <div className="flex items-end justify-between">
+      <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
+        <div className="mb-9 flex items-end justify-between sm:mb-12">
           <div>
-            <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Em destaque esta semana</p>
-            <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">Actualmente na Garagem</h2>
+            <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Currently in the garage</p>
+            <h2 className="mt-4 max-w-3xl font-display text-5xl font-bold uppercase leading-[0.95] tracking-tight text-white sm:text-7xl lg:text-8xl">Em destaque<br className="hidden sm:block"/> esta semana</h2>
           </div>
-          <Link href="/catalogo" className="hidden font-display text-xs font-semibold uppercase tracking-widest text-copper hover:text-copper-light transition-colors sm:inline">
-            Ver tudo →
-          </Link>
+          <Link href="/catalogo" className="mb-1 hidden border-b border-copper pb-2 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:text-copper sm:inline">Ver garagem ↗</Link>
         </div>
 
         {vehicles.length === 0 ? (
-          <div className="mt-12 rounded border border-border p-12 text-center" style={{ backgroundColor: "#141414" }}>
-            <p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p>
-          </div>
-        ) : (
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {vehicles.map((v) => {
-              const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 4);
-              return (
-              <article key={v.id} className="group overflow-hidden rounded border border-border transition-shadow hover:shadow-lg hover:shadow-copper/5" style={{ backgroundColor: "#141414" }}>
-                <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}>
-                  <span className="pointer-events-none absolute left-3 top-3 z-10 bg-copper px-2.5 py-1 font-display text-[10px] font-semibold uppercase tracking-widest text-white">SPOTLIGHT</span>
-                </VehicleCardGallery>
-                <Link href={`/catalogo/${v.slug}`} className="block p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper">
-                  <p className="text-xs text-muted">{v.brand} · {v.registration_year}</p>
-                  <h3 className="mt-1 font-display text-lg font-bold uppercase tracking-wide text-foreground">{v.model}</h3>
-                  {v.trim && <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-muted">{v.trim}</p>}
-                  <div className="mt-3 space-y-1 border-t border-border pt-3">
-                    {v.mileage_km != null && (
-                      <div className="flex items-center gap-2 text-xs text-muted">
-                        <span className="font-semibold uppercase tracking-wide text-foreground">KM</span>
-                        <span>{v.mileage_km.toLocaleString("pt-PT")} km</span>
-                      </div>
-                    )}
-                    {v.power_hp != null && (
-                      <div className="flex items-center gap-2 text-xs text-muted">
-                        <span className="font-semibold uppercase tracking-wide text-foreground">Potência</span>
-                        <span>{v.power_hp} cv</span>
-                      </div>
-                    )}
-                    {v.transmission && (
-                      <div className="flex items-center gap-2 text-xs text-muted">
-                        <span className="font-semibold uppercase tracking-wide text-foreground">Caixa</span>
-                        <span>{v.transmission === "automatic" ? "Automática" : "Manual"}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <span className="font-display text-lg font-bold text-foreground">
-                      {v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}
-                    </span>
-                    <span className="font-display text-xs font-semibold uppercase tracking-widest text-copper">Ver Viatura</span>
-                  </div>
+          <div className="border border-border p-12 text-center" style={{ backgroundColor: "#141414" }}><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
+        ) : (() => {
+          const cards = vehicles.map((v) => {
+            const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
+            return { v, photos };
+          });
+          const { v, photos } = cards[0];
+          return <div className="grid gap-5 lg:grid-cols-12">
+            <article className="group overflow-hidden border border-white/10 bg-[#111] transition-all duration-300 hover:border-copper/70 hover:shadow-[0_0_32px_rgba(244,119,36,0.14)] lg:col-span-7">
+              <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}>
+                <span className="absolute left-4 top-4 z-20 border border-copper bg-black/75 px-3 py-1.5 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-copper">Novidade · Seleção da semana</span>
+              </VehicleCardGallery>
+              <Link href={`/catalogo/${v.slug}`} className="block p-5 sm:p-7">
+                <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
+                <h3 className="mt-2 font-display text-3xl font-semibold uppercase tracking-wide text-white sm:text-4xl">{v.model}</h3>
+                {v.trim && <p className="mt-1 font-display text-xs uppercase tracking-[0.15em] text-copper">{v.trim}</p>}
+                {v.description && <p className="mt-4 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/50">{v.description}</p>}
+                <div className="mt-5 grid grid-cols-3 border-y border-white/10 py-4">
+                  <div><span className="block font-display text-[9px] uppercase tracking-[0.16em] text-white/40">Quilómetros</span><span className="mt-1 block text-sm text-white">{v.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span></div>
+                  <div><span className="block font-display text-[9px] uppercase tracking-[0.16em] text-white/40">Potência</span><span className="mt-1 block text-sm text-white">{v.power_hp ?? "—"} cv</span></div>
+                  <div><span className="block font-display text-[9px] uppercase tracking-[0.16em] text-white/40">Caixa</span><span className="mt-1 block text-sm text-white">{v.transmission === "automatic" ? "Automática" : v.transmission ? "Manual" : "—"}</span></div>
+                </div>
+                <div className="mt-4 flex items-center justify-between"><span className="font-display text-2xl font-semibold text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] font-semibold uppercase tracking-[0.17em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div>
+              </Link>
+            </article>
+            <div className="grid gap-5 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1">
+              {cards.slice(1).map(({ v: car, photos: carPhotos }) => <article key={car.id} className="group grid grid-cols-[38%_1fr] overflow-hidden border border-white/10 bg-[#111] transition-all duration-300 hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.12)] lg:grid-cols-[42%_1fr]">
+                <VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`} />
+                <Link href={`/catalogo/${car.slug}`} className="flex min-w-0 flex-col justify-center p-3 sm:p-5">
+                  <p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/40">{car.brand || "BMW"} · {car.registration_year}</p>
+                  <h3 className="mt-2 font-display text-lg font-semibold uppercase leading-tight text-white sm:text-2xl">{car.model}</h3>
+                  {car.trim && <p className="mt-1 line-clamp-1 font-display text-[9px] uppercase tracking-[0.13em] text-copper">{car.trim}</p>}
+                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/50"><span>{car.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span><span>{car.power_hp ?? "—"} cv</span></div>
+                  <span className="mt-3 font-display text-lg font-medium text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span>
+                  {car.status === "reserved" && <span className="mt-1 font-display text-[9px] uppercase tracking-wider text-amber-400">Reservada</span>}
                 </Link>
-              </article>
-            )})}
-          </div>
-        )}
+              </article>)}
+              <Link href="/catalogo" className="flex min-h-14 items-center justify-between border border-copper/40 px-5 font-display text-[10px] font-semibold uppercase tracking-[0.17em] text-copper transition-colors hover:border-copper hover:bg-copper/5">Ver todas as viaturas <span>↗</span></Link>
+            </div>
+          </div>;
+        })()}
       </section>
 
       {/* ─── A GARAGEM ─── */}
@@ -166,7 +158,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
           <div className="grid items-center gap-16 lg:grid-cols-2">
             <div>
-              <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">{t("garage.title")}</p>
+              <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">A História</p>
               <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">
                 Compramos como se fosse<br />para nós. Porque já foi.
               </h2>
@@ -187,7 +179,7 @@ export default async function HomePage() {
       {/* ─── PROCESSO ─── */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">O Nosso Processo</p>
-        <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">De Seleção a Entrega</h2>
+        <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">Da Escolha à Sua Garagem</h2>
         <div className="relative mt-14">
           <div className="absolute left-0 top-6 hidden h-px w-full bg-border lg:block" />
           <div className="grid gap-8 lg:grid-cols-4">
@@ -209,9 +201,9 @@ export default async function HomePage() {
         <div className="relative overflow-hidden rounded border border-border p-12 sm:p-16" style={{ backgroundColor: "#141414" }}>
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-copper/10" />
           <div className="relative z-10 max-w-lg">
-            <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Newsletter</p>
+            <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Lista Privada</p>
             <h2 className="mt-4 font-display text-2xl font-bold uppercase tracking-wide text-foreground sm:text-3xl">{t("newsletter.title")}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted">{t("newsletter.text")}</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">Receba primeiro cada unidade que entra na garagem, com fotografias e preço, 48 horas antes de ser publicada.</p>
             <NewsletterForm />
             <p className="mt-4 text-xs text-muted">Sem spam. Apenas novidades que interessam.</p>
           </div>

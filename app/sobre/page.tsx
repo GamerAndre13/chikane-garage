@@ -1,72 +1,56 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Sobre Nós | Chikane Garage",
-  description: "Conhece a história e o processo da Chikane Garage — especialistas em viaturas diesel BMW de performance.",
+  title: "About Us | Chikane Garage",
+  description: "A história da Chikane Garage: viaturas BMW escolhidas, inspecionadas e conduzidas por quem as vende.",
 };
 
-const STEPS = [
-  { number: "01", title: "Seleção", description: "Cada viatura é escolhida a dedo. Analisamos histórico, especificações e estado geral — apenas a melhor passa ao próximo nível." },
-  { number: "02", title: "Inspecção", description: "Inspecção técnica completa. Motor, caixa, suspensão, carroçaria — nada é ignorado. Documentamos tudo com fotografias e relatório." },
-  { number: "03", title: "Transparência", description: "O que vês é exatamente o que recebes. Sem surpresas, sem omissões. Histórico detalhado, quilómetros verificados." },
-  { number: "04", title: "Entrega", description: "Entregamos com garantia Chikane, documentação completa e a seriedade que investiste nestas semanas de processo." },
-];
-
 export default function SobrePage() {
-  return (
-    <div style={{ backgroundColor: "#0a0a0a" }}>
-      <section className="relative overflow-hidden py-24 sm:py-32" style={{ backgroundColor: "#141414" }}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">A Nossa História</p>
-          <h1 className="mt-4 font-display text-5xl font-bold uppercase tracking-wide text-foreground sm:text-6xl lg:text-7xl">A Nossa História</h1>
-          <div className="mt-4 h-0.5 w-20 bg-copper" />
-        </div>
-      </section>
+  return <div className="bg-[#090909]">
+    <section className="relative flex min-h-[66vh] items-end overflow-hidden sm:min-h-[76vh]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?w=2000&q=85" alt="BMW numa garagem ao anoitecer" className="absolute inset-0 h-full w-full object-cover object-center" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/65 to-black/10" />
+      <div className="relative z-10 mx-auto w-full max-w-[1440px] px-5 pb-16 pt-24 sm:px-8 sm:pb-20 lg:px-12">
+        <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Desde 2016 <span className="px-2 text-white/35">·</span> Porto → Munique → Porto</p>
+        <h1 className="mt-6 max-w-4xl font-display text-5xl font-bold uppercase leading-[0.92] tracking-tight text-white sm:text-7xl lg:text-[6.5rem]">Não vendemos<br/><span className="text-copper">carros usados.</span></h1>
+        <p className="mt-6 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">Trazemos as unidades que nós próprios conduziríamos. Uma de cada vez, escolhida à mão em leilões fechados e stands privados na Alemanha.</p>
+      </div>
+      <div className="absolute bottom-0 left-5 h-px w-20 bg-copper sm:left-8 lg:left-12" />
+    </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-16 lg:grid-cols-2 lg:gap-20">
-          <div>
-            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">Especialistas em Performance Diesel BMW</h2>
-            <div className="mt-3 h-0.5 w-12 bg-copper" />
-            <div className="mt-6 space-y-5 text-sm leading-relaxed text-silver">
-              <p>A Chikane Garage nasceu da paixão por viaturas diesel de performance — essas que combinam eficiência brutal com emoção ao volante.</p>
-              <p>Não somos um stand convencional. Cada viatura no nosso catálogo passou por um processo rigoroso de seleção, inspecção e preparação.</p>
-              <p>A nossa filosofia é simples: seleccionar, inspecionar, documentar e entregar. Sem intermediários, sem surpresas.</p>
-            </div>
+    <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
+      <div className="grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
+        <div className="max-w-2xl">
+          <p className="font-display text-[10px] uppercase tracking-[0.26em] text-copper">A História</p>
+          <h2 className="mt-5 font-display text-4xl font-semibold uppercase leading-[1.05] tracking-tight text-white sm:text-6xl">Começou com um 320d e demasiadas viagens à Baviera</h2>
+          <div className="mt-7 h-px w-16 bg-copper" />
+          <div className="mt-7 space-y-5 text-sm leading-[1.9] text-white/60 sm:text-base">
+            <p>O primeiro carro foi para mim. Um 320d M Sport encontrado num pequeno stand perto de Ingolstadt, trazido de volta pela A1 numa noite de Novembro. Depois foi para um amigo. Depois para o amigo dele. Ao fim de dois anos, o hobby tinha-se tornado uma garagem.</p>
+            <p>A Chikane Garage nasceu dessa obsessão: perceber que a diferença entre um bom e um mau negócio está nos detalhes que ninguém verifica — o histórico real, a corrosão nos braços de suspensão, o desgaste dos bancos que não bate certo com a quilometragem declarada.</p>
+            <p>Hoje viajamos à Alemanha todos os meses. Vemos os carros pessoalmente, fotografamos o que está mal antes de fotografar o que está bem, e só compramos quando a unidade passa a nossa lista de 140 pontos. Se não passa, não entra na garagem.</p>
           </div>
-          <div className="relative overflow-hidden rounded">
+          <Link href="/catalogo" className="mt-8 inline-flex items-center gap-5 border-b border-copper pb-3 font-display text-[10px] font-semibold uppercase tracking-[0.17em] text-white transition-colors hover:text-copper">Ver o que está na garagem <span className="text-copper">↗</span></Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 self-center">
+          <figure className="relative col-span-2 overflow-hidden sm:col-span-1 sm:row-span-2 sm:mt-10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&q=80" alt="BMW Performance Diesel" className="h-80 w-full object-cover" />
+            <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=900&q=85" alt="Inspecção de uma viatura na garagem" className="h-64 w-full object-cover sm:h-full sm:min-h-[480px]" />
+            <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-4 pt-12 font-display text-[9px] uppercase tracking-[0.18em] text-white">Inspecção · Munique</figcaption>
+          </figure>
+          <figure className="relative overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=700&q=85" alt="Detalhe automóvel verificado antes da entrega" className="h-44 w-full object-cover sm:h-60" />
+            <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-3 pb-3 pt-10 font-display text-[8px] uppercase tracking-[0.14em] text-white">Detalhe · Pré-entrega</figcaption>
+          </figure>
+          <div className="flex flex-col justify-center border border-white/10 bg-[#111] p-4 sm:p-6">
+            <span className="font-display text-4xl font-semibold text-copper sm:text-5xl">140</span><span className="mt-2 text-[10px] leading-relaxed text-white/50 sm:text-xs">pontos de inspecção por viatura</span>
           </div>
+          <div className="flex flex-col justify-center border border-white/10 bg-[#111] p-4 sm:p-6"><span className="font-display text-4xl font-semibold text-copper sm:text-5xl">12</span><span className="mt-2 text-[10px] leading-relaxed text-white/50 sm:text-xs">meses de garantia mecânica incluída</span></div>
+          <div className="flex flex-col justify-center border border-white/10 bg-[#111] p-4 sm:p-6"><span className="font-display text-4xl font-semibold text-copper sm:text-5xl">100%</span><span className="mt-2 text-[10px] leading-relaxed text-white/50 sm:text-xs">das viaturas compradas presencialmente</span></div>
         </div>
-      </section>
-
-      <section style={{ backgroundColor: "#141414" }}>
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">O Nosso Processo</p>
-          <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">De Seleção a Entrega</h2>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step) => (
-              <div key={step.number} className="relative rounded border border-border p-6" style={{ backgroundColor: "#1c1c1c" }}>
-                <span className="font-display text-5xl font-bold text-copper/20">{step.number}</span>
-                <h3 className="mt-2 font-display text-lg font-bold uppercase tracking-wide text-foreground">{step.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="rounded border border-border p-12 text-center sm:p-16" style={{ backgroundColor: "#141414" }}>
-          <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Pronto para começar?</p>
-          <h2 className="mt-4 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">Ver a Nossa Seleção</h2>
-          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted">Cada viatura é uma história. Descobre a próxima.</p>
-          <Link href="/catalogo" className="mt-8 inline-block bg-copper px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
-            Ver Catálogo
-          </Link>
-        </div>
-      </section>
-    </div>
-  );
+      </div>
+    </section>
+  </div>;
 }
