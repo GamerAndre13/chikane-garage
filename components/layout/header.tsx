@@ -48,6 +48,9 @@ export function Header() {
         </Link>
 
         <nav className="group/nav ml-auto hidden items-center gap-9 md:flex">
+          <Link href="/" className={navClass("/")}>
+            Home
+          </Link>
           <Link href="/catalogo" className={navClass("/catalogo")}>
             Catálogo
           </Link>
