@@ -30,20 +30,26 @@ export default function NewsletterForm() {
       return;
     }
 
-    const { error } = await supabase.from("newsletter_subscribers").insert({ email: val });
+    // Call API to subscribe and send confirmation email
+    const response = await fetch("/api/newsletter/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: val }),
+    });
 
-    if (!error) {
+    const data = await response.json();
+
+    if (response.ok) {
       setStatus("done");
-      setMessage("Obrigado! Fica atento às novidades.");
+      setMessage("Obrigado! Verifica o teu email para confirmar a subscrição.");
       setEmail("");
-    } else if (error.code === "23505") {
-      // Duplicado (UNIQUE email) → já está na lista
+    } else if (response.status === 400 && data.error?.includes("já")) {
       setStatus("done");
       setMessage("Já te encontras na lista privada.");
       setEmail("");
     } else {
       setStatus("error");
-      setMessage("Erro ao subscrever. Tenta novamente.");
+      setMessage(data.error || "Erro ao subscrever. Tenta novamente.");
     }
   }
 
