@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
+import { VehicleSpecifications } from "@/components/ui/vehicle-specifications";
+import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -77,6 +79,7 @@ type Vehicle = {
   co2_emissions?: number | null;
   exterior_color?: string | null;
   interior_color?: string | null;
+  body_style?: string | null;
   mileage_km?: number | null;
   previous_owners?: number | null;
   service_book?: string | null;
@@ -148,33 +151,42 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   const features = (vehicle.vehicle_features || []) as VehicleFeature[];
   const badge = statusBadge(vehicle.status);
 
-  // Specs técnicas
-  const techSpecs: { label: string; value: string }[] = [];
-  if (vehicle.engine) techSpecs.push({ label: "Motor", value: vehicle.engine });
-  if (vehicle.power_hp != null) techSpecs.push({ label: "Potência", value: `${vehicle.power_hp} cv` });
-  if (vehicle.torque_nm != null) techSpecs.push({ label: "Binário", value: `${vehicle.torque_nm} Nm` });
-  if (vehicle.transmission) techSpecs.push({ label: "Caixa", value: vehicle.transmission === "automatic" ? "Automática" : "Manual" });
-  if (vehicle.drivetrain) techSpecs.push({ label: "Tração", value: vehicle.drivetrain.toUpperCase() });
-  if (vehicle.fuel_type) techSpecs.push({ label: "Combustível", value: vehicle.fuel_type });
-  if (vehicle.combined_consumption != null) techSpecs.push({ label: "Consumo", value: `${vehicle.combined_consumption} l/100km` });
-  if (vehicle.co2_emissions != null) techSpecs.push({ label: "CO₂", value: `${vehicle.co2_emissions} g/km` });
+  const primarySpecs: { label: string; value: string }[] = [
+    { label: "Quilometragem", value: vehicle.mileage_km != null ? `${vehicle.mileage_km.toLocaleString("pt-PT")} km` : "—" },
+    { label: "Ano", value: vehicle.registration_year ? String(vehicle.registration_year) : "—" },
+    { label: "Potência", value: vehicle.power_hp != null ? `${vehicle.power_hp} cv` : "—" },
+    { label: "Combustível", value: vehicle.fuel_type || "—" },
+    { label: "Caixa", value: vehicle.transmission ? (vehicle.transmission === "automatic" ? "Automática" : "Manual") : "—" },
+    { label: "Origem", value: vehicle.origin ? (vehicle.origin === "imported" ? "Importação" : "Nacional") : "—" },
+    { label: "Donos Anteriores", value: vehicle.previous_owners != null ? String(vehicle.previous_owners) : "—" },
+    { label: "Cor", value: vehicle.exterior_color || "—" },
+  ];
 
-  // Info veículo
-  const infoSpecs: { label: string; value: string }[] = [];
-  if (vehicle.registration_year) infoSpecs.push({ label: "Ano", value: String(vehicle.registration_year) });
-  if (vehicle.registration_month) infoSpecs.push({ label: "Mês Registo", value: String(vehicle.registration_month) });
-  if (vehicle.mileage_km != null) infoSpecs.push({ label: "Quilometragem", value: `${vehicle.mileage_km.toLocaleString("pt-PT")} km` });
-  if (vehicle.exterior_color) infoSpecs.push({ label: "Cor Exterior", value: vehicle.exterior_color });
-  if (vehicle.interior_color) infoSpecs.push({ label: "Cor Interior", value: vehicle.interior_color });
-  if (vehicle.previous_owners != null) infoSpecs.push({ label: "Donos Anteriores", value: String(vehicle.previous_owners) });
-  if (vehicle.service_book) infoSpecs.push({ label: "Caderneta", value: serviceBookLabel(vehicle.service_book) });
+  const additionalSpecs: { label: string; value: string }[] = [];
+  if (vehicle.engine) additionalSpecs.push({ label: "Motor", value: vehicle.engine });
+  if (vehicle.torque_nm != null) additionalSpecs.push({ label: "Binário", value: `${vehicle.torque_nm} Nm` });
+  if (vehicle.drivetrain) additionalSpecs.push({ label: "Tração", value: vehicle.drivetrain.toUpperCase() });
+  if (vehicle.body_style) additionalSpecs.push({ label: "Estilo", value: vehicle.body_style });
+  if (vehicle.registration_month) additionalSpecs.push({ label: "Mês Registo", value: String(vehicle.registration_month) });
+  if (vehicle.interior_color) additionalSpecs.push({ label: "Cor Interior", value: vehicle.interior_color });
+  if (vehicle.service_book) additionalSpecs.push({ label: "Caderneta", value: serviceBookLabel(vehicle.service_book) });
+  if (vehicle.origin_country) additionalSpecs.push({ label: "País Origem", value: vehicle.origin_country });
+  if (vehicle.coc_confirmed) additionalSpecs.push({ label: "COC", value: "Confirmado ✓" });
+  if (vehicle.isv_paid) additionalSpecs.push({ label: "ISV", value: "Pago ✓" });
+  if (vehicle.combined_consumption != null) additionalSpecs.push({ label: "Consumo", value: `${vehicle.combined_consumption} l/100km` });
+  if (vehicle.co2_emissions != null) additionalSpecs.push({ label: "CO₂", value: `${vehicle.co2_emissions} g/km` });
+  if (vehicle.warranty_months) additionalSpecs.push({ label: "Garantia", value: `${vehicle.warranty_months} meses` });
 
-  // Origem e legalização
-  const originSpecs: { label: string; value: string }[] = [];
-  if (vehicle.origin) originSpecs.push({ label: "Origem", value: vehicle.origin === "imported" ? "Importação" : "Nacional" });
-  if (vehicle.origin_country) originSpecs.push({ label: "País Origem", value: vehicle.origin_country });
-  if (vehicle.coc_confirmed) originSpecs.push({ label: "COC", value: "Confirmado ✓" });
-  if (vehicle.isv_paid) originSpecs.push({ label: "ISV", value: "Pago ✓" });
+  let similarVehicles: Vehicle[] = [];
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("vehicles").select("id, slug, brand, model, trim, registration_year, mileage_km, power_hp, fuel_type, body_style, price, cover_image_url, vehicle_images(url, position, alt_text)").eq("status", "available").neq("id", vehicle.id).limit(30);
+    const candidates = ((data || []) as Vehicle[]).filter(isVehiclePubliclyVisible);
+    similarVehicles = candidates.sort((a, b) => {
+      const score = (candidate: Vehicle) => (candidate.brand === vehicle.brand ? 100 : 0) + (candidate.body_style && candidate.body_style === vehicle.body_style ? 40 : 0) - Math.abs((candidate.power_hp || 0) - (vehicle.power_hp || 0)) / 20 - Math.abs((candidate.registration_year || 0) - (vehicle.registration_year || 0)) * 2;
+      return score(b) - score(a);
+    }).slice(0, 4);
+  } catch { similarVehicles = []; }
 
   return (
     <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -201,14 +213,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex-1 border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Marcar test-drive</Link>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 border-l border-t border-border bg-surface">
-            {[...infoSpecs, ...techSpecs, ...originSpecs, ...(vehicle.warranty_months ? [{ label: "Garantia", value: `${vehicle.warranty_months} meses` }] : [])].map((spec) => (
-              <div key={spec.label} className="min-h-[78px] border-b border-r border-border px-4 py-3.5 sm:px-5">
-                <p className="font-display text-[9px] uppercase tracking-[0.22em] text-muted">{spec.label}</p>
-                <p className="mt-1 font-display text-base text-foreground">{spec.value}</p>
-              </div>
-            ))}
-          </div>
+          <VehicleSpecifications primary={primarySpecs} additional={additionalSpecs} />
 
           {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Estado e histórico</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
 
@@ -219,6 +224,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
       </div>
 
       {(vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history) && <section className="mt-8 grid gap-3 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">{vehicle.financing_available ? <p className="text-sm text-silver">Financiamento disponível</p> : null}{vehicle.trade_in_accepted ? <p className="text-sm text-silver">Retoma aceite</p> : null}{vehicle.accident_history ? <p className="text-sm text-silver">Histórico de acidente declarado</p> : null}</section>}
+
+      {similarVehicles.length > 0 && <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Também poderá interessar</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Viaturas semelhantes</h2><div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="overflow-hidden border border-white/10 bg-[#111] transition-colors hover:border-copper/70"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`} /><Link href={`/catalogo/${car.slug}`} className="block p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div></section>}
     </div>
   );
 }

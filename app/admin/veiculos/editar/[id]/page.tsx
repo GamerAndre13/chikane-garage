@@ -49,6 +49,8 @@ const initialForm = {
   combined_consumption: "",
   co2_emissions: "",
   exterior_color: "",
+  body_style: "",
+  features: "",
   interior_color: "",
   mileage_km: "",
   previous_owners: "1",
@@ -106,6 +108,7 @@ export default function EditarVeiculo() {
     const fetchVehicle = async () => {
       const { data } = await supabase.from("vehicles").select("*").eq("id", id).single();
       if (data) {
+        const { data: featureRows } = await supabase.from("vehicle_features").select("label").eq("vehicle_id", id).order("label");
         setMultiple({
           brand: data.brand || "BMW",
           model: data.model || "",
@@ -121,6 +124,8 @@ export default function EditarVeiculo() {
           combined_consumption: data.combined_consumption?.toString() || "",
           co2_emissions: data.co2_emissions?.toString() || "",
           exterior_color: data.exterior_color || "",
+          body_style: data.body_style || "",
+          features: (featureRows || []).map((feature) => feature.label).join("\n"),
           interior_color: data.interior_color || "",
           mileage_km: data.mileage_km?.toString() || "",
           previous_owners: data.previous_owners?.toString() || "1",
@@ -173,9 +178,10 @@ export default function EditarVeiculo() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const { features, ...vehicleForm } = form;
     const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
     const { error } = await supabase.from("vehicles").update({
-      ...form,
+      ...vehicleForm,
       slug,
       registration_year: form.registration_year ? parseInt(form.registration_year) : null,
       registration_month: form.registration_month ? parseInt(form.registration_month) : null,
@@ -194,6 +200,21 @@ export default function EditarVeiculo() {
       setSaving(false);
       alert("Erro ao guardar: " + error.message);
       return;
+    }
+    const { error: deleteFeaturesError } = await supabase.from("vehicle_features").delete().eq("vehicle_id", id);
+    if (deleteFeaturesError) {
+      setSaving(false);
+      alert("Os dados da viatura foram guardados, mas não foi possível atualizar os extras: " + deleteFeaturesError.message);
+      return;
+    }
+    const featureLabels = features.split("\n").map((label) => label.trim()).filter(Boolean);
+    if (featureLabels.length) {
+      const { error: featureError } = await supabase.from("vehicle_features").insert(featureLabels.map((label) => ({ vehicle_id: id, label })));
+      if (featureError) {
+        setSaving(false);
+        alert("Os dados da viatura foram guardados, mas os extras não foram inseridos: " + featureError.message);
+        return;
+      }
     }
     const galleryResult = await galleryRef.current?.save();
     setSaving(false);
@@ -241,6 +262,7 @@ export default function EditarVeiculo() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
+          <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
           <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
           <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
@@ -264,6 +286,7 @@ export default function EditarVeiculo() {
           <VehicleGallery ref={galleryRef} vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => setMultiple({ cover_image_url: url })} />
         </div>
 
+        <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />

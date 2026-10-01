@@ -135,9 +135,9 @@ export default async function HomePage() {
                 <div className="mt-4 flex items-center justify-between"><span className="font-display text-2xl font-semibold text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] font-semibold uppercase tracking-[0.17em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div>
               </Link>
             </article>
-            <div className="grid gap-5 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1">
+            <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1 lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)_auto]">
               {cards.slice(1).map(({ v: car, photos: carPhotos }) => <article key={car.id} className="group grid grid-cols-[38%_1fr] overflow-hidden border border-white/10 bg-[#111] transition-all duration-300 hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.12)] lg:grid-cols-[42%_1fr]">
-                <VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`} />
+                <VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`} className="h-full min-h-[210px] aspect-auto" />
                 <Link href={`/catalogo/${car.slug}`} className="flex min-w-0 flex-col justify-center p-3 sm:p-5">
                   <p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/40">{car.brand || "BMW"} · {car.registration_year}</p>
                   <h3 className="mt-2 font-display text-lg font-semibold uppercase leading-tight text-white sm:text-2xl">{car.model}</h3>
@@ -200,10 +200,10 @@ export default async function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded border border-border p-12 sm:p-16" style={{ backgroundColor: "#141414" }}>
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-copper/10" />
-          <div className="relative z-10 max-w-lg">
+          <div className="relative z-10 mx-auto max-w-2xl text-center">
             <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Lista Privada</p>
             <h2 className="mt-4 font-display text-2xl font-bold uppercase tracking-wide text-foreground sm:text-3xl">{t("newsletter.title")}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted">Receba primeiro cada unidade que entra na garagem, com fotografias e preço, 48 horas antes de ser publicada.</p>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted">Receba primeiro cada unidade que entra na garagem, com fotografias e preço, 48 horas antes de ser publicada.</p>
             <NewsletterForm />
             <p className="mt-4 text-xs text-muted">Sem spam. Apenas novidades que interessam.</p>
           </div>

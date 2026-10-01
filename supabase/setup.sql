@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   torque_nm INT,
   transmission TEXT CHECK (transmission IN ('manual', 'automatic')),
   drivetrain TEXT CHECK (drivetrain IN ('rwd', 'awd', 'fwd')),
+  body_style TEXT,
   fuel_type TEXT DEFAULT 'diesel',
   combined_consumption NUMERIC,
   co2_emissions INT,

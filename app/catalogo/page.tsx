@@ -11,6 +11,7 @@ type Vehicle = {
   id: string; slug: string; brand?: string | null; model?: string | null; trim?: string | null;
   registration_year?: number | null; mileage_km?: number | null; power_hp?: number | null;
   fuel_type?: string | null; transmission?: string | null; exterior_color?: string | null;
+  body_style?: string | null;
   price?: number | null; status?: string | null; sold_at?: string | null; updated_at?: string | null;
   created_at?: string | null; cover_image_url?: string | null;
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;

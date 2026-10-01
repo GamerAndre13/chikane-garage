@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 
 type Photo = { url: string; alt?: string };
 
-export function VehicleCardGallery({ photos, href, title, children }: { photos: Photo[]; href: string; title: string; children?: ReactNode }) {
+export function VehicleCardGallery({ photos, href, title, children, className }: { photos: Photo[]; href: string; title: string; children?: ReactNode; className?: string }) {
   const [first, second] = photos;
 
   return (
-    <div className="group/gallery relative aspect-[4/3] overflow-hidden bg-[#1c1c1c]">
+    <div className={`group/gallery relative aspect-[4/3] overflow-hidden bg-[#1c1c1c] ${className || ""}`}>
       <Link href={href} aria-label={`Ver ${title}`} className="absolute inset-0 block">
         {first ? <>
           {/* eslint-disable-next-line @next/next/no-img-element */}

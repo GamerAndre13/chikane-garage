@@ -50,6 +50,8 @@ const initialForm = {
   combined_consumption: "",
   co2_emissions: "",
   exterior_color: "",
+  body_style: "",
+  features: "",
   interior_color: "",
   mileage_km: "",
   previous_owners: "1",
@@ -130,9 +132,10 @@ export default function NovoVeiculo() {
     e.preventDefault();
     setSaving(true);
     try {
+      const { features, ...vehicleForm } = form;
       const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
       const { data: vehicle, error } = await supabase.from("vehicles").insert({
-        ...form,
+        ...vehicleForm,
         slug,
         registration_year: form.registration_year ? parseInt(form.registration_year) : null,
         registration_month: form.registration_month ? parseInt(form.registration_month) : null,
@@ -151,6 +154,16 @@ export default function NovoVeiculo() {
       if (error || !vehicle) {
         alert("Erro ao guardar: " + (error?.message || "Não foi possível criar a viatura."));
         return;
+      }
+
+      const featureLabels = features.split("\n").map((label) => label.trim()).filter(Boolean);
+      if (featureLabels.length) {
+        const { error: featureError } = await supabase.from("vehicle_features").insert(featureLabels.map((label) => ({ vehicle_id: vehicle.id, label })));
+        if (featureError) {
+          alert("A viatura foi criada, mas os extras não foram guardados: " + featureError.message);
+          router.push(`/admin/veiculos/editar/${vehicle.id}`);
+          return;
+        }
       }
 
       if (photos.length) {
@@ -220,6 +233,7 @@ export default function NovoVeiculo() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
+          <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
           <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
           <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
@@ -241,6 +255,7 @@ export default function NovoVeiculo() {
         </div>
 
         <VehiclePhotoPicker onChange={(files, coverIndex) => { setPhotos(files); setCoverPhotoIndex(coverIndex); }} />
+        <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
         <div style={{ marginTop: "0.75rem" }}>
           <label style={labelStyle}>Descrição</label>
           <textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} />

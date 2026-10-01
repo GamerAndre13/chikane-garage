@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 
@@ -10,6 +11,11 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const navClass = (href: string) => {
+    const active = pathname === href || pathname.startsWith(`${href}/`);
+    return `group relative py-2 font-display text-xs font-medium uppercase tracking-[0.2em] transition-colors ${active ? "text-copper group-hover/nav:text-silver hover:!text-copper" : "text-silver hover:text-copper"} after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:scale-x-0 after:bg-copper after:transition-transform after:duration-300 ${active ? "after:scale-x-100 group-hover/nav:after:scale-x-0 hover:after:scale-x-100" : "hover:after:scale-x-100"}`;
+  };
 
   useEffect(() => {
     // Get initial session
@@ -34,23 +40,23 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
-      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
+      <div className="mx-auto flex h-[76px] max-w-[1440px] items-center px-5 sm:px-8 lg:px-12">
         <Link href="/" className="flex items-center gap-2">
           <span className="font-display text-lg font-bold uppercase tracking-[0.18em] text-foreground">
             Chikane <span className="text-copper">Garage</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-9 md:flex">
-          <Link href="/catalogo" className="font-display text-xs font-medium uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">
+        <nav className="group/nav ml-10 hidden items-center gap-9 md:flex">
+          <Link href="/catalogo" className={navClass("/catalogo")}>
             Catálogo
           </Link>
-          <Link href="/sobre" className="font-display text-xs font-medium uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">
+          <Link href="/sobre" className={navClass("/sobre")}>
             Sobre Nós
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3">
           {user ? (
             <>
               <Link
@@ -104,10 +110,10 @@ export function Header() {
       {mobileOpen && (
         <div className="border-t border-border bg-background px-4 py-4 md:hidden">
           <nav className="flex flex-col gap-3">
-            <Link href="/catalogo" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
+            <Link href="/catalogo" className={`${navClass("/catalogo")} w-fit`} onClick={() => setMobileOpen(false)}>
               Catálogo
             </Link>
-            <Link href="/sobre" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
+            <Link href="/sobre" className={`${navClass("/sobre")} w-fit`} onClick={() => setMobileOpen(false)}>
               Sobre Nós
             </Link>
             <Link href="/contacto" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
