@@ -5,25 +5,25 @@ import NewsletterForm from "@/components/newsletter-form";
 import VgpuSpeedLines from "@/components/ui/vgpu-speed-lines";
 
 export const metadata = {
-  title: "Chikane Garage — Performance Diesel BMW, Selecionadas a Dedo",
-  description: "Viaturas diesel BMW de performance, inspecionadas, documentadas e entregues com garantia Chikane.",
+  title: "Chikane Garage — Catálogo de Viaturas",
+  description: "Consulta as viaturas disponíveis na Chikane Garage e pede informação sobre cada unidade.",
 };
 
 const FALLBACK = {
-  "hero.tagline": "Seleção Rigorosa · Garantia Chikane",
+  "hero.tagline": "Catálogo · Informação por viatura",
   "hero.slogan": "Precision.\nImported.\nPassion Delivered.",
-  "hero.intro": "Viaturas diesel BMW de performance, selecionadas a dedo na Europa e entregues em Portugal com garantia completa.",
+  "hero.intro": "Consulta o catálogo e pede informação sobre disponibilidade, equipamento e condições de cada viatura.",
   "garage.title": "A Garagem",
-  "garage.text": "Cada viatura na Chikane Garage passou por um processo de seleção rigoroso. Compramos com cuidado, inspecionamos com pormenor, documentamos com transparência e entregamos com garantia.",
+  "garage.text": "No catálogo encontras os dados e o equipamento registados para cada viatura. Contacta a equipa para confirmar disponibilidade e as condições aplicáveis à unidade.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
   "newsletter.text": "Alguns clientes são informados antes de as viaturas serem anunciadas.",
 };
 
 const PROCESS_STEPS = [
   { num: "01", title: "Selecção", text: "Critérios rigorosos de escolha: histórico, estado e equipamento." },
-  { num: "02", title: "Inspecção", text: "140 pontos verificados, relatório fotográfico e histórico validado." },
-  { num: "03", title: "Transparência", text: "Documentação completa e acompanhamento de todo o processo." },
-  { num: "04", title: "Entrega", text: "Viatura pronta a rolar, com garantia Chikane e apoio contínuo." },
+  { num: "02", title: "Informação", text: "Consulta os dados disponíveis na ficha de cada viatura." },
+  { num: "03", title: "Contacto", text: "Esclarece dúvidas e confirma disponibilidade diretamente com a equipa." },
+  { num: "04", title: "Condições", text: "Confirma por escrito as condições da viatura antes de avançar." },
 ];
 
 type Vehicle = {

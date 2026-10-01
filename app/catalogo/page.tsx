@@ -29,7 +29,7 @@ export default async function CatalogoPage() {
     <header className="max-w-3xl">
       <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Inventário <span className="px-1 text-white/30">·</span> Atualizado semanalmente</p>
       <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-none tracking-tight text-white sm:text-7xl">Catálogo</h1>
-      <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/55 sm:text-base">Cada unidade é comprada por nós na Alemanha, inspecionada em 140 pontos e entregue legalizada. Sem intermediários, sem surpresas.</p>
+      <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">Consulta as características registadas para cada viatura e contacta-nos para confirmar disponibilidade e condições de venda.</p>
     </header>
     <CatalogBrowser vehicles={vehicles}/>
   </div>;

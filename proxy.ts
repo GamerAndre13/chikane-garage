@@ -2,6 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  const forwardedProtocol = request.headers.get("x-forwarded-proto");
+  if (forwardedProtocol && forwardedProtocol.split(",")[0].trim() === "http" && request.nextUrl.hostname !== "localhost" && request.nextUrl.hostname !== "127.0.0.1") {
+    const secureUrl = request.nextUrl.clone();
+    secureUrl.protocol = "https:";
+    return NextResponse.redirect(secureUrl, 308);
+  }
+
   const supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

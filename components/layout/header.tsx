@@ -69,6 +69,7 @@ export function Header() {
                 href="/conta/perfil"
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-silver hover:border-copper hover:text-copper transition-colors"
                 title="Meu perfil"
+                aria-label="Abrir o meu perfil"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -84,17 +85,18 @@ export function Header() {
             </>
           ) : (
             <Link
-              href="/conta"
-              className="border border-border px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-muted hover:border-copper hover:text-copper transition-colors"
+            href="/conta"
+              className="min-h-11 border border-border px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-silver hover:border-copper hover:text-copper transition-colors"
             >
-              Conta
+              Iniciar sessão
             </Link>
           )}
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-9 w-9 items-center justify-center md:hidden"
-            aria-label="Menu"
+            className="flex h-11 w-11 items-center justify-center md:hidden"
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={mobileOpen}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               {mobileOpen ? (

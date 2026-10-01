@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { CookieSettingsButton } from "@/components/layout/cookie-settings-button";
 
 type SiteSettings = {
   phone?: string | null;
@@ -27,9 +28,9 @@ export async function Footer() {
     // fallback to defaults
   }
 
-  const phone = settings.phone || "+351 912 000 000";
-  const email = settings.email || "garage@chikane.pt";
-  const location = settings.location || settings.address || "Porto, Portugal";
+  const phone = settings.phone;
+  const email = settings.email;
+  const location = settings.location || settings.address;
   const instagram = settings.social_instagram;
   const facebook = settings.social_facebook;
   const whatsapp = settings.social_whatsapp;
@@ -46,7 +47,7 @@ export async function Footer() {
               Chikane <span className="text-copper">Garage</span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-gray-400">
-              Viaturas de performance, escolhidas a dedo, entregues com garantia Chikane.
+              Consulta as viaturas disponíveis e pede informação sobre cada unidade.
             </p>
           </div>
 
@@ -75,17 +76,18 @@ export async function Footer() {
               Contactos
             </h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-400">
-              <li>
+              {phone && <li>
                 <a href={`tel:${phone.replace(/\s/g, "")}`} className="transition-colors hover:text-white">
                   {phone}
                 </a>
-              </li>
-              <li>
+              </li>}
+              {email && <li>
                 <a href={`mailto:${email}`} className="transition-colors hover:text-white">
                   {email}
                 </a>
-              </li>
-              <li>{location}</li>
+              </li>}
+              {location && <li>{location}</li>}
+              {!phone && !email && !location && <li><Link href="/contacto" className="hover:text-white">Usa o formulário de contacto</Link></li>}
             </ul>
           </div>
 
@@ -151,15 +153,13 @@ export async function Footer() {
             &copy; {year} Chikane Garage. Todos os direitos reservados.
           </p>
           <div className="flex flex-wrap gap-6 text-xs text-gray-500">
-            <Link href="/sobre" className="transition-colors hover:text-white">
+            <Link href="/politica-de-privacidade" className="transition-colors hover:text-white">
               Política de Privacidade
             </Link>
-            <Link href="/sobre" className="transition-colors hover:text-white">
+            <Link href="/termos-e-condicoes" className="transition-colors hover:text-white">
               Termos &amp; Condições
             </Link>
-            <Link href="/sobre" className="transition-colors hover:text-white">
-              Livro de Reclamações
-            </Link>
+            <CookieSettingsButton />
           </div>
         </div>
       </div>

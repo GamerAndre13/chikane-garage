@@ -1,3 +1,4 @@
+import "server-only";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getCloudflareContext } from "@opennextjs/cloudflare";

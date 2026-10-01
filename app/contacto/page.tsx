@@ -55,14 +55,35 @@ function ContactoContent() {
     setError(null);
     const fd = new FormData(e.currentTarget);
 
+    // Honeypot para filtrar submissões automatizadas sem recolher mais dados.
+    if (String(fd.get("website") || "").trim()) {
+      setSuccess(true);
+      setLoading(false);
+      return;
+    }
+
+    const name = String(fd.get("name") || "").trim();
+    const email = String(fd.get("email") || "").trim().toLowerCase();
+    const message = String(fd.get("message") || "").trim();
+    if (name.length < 2 || name.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Confirma o nome e introduz um email válido.");
+      setLoading(false);
+      return;
+    }
+    if (!isTestDrive && (message.length < 5 || message.length > 5000)) {
+      setError("A mensagem deve ter entre 5 e 5000 caracteres.");
+      setLoading(false);
+      return;
+    }
+
     // Ligar o pedido ao utilizador logado (ou null se anónimo)
     const { data: { user } } = await supabase.auth.getUser();
     const uid = user?.id ?? null;
 
     const common = {
       user_id: uid,
-      name: fd.get("name") as string,
-      email: fd.get("email") as string,
+      name,
+      email,
       phone: (fd.get("phone") as string) || null,
     };
 
@@ -93,7 +114,7 @@ function ContactoContent() {
       const { error } = await supabase.from("contact_requests").insert({
         ...common,
         vehicle_id: vehicle?.id || null,
-        message: (fd.get("message") as string) || "",
+        message,
       });
       if (error) setError("Erro ao enviar. Tenta novamente.");
       else { setSuccess(true); (e.target as HTMLFormElement).reset(); }
@@ -143,41 +164,42 @@ function ContactoContent() {
         {error && <div className="mt-8 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
+          <div className="hidden" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" tabIndex={-1} autoComplete="off" /></div>
           <div>
-            <label className={labelCls}>Nome *</label>
-            <input name="name" required style={inputStyle} />
+            <label htmlFor="contact-name" className={labelCls}>Nome *</label>
+            <input id="contact-name" name="name" autoComplete="name" minLength={2} maxLength={120} required style={inputStyle} />
           </div>
           <div>
-            <label className={labelCls}>Email *</label>
-            <input name="email" type="email" required style={inputStyle} />
+            <label htmlFor="contact-email" className={labelCls}>Email *</label>
+            <input id="contact-email" name="email" type="email" autoComplete="email" maxLength={254} required style={inputStyle} />
           </div>
           <div>
-            <label className={labelCls}>Telefone</label>
-            <input name="phone" style={inputStyle} />
+            <label htmlFor="contact-phone" className={labelCls}>Telefone</label>
+            <input id="contact-phone" name="phone" type="tel" autoComplete="tel" maxLength={30} style={inputStyle} />
           </div>
 
           {isTestDrive && (
             <>
               <div>
-                <label className={labelCls}>Data preferida *</label>
-                <input name="preferred_date" type="date" min={today} required style={inputStyle} />
+                <label htmlFor="contact-date" className={labelCls}>Data preferida *</label>
+                <input id="contact-date" name="preferred_date" type="date" min={today} required style={inputStyle} />
                 <p className="mt-1 text-xs text-muted">Mínimo: hoje.</p>
               </div>
               <div>
-                <label className={labelCls}>Hora preferida</label>
-                <input name="preferred_time" type="time" style={inputStyle} />
+                <label htmlFor="contact-time" className={labelCls}>Hora preferida</label>
+                <input id="contact-time" name="preferred_time" type="time" style={inputStyle} />
               </div>
               <div>
-                <label className={labelCls}>Notas / dúvidas</label>
-                <textarea name="notes" rows={3} style={{ ...inputStyle, resize: "vertical" as const }} />
+                <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas</label>
+                <textarea id="contact-notes" name="notes" rows={3} maxLength={2000} style={{ ...inputStyle, resize: "vertical" as const }} />
               </div>
             </>
           )}
 
           {!isTestDrive && (
             <div>
-              <label className={labelCls}>Mensagem *</label>
-              <textarea name="message" required rows={5} style={{ ...inputStyle, resize: "vertical" as const }} />
+              <label htmlFor="contact-message" className={labelCls}>Mensagem *</label>
+              <textarea id="contact-message" name="message" minLength={5} maxLength={5000} required rows={5} style={{ ...inputStyle, resize: "vertical" as const }} />
             </div>
           )}
 

@@ -31,18 +31,9 @@ function statusLabel(status?: string | null) {
 function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1 }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; unit?: string; step?: number }) {
   const domainMin = values.length ? Math.min(...values) : undefined;
   const domainMax = values.length ? Math.max(...values) : undefined;
-  const commitMin = (value: string) => {
-    const parsed = value === all ? null : Number(value);
-    if (parsed != null && max !== all && parsed > Number(max)) onMax(value);
-    onMin(value);
-  };
-  const commitMax = (value: string) => {
-    const parsed = value === all ? null : Number(value);
-    if (parsed != null && min !== all && parsed < Number(min)) onMin(value);
-    onMax(value);
-  };
+  const invalid = min !== all && max !== all && Number(min) > Number(max);
   const inputClass = `${control} min-w-0 px-3 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""}`;
-  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/50">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input className={inputClass} type="number" inputMode="numeric" placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} min={domainMin} max={max !== all ? max : domainMax} step={step} onChange={(event) => commitMin(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/40">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input className={inputClass} type="number" inputMode="numeric" placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} min={min !== all ? min : domainMin} max={domainMax} step={step} onChange={(event) => commitMax(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/40">{unit}</span>}</label></div></fieldset>;
+  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input className={inputClass} type="number" inputMode="numeric" placeholder="de" aria-label={`${label} de`} aria-invalid={invalid} value={min === all ? "" : min} min={domainMin} max={domainMax} step={step} onChange={(event) => onMin(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input className={inputClass} type="number" inputMode="numeric" placeholder="até" aria-label={`${label} até`} aria-invalid={invalid} value={max === all ? "" : max} min={domainMin} max={domainMax} step={step} onChange={(event) => onMax(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div>{invalid && <p role="alert" className="mt-1.5 text-xs text-red-300">O valor “de” tem de ser inferior ou igual a “até”.</p>}</fieldset>;
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {

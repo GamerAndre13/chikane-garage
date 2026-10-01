@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: vehicle ? `${name} ${year} | Chikane Garage` : "Viatura | Chikane Garage",
     description: vehicle
-      ? `${name} ${year} — ${price} | Inspecionada, documentada e entregue com garantia Chikane.`
+      ? `${name} ${year}${price ? ` — ${price}` : ""}. Consulta as características e pede informações sobre esta viatura.`
       : "Detalhes da viatura Chikane Garage.",
     openGraph: vehicle?.cover_image_url ? { images: [{ url: vehicle.cover_image_url }] } : undefined,
   };
@@ -208,7 +208,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
         </div>
 
         <div className="min-w-0">
-          <p className="font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">{vehicle.reference_code ? `Chikane selection · ${vehicle.reference_code}` : "Seleção Chikane · Histórico verificado"}</p>
+          <p className="font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">{vehicle.reference_code ? `Chikane selection · ${vehicle.reference_code}` : "Detalhes da viatura"}</p>
           <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-[0.98] tracking-tight text-foreground sm:text-6xl">{vehicle.brand} {vehicle.model}</h1>
           {vehicle.trim && <p className="mt-2 font-display text-sm uppercase tracking-[0.2em] text-silver">{vehicle.trim}</p>}
           <p className="mt-7 font-display text-4xl font-medium text-copper sm:text-5xl">{vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
@@ -225,7 +225,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {features.length > 0 && <section className="mt-7 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Equipamento & extras</h2><div className="mt-3 flex flex-wrap gap-2">{features.map((f) => <span key={f.id} className="border border-border px-3 py-2 text-xs text-silver">{f.label}</span>)}</div></section>}
 
-          <p className="mt-7 border-l-2 border-copper bg-surface px-4 py-3 text-xs leading-5 text-muted">Inspecionada e documentada. Contacta a equipa Chikane para conhecer o processo de reserva e entrega.</p>
+          <p className="mt-7 border-l-2 border-copper bg-surface px-4 py-3 text-xs leading-5 text-muted">Contacta a equipa para confirmar disponibilidade, características e condições desta viatura.</p>
         </div>
       </div>
 
