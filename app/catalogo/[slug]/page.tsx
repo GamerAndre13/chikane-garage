@@ -180,12 +180,18 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   let similarVehicles: Vehicle[] = [];
   try {
     const supabase = await createClient();
-    const { data } = await supabase.from("vehicles").select("id, slug, brand, model, trim, registration_year, mileage_km, power_hp, fuel_type, body_style, price, cover_image_url, vehicle_images(url, position, alt_text)").eq("status", "available").neq("id", vehicle.id).limit(30);
+    const { data } = await supabase.from("vehicles").select("id, slug, brand, model, trim, registration_year, mileage_km, power_hp, fuel_type, price, cover_image_url, status, sold_at, updated_at, created_at").in("status", ["available", "reserved"]).neq("id", vehicle.id).order("created_at", { ascending: false }).limit(30);
     const candidates = ((data || []) as Vehicle[]).filter(isVehiclePubliclyVisible);
     similarVehicles = candidates.sort((a, b) => {
-      const score = (candidate: Vehicle) => (candidate.brand === vehicle.brand ? 100 : 0) + (candidate.body_style && candidate.body_style === vehicle.body_style ? 40 : 0) - Math.abs((candidate.power_hp || 0) - (vehicle.power_hp || 0)) / 20 - Math.abs((candidate.registration_year || 0) - (vehicle.registration_year || 0)) * 2;
+      const score = (candidate: Vehicle) => (candidate.brand === vehicle.brand ? 100 : 0) - Math.abs((candidate.power_hp || 0) - (vehicle.power_hp || 0)) / 20 - Math.abs((candidate.registration_year || 0) - (vehicle.registration_year || 0)) * 2;
       return score(b) - score(a);
     }).slice(0, 4);
+    if (similarVehicles.length) {
+      const { data: images } = await supabase.from("vehicle_images").select("id, vehicle_id, url, position, alt_text").in("vehicle_id", similarVehicles.map((car) => car.id)).order("position");
+      const imagesByVehicle = new Map<string, NonNullable<Vehicle["vehicle_images"]>>();
+      for (const image of images || []) imagesByVehicle.set(image.vehicle_id, [...(imagesByVehicle.get(image.vehicle_id) || []), image]);
+      similarVehicles = similarVehicles.map((car) => ({ ...car, vehicle_images: imagesByVehicle.get(car.id) || [] }));
+    }
   } catch { similarVehicles = []; }
 
   return (
@@ -215,7 +221,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           <VehicleSpecifications primary={primarySpecs} additional={additionalSpecs} />
 
-          {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Estado e histórico</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
+          {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Descrição</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
 
           {features.length > 0 && <section className="mt-7 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Equipamento & extras</h2><div className="mt-3 flex flex-wrap gap-2">{features.map((f) => <span key={f.id} className="border border-border px-3 py-2 text-xs text-silver">{f.label}</span>)}</div></section>}
 
@@ -225,7 +231,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
       {(vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history) && <section className="mt-8 grid gap-3 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">{vehicle.financing_available ? <p className="text-sm text-silver">Financiamento disponível</p> : null}{vehicle.trade_in_accepted ? <p className="text-sm text-silver">Retoma aceite</p> : null}{vehicle.accident_history ? <p className="text-sm text-silver">Histórico de acidente declarado</p> : null}</section>}
 
-      {similarVehicles.length > 0 && <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Também poderá interessar</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Viaturas semelhantes</h2><div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="overflow-hidden border border-white/10 bg-[#111] transition-colors hover:border-copper/70"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`} /><Link href={`/catalogo/${car.slug}`} className="block p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div></section>}
+      <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="group flex h-full flex-col overflow-hidden border border-white/10 bg-[#111] transition-colors hover:border-copper/70"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}>{car.status === "reserved" && <span className="absolute bottom-3 left-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span>}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-[#111] px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
     </div>
   );
 }

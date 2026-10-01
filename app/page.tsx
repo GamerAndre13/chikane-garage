@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import NewsletterForm from "@/components/newsletter-form";
+import VgpuSpeedLines from "@/components/ui/vgpu-speed-lines";
 
 export const metadata = {
   title: "Chikane Garage — Performance Diesel BMW, Selecionadas a Dedo",
@@ -54,7 +55,7 @@ export default async function HomePage() {
       .select("*, vehicle_images(url, position, alt_text)")
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(4),
+      .limit(3),
     supabase.from("site_content").select("section_key, body"),
   ]);
 
@@ -75,6 +76,7 @@ export default async function HomePage() {
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1920&q=80')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/50" />
+        <VgpuSpeedLines />
 
         <div className="relative z-10 mx-auto w-full max-w-[1440px] px-5 text-left sm:px-8 lg:px-12">
           <p className="font-display text-[11px] uppercase tracking-[0.32em] text-copper">
@@ -111,46 +113,24 @@ export default async function HomePage() {
 
         {vehicles.length === 0 ? (
           <div className="border border-border p-12 text-center" style={{ backgroundColor: "#141414" }}><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
-        ) : (() => {
-          const cards = vehicles.map((v) => {
-            const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
-            return { v, photos };
-          });
-          const { v, photos } = cards[0];
-          return <div className="grid gap-5 lg:grid-cols-12">
-            <article className="group overflow-hidden border border-white/10 bg-[#111] transition-all duration-300 hover:border-copper/70 hover:shadow-[0_0_32px_rgba(244,119,36,0.14)] lg:col-span-7">
-              <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}>
-                <span className="absolute left-4 top-4 z-20 border border-copper bg-black/75 px-3 py-1.5 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-copper">Novidade · Seleção da semana</span>
-              </VehicleCardGallery>
-              <Link href={`/catalogo/${v.slug}`} className="block p-5 sm:p-7">
-                <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
-                <h3 className="mt-2 font-display text-3xl font-semibold uppercase tracking-wide text-white sm:text-4xl">{v.model}</h3>
-                {v.trim && <p className="mt-1 font-display text-xs uppercase tracking-[0.15em] text-copper">{v.trim}</p>}
-                {v.description && <p className="mt-4 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/50">{v.description}</p>}
-                <div className="mt-5 grid grid-cols-3 border-y border-white/10 py-4">
-                  <div><span className="block font-display text-[9px] uppercase tracking-[0.16em] text-white/40">Quilómetros</span><span className="mt-1 block text-sm text-white">{v.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span></div>
-                  <div><span className="block font-display text-[9px] uppercase tracking-[0.16em] text-white/40">Potência</span><span className="mt-1 block text-sm text-white">{v.power_hp ?? "—"} cv</span></div>
-                  <div><span className="block font-display text-[9px] uppercase tracking-[0.16em] text-white/40">Caixa</span><span className="mt-1 block text-sm text-white">{v.transmission === "automatic" ? "Automática" : v.transmission ? "Manual" : "—"}</span></div>
-                </div>
-                <div className="mt-4 flex items-center justify-between"><span className="font-display text-2xl font-semibold text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] font-semibold uppercase tracking-[0.17em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div>
-              </Link>
-            </article>
-            <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1 lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-              {cards.slice(1).map(({ v: car, photos: carPhotos }) => <article key={car.id} className="group grid grid-cols-[38%_1fr] overflow-hidden border border-white/10 bg-[#111] transition-all duration-300 hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.12)] lg:grid-cols-[42%_1fr]">
-                <VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`} className="h-full min-h-[210px] aspect-auto" />
-                <Link href={`/catalogo/${car.slug}`} className="flex min-w-0 flex-col justify-center p-3 sm:p-5">
-                  <p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/40">{car.brand || "BMW"} · {car.registration_year}</p>
-                  <h3 className="mt-2 font-display text-lg font-semibold uppercase leading-tight text-white sm:text-2xl">{car.model}</h3>
-                  {car.trim && <p className="mt-1 line-clamp-1 font-display text-[9px] uppercase tracking-[0.13em] text-copper">{car.trim}</p>}
-                  <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/50"><span>{car.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span><span>{car.power_hp ?? "—"} cv</span></div>
-                  <span className="mt-3 font-display text-lg font-medium text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span>
-                  {car.status === "reserved" && <span className="mt-1 font-display text-[9px] uppercase tracking-wider text-amber-400">Reservada</span>}
-                </Link>
-              </article>)}
-              <Link href="/catalogo" className="flex min-h-14 items-center justify-between border border-copper/40 px-5 font-display text-[10px] font-semibold uppercase tracking-[0.17em] text-copper transition-colors hover:border-copper hover:bg-copper/5">Ver todas as viaturas <span>↗</span></Link>
-            </div>
-          </div>;
-        })()}
+        ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{vehicles.map((v) => {
+          const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
+          return <article key={v.id} className="group flex h-full flex-col overflow-hidden border border-white/10 bg-[#111] transition-[border-color,box-shadow] duration-300 hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
+            <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><span className="absolute left-3 top-3 z-20 border border-copper bg-black/75 px-2.5 py-1.5 font-display text-[9px] font-semibold uppercase tracking-[0.16em] text-copper">Seleção da semana</span></VehicleCardGallery>
+            <Link href={`/catalogo/${v.slug}`} className="flex flex-1 flex-col p-5">
+              <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
+              <h3 className="mt-2 min-h-[2.5rem] font-display text-2xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>
+              <p className="mt-1 min-h-4 truncate font-display text-[10px] uppercase tracking-[0.15em] text-copper">{v.trim || " "}</p>
+              <p className="mt-2 min-h-10 line-clamp-2 text-xs leading-5 text-white/45">{v.description || "Viatura selecionada e inspecionada pela Chikane Garage."}</p>
+              <div className="mt-4 grid grid-cols-3 gap-2 border-y border-white/10 py-3">
+                <div><span className="block font-display text-[8px] uppercase tracking-[0.13em] text-white/40">Quilómetros</span><span className="mt-1 block text-xs text-white">{v.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span></div>
+                <div><span className="block font-display text-[8px] uppercase tracking-[0.13em] text-white/40">Potência</span><span className="mt-1 block text-xs text-white">{v.power_hp ?? "—"} cv</span></div>
+                <div><span className="block font-display text-[8px] uppercase tracking-[0.13em] text-white/40">Caixa</span><span className="mt-1 block text-xs text-white">{v.transmission === "automatic" ? "Automática" : v.transmission ? "Manual" : "—"}</span></div>
+              </div>
+              <div className="mt-auto flex items-center justify-between pt-4"><span className="font-display text-xl font-semibold text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[9px] font-semibold uppercase tracking-[0.15em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div>
+            </Link>
+          </article>;
+        })}</div>}
       </section>
 
       {/* ─── A GARAGEM ─── */}

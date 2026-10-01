@@ -47,7 +47,7 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="group/nav ml-10 hidden items-center gap-9 md:flex">
+        <nav className="group/nav ml-auto hidden items-center gap-9 md:flex">
           <Link href="/catalogo" className={navClass("/catalogo")}>
             Catálogo
           </Link>
@@ -56,7 +56,7 @@ export function Header() {
           </Link>
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-6 flex items-center gap-3">
           {user ? (
             <>
               <Link

@@ -28,9 +28,21 @@ function statusLabel(status?: string | null) {
   return null;
 }
 
-function RangeFilter({ label, values, min, max, onMin, onMax, format }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; format?: (value: number) => string }) {
-  const shown = (value: number) => format ? format(value) : value.toLocaleString("pt-PT");
-  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/50">{label}</legend><div className="grid grid-cols-2 gap-2"><label><span className="sr-only">{label} desde</span><select className={control} value={min} onChange={(event) => onMin(event.target.value)}><option value={all}>De</option>{values.map((value) => <option key={value} value={value}>{shown(value)}</option>)}</select></label><label><span className="sr-only">{label} até</span><select className={control} value={max} onChange={(event) => onMax(event.target.value)}><option value={all}>Até</option>{values.map((value) => <option key={value} value={value}>{shown(value)}</option>)}</select></label></div></fieldset>;
+function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1 }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; unit?: string; step?: number }) {
+  const domainMin = values.length ? Math.min(...values) : undefined;
+  const domainMax = values.length ? Math.max(...values) : undefined;
+  const commitMin = (value: string) => {
+    const parsed = value === all ? null : Number(value);
+    if (parsed != null && max !== all && parsed > Number(max)) onMax(value);
+    onMin(value);
+  };
+  const commitMax = (value: string) => {
+    const parsed = value === all ? null : Number(value);
+    if (parsed != null && min !== all && parsed < Number(min)) onMin(value);
+    onMax(value);
+  };
+  const inputClass = `${control} min-w-0 px-3 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""}`;
+  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/50">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input className={inputClass} type="number" inputMode="numeric" placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} min={domainMin} max={max !== all ? max : domainMax} step={step} onChange={(event) => commitMin(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/40">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input className={inputClass} type="number" inputMode="numeric" placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} min={min !== all ? min : domainMin} max={domainMax} step={step} onChange={(event) => commitMax(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/40">{unit}</span>}</label></div></fieldset>;
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
@@ -84,10 +96,10 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
           <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Combustível</span><select className={control} value={fuel} onChange={(e) => setFuel(e.target.value)}><option value={all}>Todos</option>{fuels.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
           <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Cor exterior</span><select className={control} value={color} onChange={(e) => setColor(e.target.value)}><option value={all}>Todas as cores</option>{colors.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
           <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Estilo</span><select className={control} value={bodyStyle} onChange={(e) => setBodyStyle(e.target.value)}><option value={all}>Todos os estilos</option>{bodyStyles.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
-          <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} format={(v) => `${v} cv`} />
-          <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} format={(v) => `${v.toLocaleString("pt-PT")} €`} />
+          <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
+          <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
           <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} />
-          <RangeFilter label="Quilometragem" values={mileages} min={minMileage} max={maxMileage} onMin={setMinMileage} onMax={setMaxMileage} format={(v) => `${v.toLocaleString("pt-PT")} km`} />
+          <RangeFilter label="Quilometragem" values={mileages} min={minMileage} max={maxMileage} onMin={setMinMileage} onMax={setMaxMileage} step={1000} unit="km" />
         </div>
       </aside>
       <section aria-live="polite"><div className="mb-5 flex items-center gap-4"><span className="h-px flex-1 bg-white/10"/><p className="font-display text-[10px] uppercase tracking-[0.2em] text-white/45">{filtered.length} viaturas <span className="text-copper">em garagem</span></p></div>
