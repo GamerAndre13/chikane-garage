@@ -88,10 +88,17 @@ export function Header() {
             </>
           ) : (
             <Link
-            href="/conta"
-              className="min-h-11 border border-border px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-silver hover:border-copper hover:text-copper transition-colors"
+              href="/conta"
+              className="group relative overflow-hidden rounded bg-copper px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-black transition-all hover:bg-copper-light hover:shadow-[0_0_20px_rgba(244,119,36,0.35)]"
             >
-              Iniciar sessão
+              <span className="relative z-10 flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                  <polyline points="10 17 15 12 10 7" />
+                  <line x1="15" y1="12" x2="3" y2="12" />
+                </svg>
+                Entrar
+              </span>
             </Link>
           )}
 
