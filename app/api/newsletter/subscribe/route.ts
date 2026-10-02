@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // Initialize Resend lazily to avoid build errors when API key is missing
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
+    console.log("RESEND_API_KEY not found in environment");
     return null;
   }
   return new Resend(process.env.RESEND_API_KEY);
@@ -68,12 +69,14 @@ export async function POST(request: NextRequest) {
 
     // Send confirmation email
     const resend = getResend();
+
     if (resend) {
-      await resend.emails.send({
-        from: "Chikane Garage <newsletter@chikane-garage.pt>",
-        to: email,
-        subject: "Bem-vindo à Lista Privada da Chikane Garage",
-        html: `
+      try {
+        const result = await resend.emails.send({
+          from: "Chikane Garage <newsletter@chikanegarage.blog>",
+          to: email,
+          subject: "Bem-vindo à Lista Privada da Chikane Garage",
+          html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -112,8 +115,14 @@ export async function POST(request: NextRequest) {
   </div>
 </body>
 </html>
-        `,
-      });
+          `,
+        });
+        console.log("Email sent successfully:", JSON.stringify(result));
+      } catch (emailError) {
+        console.error("Email send error:", emailError);
+      }
+    } else {
+      console.log("Resend not initialized - email skipped");
     }
 
     return NextResponse.json({ success: true });
