@@ -1,0 +1,45 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "agent": {
+    "build": {
+      "description": "Developer principal. Implementa funcionalidades, corrige bugs e trabalha diretamente no projeto.",
+      "mode": "primary",
+      "model": "opencode/Big Pickle"
+    },
+
+    "plan": {
+      "description": "Analisa o projeto, planeia soluções e identifica problemas sem modificar código.",
+      "mode": "primary",
+      "model": "opencode/Fledge Alpha Free"
+    },
+
+    "code": {
+      "description": "Especialista em programação e debugging. Usar para Java, JavaScript, PHP, XML, XSD e SQL.",
+      "mode": "primary",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+
+    "review": {
+      "description": "Revisor de código. Procura bugs, problemas de arquitetura, segurança e melhorias.",
+      "mode": "subagent",
+      "model": "opencode/Nemotron 3.5 Lightning Free",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+
+    "quick": {
+      "description": "Tarefas simples e rápidas, pequenas alterações e perguntas gerais.",
+      "mode": "subagent",
+      "model": "opencode/Ling 3.1 Flash Free"
+    }
+  },
+
+  "default_agent": "build"
+}

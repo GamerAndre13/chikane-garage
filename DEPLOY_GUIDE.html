@@ -343,8 +343,8 @@ git add DOCUMENTO_PROJETO.txt</div>
           <td>Página de história + processo</td>
         </tr>
         <tr>
-          <td><code>/loja</code></td>
-          <td>Produtos de acessórios</td>
+          <td><code>/contacto</code></td>
+          <td>Formulários de contacto/test drive</td>
         </tr>
         <tr>
           <td><code>/conta</code></td>
@@ -374,8 +374,8 @@ git add DOCUMENTO_PROJETO.txt</div>
   </div>
 
   <div class="warning-box">
-    <strong>⚠ next.config.ts output: standalone</strong><br>
-    O projeto está configurado para <code>output: "standalone"</code>. Cloudflare Pages suporta, mas se usar <strong>Workers</strong> com Pages, confirme que a integração está correta em <code>wrangler.toml</code> (ou remova se não precisar).
+    <strong>⚠ next.config.ts e o deploy OpenNext</strong><br>
+    O projeto NÃO usa <code>output: "standalone"</code>. O deploy de produção é via <strong>OpenNext</strong> (<code>npm run deploy</code> → <code>@opennextjs/cloudflare</code>), que gera o bundle em <code>.open-next/</code> servido pelo <code>wrangler.toml</code> (<code>main = ".open-next/worker.js"</code>, R2 binding <code>VEHICLE_IMAGES</code>). Para preview local: <code>npm run preview</code>. Depois de mudar bindings/vars, corra <code>npm run cf-typegen</code> para regenerar <code>cloudflare-env.d.ts</code>.
   </div>
 
   <h2>Próximos passos (após deploy)</h2>

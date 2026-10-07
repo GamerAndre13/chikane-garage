@@ -10,8 +10,7 @@ PRÉ-REQUISITOS (instale uma vez no PC)
 - Node.js 20+  (verifique: node -v)
 - pnpm OU npm (o projeto usa npm)
 - Conta Supabase + projeto criado
-- Conta Cloudflare R2 (bucket + credentials) — opcional se só testar local sem imagens
-- Conta Vercel (para deploy) — opcional
+- Conta Cloudflare (R2 + Workers/Pages para deploy via OpenNext) — opcional se só testar local sem imagens
 
 --------------------------------------------------------------------------------
 PASSO 1 — DEPENDÊNCIAS
@@ -89,7 +88,7 @@ PASSO 7 — (OPCIONAL) BUILD DE PRODUÇÃO LOCAL
 npm run build
 npm run start
 
-# Testa em http://localhost:3000 modo produção (output standalone)
+# Testa em http://localhost:3000 modo produção (next start)
 
 --------------------------------------------------------------------------------
 CHECKLIST RÁPIDO "TUDO OK?"

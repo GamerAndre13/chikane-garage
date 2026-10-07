@@ -1,7 +1,7 @@
 ================================================================================
 CHIKANE GARAGE — DOCUMENTO COMPLETO DO PROJETO
 ================================================================================
-Data: 2026-09-12  ·  Última atualização
+Data: 2026-09-12  ·  Última atualização: 2026-10-07 (deploy reconciliado: Cloudflare OpenNext)
 Projeto: chikane-garage-novo
 Branch: main (remotes/origin/main)
 
@@ -36,7 +36,7 @@ OBJETIVOS DO PROJETO
    - Conta própria (perfil, password, avatar).
    - Guardar viaturas favoritas (local sem login / base de dados com login).
    - Ver os próprios pedidos de contacto e test drives.
-4. Ser fácil de manter e de colocar em produção (Next.js + Supabase + Vercel).
+4. Ser fácil de manter e de colocar em produção (Next.js + Supabase + Cloudflare).
 
 STACK E TECNOLOGIAS
 -------------------
@@ -48,8 +48,8 @@ STACK E TECNOLOGIAS
 - Backend/BD/Auth: Supabase (PostgreSQL + Auth + Storage com RLS).
 - Armazenamento de imagens: Cloudflare R2 (S3-compatible) — galerias e avatares.
   @aws-sdk/client-s3 + @aws-sdk/s3-request-presigner.
-- Deploy: Vercel (framework nextjs; output: standalone). Houve uma transição
-  desde Cloudflare Pages (ver Fase G).
+- Deploy: Cloudflare (Workers via OpenNext — @opennextjs/cloudflare). Houve uma
+  transição Vercel/standalone → Cloudflare (ver Fase G).
 
 ESTRUTURA DE PASTAS (raiz do projeto, SEM pasta src/)
 ------------------------------------------------------
@@ -87,8 +87,8 @@ lib/
 supabase/                   — Scripts SQL (schema, seed, migrações)
 .gitignore
 .env.local / .env.local.example
-middleware.ts               — Proteção de rotas /admin + refresh de sessão
-next.config.ts              — output standalone, imagens remotas, headers
+proxy.ts                     — Proteção de rotas /admin + refresh de sessão (Next 16: substituiu middleware.ts)
+next.config.ts               — imagens remotas, headers, shim OpenNext (initOpenNextCloudflareForDev)
 package.json / package-lock.json / tsconfig.json / postcss.config.mjs
 
 --------------------------------------------------------------------------------
@@ -267,8 +267,8 @@ CONTACTO (app/contacto/page.tsx) — Client + Suspense
 FASE C — AUTENTICAÇÃO, SESSÃO E PERFIS
 --------------------------------------
 
-MIDDLEWARE (middleware.ts)
---------------------------
+PROXY (proxy.ts — Next 16 substituiu middleware.ts por proxy.ts)
+------------------------------------------------------------
 - Cria um server client de Supabase com cookies getAll/setAll (padrão SSR do
   Supabase) e faz supabase.auth.getUser() para refrescar/validar a sessão.
 - Proteção: qualquer rota que comece por /admin:
@@ -280,7 +280,7 @@ MIDDLEWARE (middleware.ts)
 INFRAESTRUTURA SUPABASE (lib/supabase)
 --------------------------------------
 - client.ts (browser): createBrowserClient, atira erro dev se faltarem vars.
-  Guarda a sessão em cookies (sb-<ref>-auth-token) — o que permite ao middleware
+  Guarda a sessão em cookies (sb-<ref>-auth-token) — o que permite ao proxy
   e às server components autenticarem o mesmo user.
 - server.ts: createServerClient com cookies() (next/headers). Usada em todas as
   server components/actions.
@@ -327,7 +327,7 @@ LAYOUT ADMIN (app/admin/layout.tsx) — Server
 ---------------------------------------------
 - Sidebar fixa (w-60) com links para Dashboard, Analytics, Viaturas, Loja,
   Conteúdo, Pedidos + link "← Voltar ao site". Conteúdo em flex-1.
-- A proteção é feita pelo middleware (não duplicada aqui).
+- A proteção é feita pelo proxy.ts (não duplicada aqui).
 
 DASHBOARD (app/admin/page.tsx) — Server
 ---------------------------------------
@@ -476,34 +476,55 @@ Supabase Storage para as fotos das viaturas. O avatar usa R2 também (o bucket
 FASE G — DEPLOY E PRODUÇÃO
 --------------------------------------------------------------------------------
 
+PLATAFORMA ATUAL
+----------------
+- Deploy em Cloudflare: Workers via OpenNext (@opennextjs/cloudflare), projeto
+  Cloudflare "chikane-garage".
+- Build/publish de produção:
+  - `npm run preview` → opennextjs-cloudflare build + preview local do worker.
+  - `npm run deploy` → opennextjs-cloudflare build + publish em produção.
+  - `npm run cf-typegen` → regenera cloudflare-env.d.ts a partir do wrangler.toml
+    (ficheiro gitignored; correr sempre que se mudem bindings/vars).
+- Config no wrangler.toml:
+  - main = ".open-next/worker.js" (bundle gerado pelo OpenNext).
+  - assets = ".open-next/assets" (binding ASSETS).
+  - R2 bucket binding VEHICLE_IMAGES → bucket "vehicle-images".
+  - var R2_PUBLIC_URL = URL pública do bucket R2.
+  - compatibility_flags = ["nodejs_compat"]; observability ativado.
+- next.config.ts NÃO tem `output: "standalone"`. Define headers de segurança,
+  images.remotePatterns (images.unsplash.com, *.r2.cloudflarestorage.com,
+  *.r2.dev) e chama initOpenNextCloudflareForDev() para o `next dev` correr com
+  o shim de Cloudflare.
+- CI (GitHub Actions, .github/workflows/deploy.yml): em push/PR para main faz
+  npm ci + npm run build e publica Cloudflare Pages via cloudflare/pages-action
+  (projeto chikane-garage). Env passadas ao build: NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
+
 HISTÓRICO DE DEPLOY (git)
 -------------------------
 - 0d6d2f9 "Primeiro deploy" — commit inicial (incluiu todos os skills de
   .claude, plugin).
 - d7a1745 "Corrije erros e atualiza projeto" — correções e atualizações da app.
 - 102322b "Remove @cloudflare/next-on-pages + wrangler (use native output:
-  standalone)" — REMOVEU a integração Cloudflare Pages (next-on-pages +
-  wrangler.toml) em favor de output standalone nativo.
+  standalone)" — fase intermédia Vercel/standalone, desde entretanto revertida.
 - 12a4922 "Update package-lock.json after removing @cloudflare/next-on-pages" —
-  sync do lockfile.
-
-CONFIG ATUAL (next.config.ts)
------------------------------
-- output: "standalone" (Next.js em modo standalone para o servidor Node).
-- images.remotePatterns: images.unsplash.com, *.r2.cloudflarestorage.com,
-  *.r2.dev.
-- headers(): X-Content-Type-Options: nosniff, X-Frame-Options: DENY,
-  Referrer-Policy: strict-origin-when-cross-origin em toda a app.
-- NOTA: apesar do histórico Cloudflare, hoje existe uma pasta .vercel/ com
-  {"framework":"nextjs"} → o deploy é no VERCEL. O package.json ainda inclui
-  wrangler nos devDependencies (pode ser removido depois).
+  sync do lockfile (fase Vercel).
+- 6dad164 "fix: deploy Next.js app to Cloudflare Workers" — retorno a Cloudflare
+  Workers com OpenNext (wrangler.toml).
+- bb91074 "r2 a funcionar" — R2 ligado ao deploy Cloudflare.
+- ddb4d82 "Add GitHub Actions workflow for automatic Cloudflare deployment" —
+  CI automático de deploy.
 
 COMANDOS
 --------
-npm run dev     — servidor de desenvolvimento (next dev)
-npm run build   — build de produção (next build)
-npm run start   — servidor de produção (next start)
-npm run lint    — eslint
+npm run dev          — servidor de desenvolvimento (next dev + shim Cloudflare)
+npm run build        — build de produção (next build)
+npm run start        — servidor de produção (next start)
+npm run lint         — eslint (ver AGENTS.md: ficheiros .open-next/ gerados
+                       causam ruído se correr depois do preview/deploy)
+npm run preview      — build OpenNext + preview local do worker
+npm run deploy       — build OpenNext + deploy Cloudflare
+npm run cf-typegen   — regera cloudflare-env.d.ts do wrangler.toml
 
 --------------------------------------------------------------------------------
 FASE H — O QUE AINDA FALTA FAZER (PRÓXIMOS PASSOS)
@@ -513,16 +534,16 @@ HÁ FEATURED / CONCLUÍDO
 -----------------------
 ✔ Landing profissional (hero, destaque, garagem, processo, loja, newsletter).
 ✔ Catálogo + detalhe de viatura com specs completas e SEO por slug.
-✔ Autenticação (login/registo/callback), sessão, middleware.
+✔ Autenticação (login/registo/callback), sessão, proxy (middleware).
 ✔ Perfil com edição, password, avatar (R2), favoritos, "meus pedidos".
 ✔ Favoritos com dupla persistência (localStorage + BD).
 ✔ Newsletter com honeypot anti-bot.
 ✔ Contacto + test drive inseríveis (linkados ao user).
 ✔ Backoffice completo: dashboard, viaturas CRUD + galeria R2, loja CRUD,
   pedidos (gestão de estado), CMS, analytics.
-✔ Segurança: RLS no Supabase, middleware de proteção admin, headers seguros.
+✔ Segurança: RLS no Supabase, proxy de proteção admin, headers seguros.
 ✔ Imagens: upload gestão via Cloudflare R2.
-✔ Deploy configurado para Vercel (output standalone).
+✔ Deploy configurado para Cloudflare (OpenNext → Workers; ver Fase G).
 
 POR FAZER / MELHORIAS IDENTIFICADAS
 -----------------------------------
@@ -544,15 +565,16 @@ P1 — Funcionalidades que faltam/estão incompletas:
 P2 — Limpeza / débito técnico:
  7. Remover schema legado 002_full_site.sql (V1) e/ou alinhar seed/setup para
     evitar confusão de colunas. Documentar que setup.sql é o canónico.
- 8. Remover wrangler dos devDependencies (já não é usado; só resta no
-    package.json).
+ 8. (RESOLVIDO) wrangler mantém-se nos devDependencies — é usado pelo deploy
+    OpenNext (@opennextjs/cloudflare).
  9. Considerar mudar imagens de <img> para next/image (otimização) — hoje são
     todas <img> com eslint-disable por serem remotas.
 10. Unificar estilos: mistura de classes Tailwind com cores hardcoded inline
     (#0a0a0a, #141414, #b87333). Poderiam ser tokens (já existem vars --copper,
     --surface...). Manter consistência para menos manutenção.
-11. middleware: atualmente protege só /admin. Quem gerir devia também validar
-    user nas server components de admin (embora as actions valide admin).
+11. proxy.ts (Next 16 substituiu middleware por proxy): atualmente protege só
+    /admin. Quem gerir devia também validar user nas server components de admin
+    (embora as actions validem admin).
 12. O fetch da home faz 3 queries; com o tempo e mais dados, adicionar caching
     (revalidate), ou usar uma routine com stale-while-revalidate.
 
@@ -562,7 +584,7 @@ P3 — Produto / negócio:
 14. Falta política de privacidade/termos/livro reclamações reais (links apontam
     para /sobre).
 15. Fazer build+deploy real e testar fluxos completos (login, admin, upload R2)
-    em produção (URLs de callback no Supabase / redirect de Vercel).
+    em produção (URLs de callback no Supabase / domínio de produção).
 
 REGRESSÕES / CHECKS RECOMENDADOS ANTES DE CONTINUAR
 ---------------------------------------------------
@@ -571,7 +593,8 @@ REGRESSÕES / CHECKS RECOMENDADOS ANTES DE CONTINUAR
   (hero.tagline, hero.slogan, hero.intro, garage.title, garage.text,
   shop.title, shop.text, newsletter.title, newsletter.text) — ou que os
   FALLBACKs cobrem.
-- Confirmar variáveis de ambiente completas no Vercel (Supabase + R2).
+- Confirmar variáveis de ambiente completas no Cloudflare (Workers/Pages:
+  Supabase + R2).
 - Confirmar URL de callback de auth no dashboard Supabase apontando para o domínio
   de produção (ex: https://<dominio>/auth/callback).
 
