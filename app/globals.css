@@ -125,6 +125,24 @@ html {
   will-change: transform;
 }
 
+/* ── Skeleton: shimmer a cobre sobre superfície ── */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-mid);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(244, 119, 36, 0.14), transparent);
+  animation: shimmer-sweep 1.8s infinite;
+}
+@keyframes shimmer-sweep {
+  100% { transform: translateX(100%); }
+}
+
 /* ── Scrollbar discreta (desktop) ── */
 @media (pointer: fine) {
   ::-webkit-scrollbar {

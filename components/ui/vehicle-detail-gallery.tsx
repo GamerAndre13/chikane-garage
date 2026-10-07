@@ -4,6 +4,17 @@ import { useState } from "react";
 
 type Photo = { url: string; alt?: string };
 
+function GalleryPhoto({ url, alt }: { url: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt={alt} className={`kenburns h-full w-full object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setLoaded(true)} />
+      {!loaded && <div aria-hidden="true" className="shimmer absolute inset-0" />}
+    </>
+  );
+}
+
 export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title: string }) {
   const [active, setActive] = useState(0);
   const current = photos[active];
@@ -18,8 +29,7 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="relative order-1 aspect-[3/2] w-full min-w-0 overflow-hidden border border-border bg-surface-mid">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img key={current.url} src={current.url} alt={current.alt || title} className="kenburns h-full w-full object-cover" />
+        <GalleryPhoto key={current.url} url={current.url} alt={current.alt || title} />
         {photos.length > 1 && <>
           <button type="button" onClick={() => move(-1)} aria-label="Fotografia anterior" className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/60 text-2xl text-white backdrop-blur hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">‹</button>
           <button type="button" onClick={() => move(1)} aria-label="Fotografia seguinte" className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/60 text-2xl text-white backdrop-blur hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">›</button>
