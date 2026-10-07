@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import type { SiteSettings } from "@/lib/site-settings";
+import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 
 type VehicleRef = { id: string; brand: string; model: string; slug: string };
 
@@ -46,6 +48,15 @@ function ContactoContent() {
       setVehicleLoading(false);
     })();
   }, [testdriveSlug, vehicleSlug]);
+
+  // Contactos diretos (site_settings) — cartão acima do formulário
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("site_settings").select("*").limit(1).maybeSingle();
+      if (data) setSiteSettings(data as SiteSettings);
+    })();
+  }, []);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -127,6 +138,18 @@ function ContactoContent() {
     ? "Escolhe a data e vem experimentar a viatura."
     : "Tem alguma questão? Envia-nos uma mensagem.";
 
+  const s = siteSettings;
+  const temContactos = Boolean(s && (s.phone || s.email || s.location || s.address));
+  const redes = s
+    ? [
+        s.social_instagram ? { label: "Instagram", href: instagramUrl(s.social_instagram) } : null,
+        s.social_facebook ? { label: "Facebook", href: facebookUrl(s.social_facebook) } : null,
+        s.social_whatsapp ? { label: "WhatsApp", href: whatsappUrl(s.social_whatsapp) } : null,
+        s.social_youtube ? { label: "YouTube", href: youtubeUrl(s.social_youtube) } : null,
+        s.social_tiktok ? { label: "TikTok", href: tiktokUrl(s.social_tiktok) } : null,
+      ].filter((l): l is { label: string; href: string } => Boolean(l && l.href))
+    : [];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 bg-background-alt">
       <div className="mx-auto max-w-2xl">
@@ -162,6 +185,44 @@ function ContactoContent() {
           </div>
         )}
         {error && <div className="mt-8 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
+
+        {temContactos && (
+          <div className="mt-6 rounded border border-border bg-surface-mid p-5">
+            <p className="font-display text-xs uppercase tracking-[0.25em] text-copper">Contactos diretos</p>
+            <ul className="mt-3 space-y-1.5 text-sm text-muted">
+              {s?.phone && (
+                <li>
+                  <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="transition-colors hover:text-foreground">
+                    {s.phone}
+                  </a>
+                </li>
+              )}
+              {s?.email && (
+                <li>
+                  <a href={`mailto:${s.email}`} className="transition-colors hover:text-foreground">
+                    {s.email}
+                  </a>
+                </li>
+              )}
+              {(s?.location || s?.address) && <li>{s?.location || s?.address}</li>}
+            </ul>
+            {redes.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {redes.map((l) => (
+                  <a
+                    key={l.label}
+                    href={l.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-copper transition-colors hover:text-copper-light"
+                  >
+                    {l.label} ↗
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
           <div className="hidden" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" tabIndex={-1} autoComplete="off" /></div>
