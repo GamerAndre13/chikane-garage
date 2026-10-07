@@ -177,3 +177,39 @@ export async function deleteVehicleImage(imageId: string, vehicleId: string): Pr
   revalidatePath(`/admin/veiculos/editar/${vehicleId}`);
   return {};
 }
+
+// Upload de fotos das páginas (home / sobre) para R2 — usado em /admin/definicoes
+export async function uploadSiteImage(formData: FormData): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  // Verificar se é admin
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (!profile || profile.role !== "admin") return { error: "Sem permissão" };
+
+  const file = formData.get("file") as File;
+  if (!file) return { error: "Ficheiro não fornecido" };
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowedTypes.includes(file.type)) return { error: "Tipo de ficheiro não suportado (JPG, PNG ou WEBP)" };
+  if (file.size > 10 * 1024 * 1024) return { error: "Ficheiro demasiado grande (máx. 10MB)" };
+
+  // Identificador do slot vem do backoffice (photo_home_hero, photo_about_hero, ...)
+  const name = String(formData.get("name") || "");
+  if (!/^[a-z0-9_]{3,64}$/.test(name)) return { error: "Identificador de foto inválido" };
+
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const rawExt = (file.name.split(".").pop() || "").toLowerCase();
+  const ext = /^[a-z0-9]{1,5}$/.test(rawExt) ? rawExt : "jpg";
+  const key = `site/${name}-${Date.now()}.${ext}`;
+
+  try {
+    const url = await uploadToR2(key, buffer, file.type);
+    return { url };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro no upload" };
+  }
+}

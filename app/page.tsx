@@ -4,6 +4,7 @@ import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import NewsletterForm from "@/components/newsletter-form";
 import VgpuSpeedLines from "@/components/ui/vgpu-speed-lines";
 import { Reveal } from "@/components/ui/reveal";
+import type { SiteSettings } from "@/lib/site-settings";
 
 export const metadata = {
   title: "Chikane Garage — Catálogo de Viaturas",
@@ -50,7 +51,7 @@ type SiteContent = { section_key: string; body: string | null };
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [vehiclesRes, contentRes] = await Promise.all([
+  const [vehiclesRes, contentRes, settingsRes] = await Promise.all([
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
@@ -58,9 +59,11 @@ export default async function HomePage() {
       .order("created_at", { ascending: false })
       .limit(3),
     supabase.from("site_content").select("section_key, body"),
+    supabase.from("site_settings").select("photo_home_hero, photo_home_history").limit(1).maybeSingle(),
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
+  const photos = settingsRes.data as Pick<SiteSettings, "photo_home_hero" | "photo_home_history"> | null;
 
   const contentMap: Record<string, string> = {};
   for (const row of (contentRes.data || []) as SiteContent[]) {
@@ -74,7 +77,9 @@ export default async function HomePage() {
       <section className="relative flex min-h-[82vh] items-center overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1920&q=80')" }}
+          style={{
+            backgroundImage: `url('${photos?.photo_home_hero || "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1920&q=80"}')`,
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/50" />
         <VgpuSpeedLines />
@@ -152,7 +157,7 @@ export default async function HomePage() {
             <Reveal className="min-w-0" delay={140}>
               <div className="relative overflow-hidden rounded">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&q=80" alt="BMW Performance" className="h-80 w-full object-cover" />
+                <img src={photos?.photo_home_history || "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&q=80"} alt="BMW Performance" className="h-80 w-full object-cover" />
               </div>
             </Reveal>
           </div>

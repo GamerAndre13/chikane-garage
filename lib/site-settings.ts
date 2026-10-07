@@ -1,5 +1,5 @@
-// Tipo partilhado da tabela site_settings (contactos, redes sociais e
-// rodapé editáveis pelo backoffice em /admin/definicoes).
+// Tipo partilhado da tabela site_settings (contactos, redes sociais,
+// rodapé e fotos das páginas — editáveis em /admin/definicoes).
 export type SiteSettings = {
   phone?: string | null;
   email?: string | null;
@@ -11,4 +11,9 @@ export type SiteSettings = {
   social_youtube?: string | null;
   social_tiktok?: string | null;
   footer_tagline?: string | null;
+  // Fotos das páginas (supabase/005_site_settings_fotos.sql)
+  photo_home_hero?: string | null;
+  photo_home_history?: string | null;
+  photo_about_hero?: string | null;
+  photo_about_garage?: string | null;
 };

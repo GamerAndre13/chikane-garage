@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { uploadSiteImage } from "@/app/actions/upload";
 import type { SiteSettings } from "@/lib/site-settings";
 
 type SettingsRow = SiteSettings & { id: string };
 
-type FieldDef = { key: string; label: string; hint: string; full?: boolean };
+type FieldDef = { key: string; label: string; hint: string; full?: boolean; photo?: boolean };
 
 const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
   {
@@ -39,6 +40,17 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
       { key: "footer_tagline", label: "Frase do rodapé", hint: "Vazio = mantém o texto por omissão.", full: true },
     ],
   },
+  {
+    title: "Fotos do site",
+    description:
+      "Home e Sobre Nós. Envia o ficheiro (JPG, PNG ou WEBP, máx. 10MB) ou cola um link — a foto só muda no site depois de guardares. Vazio = imagem por omissão.",
+    fields: [
+      { key: "photo_home_hero", label: "Home · Hero (fundo)", hint: "Topo da home. Recomendado 1920×1080.", photo: true },
+      { key: "photo_home_history", label: "Home · A História", hint: "Secção «A História» da home. Recomendado 1000×800.", photo: true },
+      { key: "photo_about_hero", label: "Sobre · Hero", hint: "Topo de «Sobre Nós». Recomendado 1920×1080.", photo: true },
+      { key: "photo_about_garage", label: "Sobre · A garagem", hint: "Secção «A garagem». Recomendado 1000×800.", photo: true },
+    ],
+  },
 ];
 
 export default function DefinicoesPage() {
@@ -48,6 +60,7 @@ export default function DefinicoesPage() {
   const [error, setError] = useState<string | null>(null);
   const [rowId, setRowId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -66,11 +79,33 @@ export default function DefinicoesPage() {
           social_youtube: row.social_youtube ?? "",
           social_tiktok: row.social_tiktok ?? "",
           footer_tagline: row.footer_tagline ?? "",
+          photo_home_hero: row.photo_home_hero ?? "",
+          photo_home_history: row.photo_home_history ?? "",
+          photo_about_hero: row.photo_about_hero ?? "",
+          photo_about_garage: row.photo_about_garage ?? "",
         });
       }
       setLoading(false);
     })();
   }, []);
+
+  const handlePhotoUpload = async (key: string, file: File) => {
+    setUploadingKey(key);
+    setError(null);
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("name", key);
+    const res = await uploadSiteImage(fd);
+
+    setUploadingKey(null);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    const url = res.url;
+    if (url) setForm((prev) => ({ ...prev, [key]: url }));
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -95,7 +130,7 @@ export default function DefinicoesPage() {
       const faltaMigration = /does not exist|row-level security/i.test(saveError.message);
       setError(
         faltaMigration
-          ? "Não foi possível guardar. Corre o ficheiro supabase/004_site_settings_backoffice.sql no SQL Editor do Supabase e volta a tentar."
+          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql e supabase/005_site_settings_fotos.sql no SQL Editor do Supabase e volta a tentar."
           : `Erro ao guardar: ${saveError.message}`
       );
       return;
@@ -143,7 +178,7 @@ export default function DefinicoesPage() {
             Definições do Site
           </h1>
           <p className="mt-2" style={{ color: "#9a9a94", fontSize: "0.875rem" }}>
-            Contactos, redes sociais e rodapé. As alterações ficam visíveis no site a seguir.
+            Contactos, redes sociais, rodapé e fotografias. As alterações ficam visíveis no site a seguir.
           </p>
         </div>
         <Link
@@ -186,9 +221,76 @@ export default function DefinicoesPage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
             {group.fields.map((field) => (
-              <div key={field.key} style={field.full ? { gridColumn: "1 / -1" } : undefined}>
+              <div key={field.key} style={field.full || field.photo ? { gridColumn: "1 / -1" } : undefined}>
                 <label style={labelStyle}>{field.label}</label>
-                {field.full ? (
+
+                {field.photo ? (
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div
+                        style={{
+                          width: "11rem",
+                          height: "6.5rem",
+                          flexShrink: 0,
+                          borderRadius: "0.375rem",
+                          border: "1px solid #2a2a2a",
+                          backgroundColor: "#0a0a0a",
+                          overflow: "hidden",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {form[field.key] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={form[field.key]}
+                            alt={field.label}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span style={{ padding: "0 0.5rem", fontSize: "0.7rem", color: "#6f6f68", textAlign: "center" }}>
+                            Imagem por omissão
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label
+                          className="cursor-pointer rounded px-3 py-1.5 text-center text-xs font-medium"
+                          style={{ backgroundColor: "#b87333", color: "#0a0a0a", opacity: uploadingKey === field.key ? 0.6 : 1 }}
+                        >
+                          {uploadingKey === field.key ? "A enviar..." : form[field.key] ? "Trocar foto" : "Enviar foto"}
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="sr-only"
+                            disabled={uploadingKey === field.key}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) void handlePhotoUpload(field.key, file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        {form[field.key] && (
+                          <button
+                            onClick={() => setForm((prev) => ({ ...prev, [field.key]: "" }))}
+                            className="rounded px-3 py-1.5 text-xs"
+                            style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <input
+                      style={{ ...inputStyle, marginTop: "0.5rem" }}
+                      placeholder="https://... ou envia um ficheiro"
+                      value={form[field.key] ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    />
+                  </div>
+                ) : field.full ? (
                   <textarea
                     rows={2}
                     style={{ ...inputStyle, resize: "vertical" as const }}
@@ -203,6 +305,7 @@ export default function DefinicoesPage() {
                     onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   />
                 )}
+
                 <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#6f6f68" }}>{field.hint}</div>
               </div>
             ))}

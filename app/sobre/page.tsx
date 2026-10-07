@@ -1,19 +1,29 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
+import type { SiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "Sobre Nós",
   description: "Conhece a Chikane Garage e consulta o catálogo de viaturas disponíveis.",
 };
 
-export default function SobrePage() {
+export default async function SobrePage() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("site_settings")
+    .select("photo_about_hero, photo_about_garage")
+    .limit(1)
+    .maybeSingle();
+  const photos = data as Pick<SiteSettings, "photo_about_hero" | "photo_about_garage"> | null;
+
   return (
     <div className="bg-background">
       {/* Hero Section */}
       <section className="relative flex min-h-[62vh] items-end overflow-hidden sm:min-h-[72vh]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1800&q=75"
+          src={photos?.photo_about_hero || "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1800&q=75"}
           alt="Automóvel numa garagem, imagem ilustrativa"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
@@ -62,7 +72,7 @@ export default function SobrePage() {
           <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://images.unsplash.com/photo-1486262715619-01b8c2297602?auto=format&fit=crop&w=1000&q=75"
+              src={photos?.photo_about_garage || "https://images.unsplash.com/photo-1486262715619-01b8c2297602?auto=format&fit=crop&w=1000&q=75"}
               alt="Detalhe de manutenção automóvel"
               className="h-full w-full object-cover"
             />
