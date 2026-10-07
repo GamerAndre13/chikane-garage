@@ -143,26 +143,6 @@ html {
   100% { transform: translateX(100%); }
 }
 
-/* ── Ticker marquee (faixa racing em movimento) ── */
-.marquee {
-  display: flex;
-  width: max-content;
-  animation: marquee-scroll 32s linear infinite;
-}
-@keyframes marquee-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .marquee { animation: none; }
-}
-
-/* ── Indicador de scroll do hero ── */
-@keyframes scrollcue {
-  0% { transform: translateY(-100%); }
-  60%, 100% { transform: translateY(200%); }
-}
-
 /* ── Scrollbar discreta (desktop) ── */
 @media (pointer: fine) {
   ::-webkit-scrollbar {

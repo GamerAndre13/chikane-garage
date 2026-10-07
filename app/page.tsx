@@ -27,8 +27,6 @@ const PROCESS_STEPS = [
   { num: "04", title: "Condições", text: "Confirma por escrito as condições da viatura antes de avançar." },
 ];
 
-const TICKER_ITEMS = ["140 Pontos de Verificação", "Diesel Performance", "Garantia Chikane", "Seleção Importada"];
-
 type Vehicle = {
   id: string;
   slug: string;
@@ -101,34 +99,8 @@ export default async function HomePage() {
               A Nossa História
             </Link>
           </div>
-
-          {/* ─── FICHA TÉCNICA (assinatura desktop) ─── */}
-          <div className="mt-12 hidden max-w-3xl grid-cols-4 gap-8 border-t border-white/15 pt-6 md:grid">
-            <div><span className="font-display text-[9px] uppercase tracking-[0.2em] text-white/40">Inspeção</span><span className="mt-1 block font-display text-sm font-semibold uppercase tracking-wide text-white">140 pontos</span></div>
-            <div><span className="font-display text-[9px] uppercase tracking-[0.2em] text-white/40">Motor</span><span className="mt-1 block font-display text-sm font-semibold uppercase tracking-wide text-white">Diesel</span></div>
-            <div><span className="font-display text-[9px] uppercase tracking-[0.2em] text-white/40">Garantia</span><span className="mt-1 block font-display text-sm font-semibold uppercase tracking-wide text-white">Chikane</span></div>
-            <div><span className="font-display text-[9px] uppercase tracking-[0.2em] text-white/40">Origem</span><span className="mt-1 block font-display text-sm font-semibold uppercase tracking-wide text-white">Importadas</span></div>
-          </div>
-        </div>
-
-        {/* ─── INDICADOR DE SCROLL ─── */}
-        <div aria-hidden="true" className="absolute bottom-5 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1.5 text-white/40 lg:flex">
-          <span className="font-display text-[9px] uppercase tracking-[0.28em]">Scroll</span>
-          <span className="h-8 w-px overflow-hidden bg-white/15"><span className="block h-3 w-px animate-[scrollcue_1.6s_ease-in-out_infinite] bg-copper" /></span>
         </div>
       </section>
-
-      {/* ─── TICKER (faixa racing em movimento) ─── */}
-      <div aria-hidden="true" className="overflow-hidden border-y border-black bg-[linear-gradient(90deg,var(--copper-deep),var(--copper)_30%,var(--glow)_60%,var(--copper-light)_100%)]">
-        <div className="marquee py-2.5 font-display text-xs font-semibold uppercase tracking-[0.22em] text-black">
-          <span className="flex shrink-0 items-center">{TICKER_ITEMS.map((item, i) => (
-            <span key={i} className="flex shrink-0 items-center"><span className="px-7">{item}</span><span className="inline-block h-1.5 w-1.5 rotate-45 bg-black/60" /></span>
-          ))}</span>
-          <span className="flex shrink-0 items-center" aria-hidden="true">{TICKER_ITEMS.map((item, i) => (
-            <span key={i} className="flex shrink-0 items-center"><span className="px-7">{item}</span><span className="inline-block h-1.5 w-1.5 rotate-45 bg-black/60" /></span>
-          ))}</span>
-        </div>
-      </div>
 
       {/* ─── DESTAQUE ─── */}
       <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
