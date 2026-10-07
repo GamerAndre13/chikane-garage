@@ -18,7 +18,6 @@ export function VehicleCardGallery({ photos, href, title, children, className }:
           </>}
         </> : <span className="flex h-full w-full flex-col items-center justify-center"><span className="text-5xl">🚗</span><span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span></span>}
       </Link>
-      <div aria-hidden="true" className="speed-lines-strong pointer-events-none absolute inset-0 z-[9] opacity-0 transition-opacity duration-500 group-hover/gallery:opacity-100" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 border border-transparent transition-all duration-300 group-hover/gallery:border-copper/80 group-hover/gallery:shadow-[inset_0_0_30px_rgba(244,119,36,0.18),0_0_22px_rgba(244,119,36,0.25)]" />
       {children}
     </div>

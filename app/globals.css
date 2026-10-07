@@ -103,15 +103,6 @@ html {
   transform: translateY(-4px);
 }
 
-/* ── Riscas de velocidade mais visíveis (overlay nos cartões) ── */
-.speed-lines-strong {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    rgba(244, 119, 36, 0.09) 0 14px,
-    transparent 14px 28px
-  );
-}
-
 /* ── Revelação ao scroll (fade + subida + leve skew) ── */
 .reveal {
   opacity: 0;
