@@ -190,7 +190,7 @@ export default async function HomePage() {
         <div className="speed-lines relative overflow-hidden rounded border border-border bg-surface-mid p-12 sm:p-16">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-copper/10" />
           <div className="relative z-10 mx-auto max-w-2xl text-center">
-            <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Lista Privada</p>
+            <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Newsletter</p>
             <h2 className="mt-4 font-display text-2xl font-bold uppercase tracking-wide text-foreground sm:text-3xl">{t("newsletter.title")}</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted">Receba primeiro cada unidade que entra na garagem, com fotografias e preço, 48 horas antes de ser publicada.</p>
             <NewsletterForm />

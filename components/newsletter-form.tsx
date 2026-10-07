@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
 
 export default function NewsletterForm() {
   const [email, setEmail] = useState("");
@@ -45,7 +44,7 @@ export default function NewsletterForm() {
       setEmail("");
     } else if (response.status === 400 && data.error?.includes("já")) {
       setStatus("done");
-      setMessage("Já te encontras na lista privada.");
+      setMessage("Já te encontras na newsletter.");
       setEmail("");
     } else {
       setStatus("error");

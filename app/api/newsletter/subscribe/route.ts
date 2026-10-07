@@ -36,13 +36,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Erro ao subscrever" }, { status: 500 });
     }
 
-    // Get 3 featured vehicles for the email
+    // Get this week's featured vehicle
     const { data: vehicles } = await supabase
       .from("vehicles")
       .select("brand, model, trim, price, cover_image_url, slug")
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(3);
+      .limit(1);
 
     // Build vehicles HTML
     const vehiclesHtml = vehicles?.length
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         const result = await resend.emails.send({
           from: "Chikane Garage <newsletter@chikanegarage.blog>",
           to: email,
-          subject: "Bem-vindo à Lista Privada da Chikane Garage",
+          subject: "Bem-vindo à Newsletter da Chikane Garage",
           html: `
 <!DOCTYPE html>
 <html>
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     </h1>
 
     <p style="color: #ccc; font-size: 16px; line-height: 1.6;">
-      Obrigado por subscrever a nossa lista privada! 🎉
+      Obrigado por subscrever a nossa newsletter! 🎉
     </p>
 
     <p style="color: #888; font-size: 14px; line-height: 1.6;">

@@ -8,14 +8,14 @@ async function sendTestEmail(email: string) {
 
   const resend = new Resend(process.env.RESEND_API_KEY!);
 
-  // Get 3 featured vehicles
+  // Get featured vehicle
   const supabase = await createClient();
   const { data: vehicles } = await supabase
     .from("vehicles")
     .select("brand, model, trim, price, cover_image_url, slug")
     .eq("status", "available")
     .order("created_at", { ascending: false })
-    .limit(3);
+    .limit(1);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://chikanegarage.blog";
 
@@ -64,7 +64,7 @@ async function sendTestEmail(email: string) {
     </h1>
 
     <p style="color: #ccc; font-size: 16px; line-height: 1.6;">
-      Obrigado por subscrever a nossa lista privada! 🎉
+      Obrigado por subscrever a nossa newsletter! 🎉
     </p>
 
     <p style="color: #888; font-size: 14px; line-height: 1.6;">
@@ -105,7 +105,7 @@ export default async function TestNewsletterPage() {
           <p className="mb-6 text-zinc-400">
             Esta página permite testar o envio de emails do newsletter.
             Vai enviar um email de teste para o endereço indicado com o layout
-            completo: obrigado por subscrever, texto introdutório e 3 viaturas
+            completo: obrigado por subscrever, texto introdutório e 1 viatura
             em destaque.
           </p>
 
@@ -149,7 +149,7 @@ export default async function TestNewsletterPage() {
               para spam ou ser rejeitado
             </li>
             <li>
-              O template inclui: obrigado + texto + 3 viaturas em destaque da BD
+              O template inclui: obrigado + texto + 1 viatura em destaque da BD
             </li>
             <li>
               Verifica a consola do servidor (terminal onde corre o `next dev`)
