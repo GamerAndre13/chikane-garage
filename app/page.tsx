@@ -68,7 +68,7 @@ export default async function HomePage() {
   const t = (key: string) => contentMap[key] || FALLBACK[key as keyof typeof FALLBACK] || "";
 
   return (
-    <div style={{ backgroundColor: "#0a0a0a" }}>
+    <div className="bg-background-alt">
       {/* ─── HERO ─── */}
       <section className="relative flex min-h-[82vh] items-center overflow-hidden">
         <div
@@ -105,17 +105,17 @@ export default async function HomePage() {
       <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
         <div className="mb-9 flex items-end justify-between sm:mb-12">
           <div>
-            <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Currently in the garage</p>
+            <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Atualmente na garagem</p>
             <h2 className="mt-4 max-w-3xl font-display text-5xl font-bold uppercase leading-[0.95] tracking-tight text-white sm:text-7xl lg:text-8xl">Em destaque<br className="hidden sm:block"/> esta semana</h2>
           </div>
           <Link href="/catalogo" className="mb-1 hidden border-b border-copper pb-2 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:text-copper sm:inline">Ver garagem ↗</Link>
         </div>
 
         {vehicles.length === 0 ? (
-          <div className="border border-border p-12 text-center" style={{ backgroundColor: "#141414" }}><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
+          <div className="border border-border bg-surface-mid p-12 text-center"><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
         ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{vehicles.map((v) => {
           const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
-          return <article key={v.id} className="group flex h-full flex-col overflow-hidden border border-white/10 bg-[#111] transition-[border-color,box-shadow] duration-300 hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
+          return <article key={v.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
             <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><span className="absolute left-3 top-3 z-20 border border-copper bg-black/75 px-2.5 py-1.5 font-display text-[9px] font-semibold uppercase tracking-[0.16em] text-copper">Seleção da semana</span></VehicleCardGallery>
             <Link href={`/catalogo/${v.slug}`} className="flex flex-1 flex-col p-5">
               <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
@@ -134,7 +134,7 @@ export default async function HomePage() {
       </section>
 
       {/* ─── A GARAGEM ─── */}
-      <section style={{ backgroundColor: "#10100f" }}>
+      <section className="bg-surface-oxide">
         <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
           <div className="grid items-center gap-16 lg:grid-cols-2">
             <div>
@@ -156,6 +156,9 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ─── FAIXA RACING (divisor com motivos de velocidade) ─── */}
+      <div aria-hidden="true" className="speed-lines h-12 w-full border-y border-copper/15 bg-surface-mid" />
+
       {/* ─── PROCESSO ─── */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">O Nosso Processo</p>
@@ -165,7 +168,7 @@ export default async function HomePage() {
           <div className="grid gap-8 lg:grid-cols-4">
             {PROCESS_STEPS.map((s) => (
               <div key={s.num} className="relative">
-                <div className="relative z-10 mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-copper font-display text-sm font-bold text-copper lg:h-10 lg:w-10 lg:text-xs" style={{ backgroundColor: "#0a0a0a" }}>
+                <div className="relative z-10 mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-copper bg-background-alt font-display text-sm font-bold text-copper lg:h-10 lg:w-10 lg:text-xs">
                   {s.num}
                 </div>
                 <h3 className="font-display text-lg font-bold uppercase tracking-wide text-foreground">{s.title}</h3>
@@ -178,7 +181,7 @@ export default async function HomePage() {
 
       {/* ─── NEWSLETTER ─── */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded border border-border p-12 sm:p-16" style={{ backgroundColor: "#141414" }}>
+        <div className="speed-lines relative overflow-hidden rounded border border-border bg-surface-mid p-12 sm:p-16">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-copper/10" />
           <div className="relative z-10 mx-auto max-w-2xl text-center">
             <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Lista Privada</p>

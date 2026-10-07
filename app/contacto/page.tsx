@@ -9,9 +9,9 @@ type VehicleRef = { id: string; brand: string; model: string; slug: string };
 const inputStyle = {
   width: "100%",
   padding: "0.75rem 1rem",
-  border: "1px solid #2a2a2a",
-  backgroundColor: "#0a0a0a",
-  color: "#f5f5f0",
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--background-alt)",
+  color: "var(--foreground)",
   fontSize: "0.875rem",
   outline: "none",
 } as const;
@@ -128,7 +128,7 @@ function ContactoContent() {
     : "Tem alguma questão? Envia-nos uma mensagem.";
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8" style={{ backgroundColor: "#0a0a0a" }}>
+    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 bg-background-alt">
       <div className="mx-auto max-w-2xl">
         <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">
           {isTestDrive ? "Reserva a tua experiência" : "Fala Connosco"}

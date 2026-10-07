@@ -7,7 +7,7 @@ export function VehicleCardGallery({ photos, href, title, children, className }:
   const [first, second] = photos;
 
   return (
-    <div className={`group/gallery relative aspect-[4/3] overflow-hidden bg-[#1c1c1c] ${className || ""}`}>
+    <div className={`group/gallery relative aspect-[4/3] overflow-hidden bg-surface-raised ${className || ""}`}>
       <Link href={href} aria-label={`Ver ${title}`} className="absolute inset-0 block">
         {first ? <>
           {/* eslint-disable-next-line @next/next/no-img-element */}

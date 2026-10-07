@@ -2,32 +2,46 @@
 
 :root {
   --background: #090909;
+  --background-alt: #0a0a0a;
   --surface: #121110;
+  --surface-mid: #141414;
+  --surface-oxide: #10100f;
+  --surface-deep: #0d0d0c;
   --surface-raised: #1a1917;
   --foreground: #f1efed;
   --muted: #99938d;
   --border: #302d2a;
   --copper: #f47724;
   --copper-light: #ff9145;
+  --copper-deep: #b87333;
   --red: #a32020;
   --red-light: #c41e1e;
   --silver: #c8c8c8;
   --glow: #ff6b1a;
+  --success: #22c55e;
+  --warning: #f59e0b;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-alt: var(--background-alt);
   --color-surface: var(--surface);
+  --color-surface-mid: var(--surface-mid);
+  --color-surface-oxide: var(--surface-oxide);
+  --color-surface-deep: var(--surface-deep);
   --color-surface-raised: var(--surface-raised);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-copper: var(--copper);
   --color-copper-light: var(--copper-light);
+  --color-copper-deep: var(--copper-deep);
   --color-red: var(--red);
   --color-red-light: var(--red-light);
   --color-silver: var(--silver);
   --color-glow: var(--glow);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --font-display: var(--font-oswald), Arial, sans-serif;
   --font-sans: var(--font-inter), Arial, sans-serif;
 }
@@ -58,4 +72,55 @@ a, button { -webkit-tap-highlight-color: transparent; }
 
 html {
   scroll-behavior: smooth;
+}
+
+/* ── Motif "speed": riscas diagonais de velocidade ── */
+.speed-lines {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(244, 119, 36, 0.045) 0 14px,
+    transparent 14px 28px
+  );
+}
+
+/* ── Faixa "racing strip" com gradiente de cobre ── */
+.racing-strip {
+  background-image: linear-gradient(
+    90deg,
+    var(--copper-deep),
+    var(--copper) 30%,
+    var(--glow) 55%,
+    var(--copper-light) 75%,
+    transparent 100%
+  );
+}
+
+/* ── Elevação de cartão ao hover ── */
+.card-lift {
+  transition: transform 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+}
+
+/* ── Scrollbar discreta (desktop) ── */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3a362f;
+    border: 2px solid var(--background);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--copper);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3a362f transparent;
+  }
 }

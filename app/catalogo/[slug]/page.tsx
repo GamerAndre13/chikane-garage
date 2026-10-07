@@ -106,9 +106,9 @@ type Vehicle = {
 
 function statusBadge(status?: string | null): { label: string; color: string } | null {
   switch (status) {
-    case "available": return { label: "Disponível", color: "#22c55e" };
-    case "reserved": return { label: "Reservada", color: "#f59e0b" };
-    case "sold": return { label: "Vendida", color: "#9a9a94" };
+    case "available": return { label: "Disponível", color: "var(--success)" };
+    case "reserved": return { label: "Reservada", color: "var(--warning)" };
+    case "sold": return { label: "Vendida", color: "var(--muted)" };
     default: return null;
   }
 }

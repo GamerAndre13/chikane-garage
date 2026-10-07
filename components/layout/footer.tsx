@@ -38,7 +38,7 @@ export async function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border bg-[#0d0d0c]">
+    <footer className="border-t border-border bg-surface-deep">
       <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 lg:px-12">
         <div className="grid gap-12 md:grid-cols-12">
           {/* Logo + tagline */}
@@ -46,7 +46,7 @@ export async function Footer() {
             <Link href="/" className="font-display text-2xl font-bold uppercase tracking-wider text-white">
               Chikane <span className="text-copper">Garage</span>
             </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-gray-400">
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
               Consulta as viaturas disponíveis e pede informação sobre cada unidade.
             </p>
           </div>
@@ -61,7 +61,7 @@ export async function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-gray-400 transition-colors hover:text-white"
+                    className="text-sm text-muted transition-colors hover:text-foreground"
                   >
                     {link.label}
                   </Link>
@@ -75,19 +75,19 @@ export async function Footer() {
             <h4 className="font-display text-xs font-semibold uppercase tracking-widest text-copper">
               Contactos
             </h4>
-            <ul className="mt-4 space-y-2 text-sm text-gray-400">
+            <ul className="mt-4 space-y-2 text-sm text-muted">
               {phone && <li>
-                <a href={`tel:${phone.replace(/\s/g, "")}`} className="transition-colors hover:text-white">
+                <a href={`tel:${phone.replace(/\s/g, "")}`} className="transition-colors hover:text-foreground">
                   {phone}
                 </a>
               </li>}
               {email && <li>
-                <a href={`mailto:${email}`} className="transition-colors hover:text-white">
+                <a href={`mailto:${email}`} className="transition-colors hover:text-foreground">
                   {email}
                 </a>
               </li>}
               {location && <li>{location}</li>}
-              {!phone && !email && !location && <li><Link href="/contacto" className="hover:text-white">Usa o formulário de contacto</Link></li>}
+              {!phone && !email && !location && <li><Link href="/contacto" className="hover:text-foreground">Usa o formulário de contacto</Link></li>}
             </ul>
           </div>
 
@@ -102,7 +102,7 @@ export async function Footer() {
                   href={instagram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-gray-400 transition-colors hover:bg-copper hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-muted transition-colors hover:bg-copper hover:text-background"
                   aria-label="Instagram"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -117,7 +117,7 @@ export async function Footer() {
                   href={facebook}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-gray-400 transition-colors hover:bg-copper hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-muted transition-colors hover:bg-copper hover:text-background"
                   aria-label="Facebook"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -130,7 +130,7 @@ export async function Footer() {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-gray-400 transition-colors hover:bg-copper hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-muted transition-colors hover:bg-copper hover:text-background"
                   aria-label="WhatsApp"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -139,7 +139,7 @@ export async function Footer() {
                 </a>
               )}
             </div>
-            <p className="mt-4 text-xs text-gray-500">
+            <p className="mt-4 text-xs text-muted/80">
               <Link href="/contacto" className="text-copper transition-colors hover:text-copper-light">
                 Fala connosco
               </Link>
@@ -149,14 +149,14 @@ export async function Footer() {
 
         {/* Legal + copyright */}
         <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted/80">
             &copy; {year} Chikane Garage. Todos os direitos reservados.
           </p>
-          <div className="flex flex-wrap gap-6 text-xs text-gray-500">
-            <Link href="/politica-de-privacidade" className="transition-colors hover:text-white">
+          <div className="flex flex-wrap gap-6 text-xs text-muted/80">
+            <Link href="/politica-de-privacidade" className="transition-colors hover:text-foreground">
               Política de Privacidade
             </Link>
-            <Link href="/termos-e-condicoes" className="transition-colors hover:text-white">
+            <Link href="/termos-e-condicoes" className="transition-colors hover:text-foreground">
               Termos &amp; Condições
             </Link>
             <CookieSettingsButton />

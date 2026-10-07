@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function SobrePage() {
   return (
-    <div className="bg-[#090909]">
+    <div className="bg-background">
       {/* Hero Section */}
       <section className="relative flex min-h-[62vh] items-end overflow-hidden sm:min-h-[72vh]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
