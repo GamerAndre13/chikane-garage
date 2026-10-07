@@ -10,16 +10,16 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
   const move = (delta: number) => setActive((index) => (index + delta + photos.length) % photos.length);
 
   if (!current) return (
-    <div className="flex aspect-[3/2] w-full items-center justify-center border border-border bg-[#141414]">
+    <div className="flex aspect-[3/2] w-full items-center justify-center border border-border bg-surface-mid">
       <div className="flex flex-col items-center"><span className="text-6xl">🚗</span><span className="mt-3 font-display text-xs uppercase tracking-[0.3em] text-copper">Chikane Garage</span></div>
     </div>
   );
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <div className="relative order-1 aspect-[3/2] w-full min-w-0 overflow-hidden border border-border bg-[#141414]">
+      <div className="relative order-1 aspect-[3/2] w-full min-w-0 overflow-hidden border border-border bg-surface-mid">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img key={current.url} src={current.url} alt={current.alt || title} className="h-full w-full object-cover" />
+        <img key={current.url} src={current.url} alt={current.alt || title} className="kenburns h-full w-full object-cover" />
         {photos.length > 1 && <>
           <button type="button" onClick={() => move(-1)} aria-label="Fotografia anterior" className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/60 text-2xl text-white backdrop-blur hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">‹</button>
           <button type="button" onClick={() => move(1)} aria-label="Fotografia seguinte" className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/60 text-2xl text-white backdrop-blur hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">›</button>

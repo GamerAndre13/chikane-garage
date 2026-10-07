@@ -103,6 +103,37 @@ html {
   transform: translateY(-4px);
 }
 
+/* ── Riscas de velocidade mais visíveis (overlay nos cartões) ── */
+.speed-lines-strong {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(244, 119, 36, 0.09) 0 14px,
+    transparent 14px 28px
+  );
+}
+
+/* ── Revelação ao scroll (fade + subida + leve skew) ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px) skewY(0.6deg);
+  transition: opacity 600ms ease, transform 600ms ease;
+  will-change: opacity, transform;
+}
+.reveal.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Ken Burns: zoom lento na fotografia ativa ── */
+@keyframes kenburns {
+  from { transform: scale(1.02) translateY(0); }
+  to { transform: scale(1.1) translateY(-1.5%); }
+}
+.kenburns {
+  animation: kenburns 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
 /* ── Scrollbar discreta (desktop) ── */
 @media (pointer: fine) {
   ::-webkit-scrollbar {

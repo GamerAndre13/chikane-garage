@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import NewsletterForm from "@/components/newsletter-form";
 import VgpuSpeedLines from "@/components/ui/vgpu-speed-lines";
+import { Reveal } from "@/components/ui/reveal";
 
 export const metadata = {
   title: "Chikane Garage — Catálogo de Viaturas",
@@ -103,19 +104,19 @@ export default async function HomePage() {
 
       {/* ─── DESTAQUE ─── */}
       <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
-        <div className="mb-9 flex items-end justify-between sm:mb-12">
+        <Reveal className="mb-9 flex items-end justify-between sm:mb-12">
           <div>
             <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Atualmente na garagem</p>
             <h2 className="mt-4 max-w-3xl font-display text-5xl font-bold uppercase leading-[0.95] tracking-tight text-white sm:text-7xl lg:text-8xl">Em destaque<br className="hidden sm:block"/> esta semana</h2>
           </div>
           <Link href="/catalogo" className="mb-1 hidden border-b border-copper pb-2 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:text-copper sm:inline">Ver garagem ↗</Link>
-        </div>
+        </Reveal>
 
         {vehicles.length === 0 ? (
           <div className="border border-border bg-surface-mid p-12 text-center"><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
-        ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{vehicles.map((v) => {
+        ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{vehicles.map((v, i) => {
           const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
-          return <article key={v.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
+          return <Reveal key={v.id} className="h-full" delay={Math.min(i * 90, 360)}><article className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
             <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><span className="absolute left-3 top-3 z-20 border border-copper bg-black/75 px-2.5 py-1.5 font-display text-[9px] font-semibold uppercase tracking-[0.16em] text-copper">Seleção da semana</span></VehicleCardGallery>
             <Link href={`/catalogo/${v.slug}`} className="flex flex-1 flex-col p-5">
               <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
@@ -129,7 +130,7 @@ export default async function HomePage() {
               </div>
               <div className="mt-auto flex items-center justify-between pt-4"><span className="font-display text-xl font-semibold text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[9px] font-semibold uppercase tracking-[0.15em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div>
             </Link>
-          </article>;
+          </article></Reveal>;
         })}</div>}
       </section>
 
@@ -137,7 +138,7 @@ export default async function HomePage() {
       <section className="bg-surface-oxide">
         <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
           <div className="grid items-center gap-16 lg:grid-cols-2">
-            <div>
+            <Reveal className="min-w-0">
               <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">A História</p>
               <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground sm:text-4xl">
                 Compramos como se fosse<br />para nós. Porque já foi.
@@ -147,11 +148,13 @@ export default async function HomePage() {
               <Link href="/sobre" className="mt-8 inline-block border border-copper px-8 py-3 font-display text-xs font-semibold uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-white">
                 Ler a História Completa →
               </Link>
-            </div>
-            <div className="relative overflow-hidden rounded">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&q=80" alt="BMW Performance" className="h-80 w-full object-cover" />
-            </div>
+            </Reveal>
+            <Reveal className="min-w-0" delay={140}>
+              <div className="relative overflow-hidden rounded">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&q=80" alt="BMW Performance" className="h-80 w-full object-cover" />
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -166,14 +169,16 @@ export default async function HomePage() {
         <div className="relative mt-14">
           <div className="absolute left-0 top-6 hidden h-px w-full bg-border lg:block" />
           <div className="grid gap-8 lg:grid-cols-4">
-            {PROCESS_STEPS.map((s) => (
-              <div key={s.num} className="relative">
-                <div className="relative z-10 mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-copper bg-background-alt font-display text-sm font-bold text-copper lg:h-10 lg:w-10 lg:text-xs">
-                  {s.num}
+            {PROCESS_STEPS.map((s, i) => (
+              <Reveal key={s.num} delay={Math.min(i * 90, 360)}>
+                <div className="relative">
+                  <div className="relative z-10 mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-copper bg-background-alt font-display text-sm font-bold text-copper lg:h-10 lg:w-10 lg:text-xs">
+                    {s.num}
+                  </div>
+                  <h3 className="font-display text-lg font-bold uppercase tracking-wide text-foreground">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{s.text}</p>
                 </div>
-                <h3 className="font-display text-lg font-bold uppercase tracking-wide text-foreground">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{s.text}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -181,6 +186,7 @@ export default async function HomePage() {
 
       {/* ─── NEWSLETTER ─── */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <Reveal>
         <div className="speed-lines relative overflow-hidden rounded border border-border bg-surface-mid p-12 sm:p-16">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-copper/10" />
           <div className="relative z-10 mx-auto max-w-2xl text-center">
@@ -191,6 +197,7 @@ export default async function HomePage() {
             <p className="mt-4 text-xs text-muted">Sem spam. Apenas novidades que interessam.</p>
           </div>
         </div>
+        </Reveal>
       </section>
     </div>
   );
