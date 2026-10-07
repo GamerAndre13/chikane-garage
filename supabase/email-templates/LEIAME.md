@@ -65,8 +65,11 @@ nos logs `RESEND_API_KEY em falta no ambiente`):
 
 ```bash
 npx wrangler login
-npx wrangler secret put RESEND_API_KEY   # valor = o da .env.local
+npx wrangler secret put RESEND_API_KEY --name chikane-garage1   # valor = o da .env.local
 ```
 
-Ou pelo dashboard Cloudflare: **Workers & Pages → chikane-garage →
+**Estado:** `RESEND_API_KEY` já está no worker `chikane-garage1` (desde 2026-10-07) —
+newsletter enviada e verificada fim-a-fim.
+
+Ou pelo dashboard Cloudflare: **Workers & Pages → chikane-garage1 →
 Settings → Variables and Secrets → Add → Secret** (`RESEND_API_KEY`).
