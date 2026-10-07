@@ -39,6 +39,7 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1 }: 
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
   const [query, setQuery] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [brand, setBrand] = useState(all);
   const [model, setModel] = useState(all);
   const [fuel, setFuel] = useState(all);
@@ -75,13 +76,22 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
   const clear = () => { setQuery(""); setBrand(all); setModel(all); setFuel(all); setColor(all); setBodyStyle(all); setMinPower(all); setMaxPower(all); setMinYear(all); setMaxYear(all); setMinPrice(all); setMaxPrice(all); setMinMileage(all); setMaxMileage(all); };
   const optionLabel = (value: string) => value.replaceAll("_", " ").replace(/^./, (first) => first.toLocaleUpperCase("pt-PT"));
 
+  const activeFilterCount = useMemo(() => [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage].filter((value) => value !== all && value !== "").length, [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
+
   return <>
     <div className="mt-9 flex flex-col gap-3 border border-white/10 bg-surface-oxide p-3 sm:flex-row sm:p-4">
       <label className="relative flex-1"><span className="sr-only">Pesquisar viaturas</span><svg className="absolute left-4 top-1/2 -translate-y-1/2 text-copper" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pesquisar por modelo, versão, ano..." className="w-full border border-white/10 bg-black px-12 py-4 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus:border-copper" /></label>
       <div className="flex items-center justify-between gap-5 border border-white/10 bg-black px-5 py-3 sm:min-w-52"><span className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">Em garagem</span><span className="font-display text-lg text-white">{filtered.length.toString().padStart(2, "0")} <span className="text-xs text-white/40">/ {vehicles.length.toString().padStart(2, "0")}</span></span></div>
     </div>
+
+    {/* ── Toggle de filtros (mobile) ── */}
+    <button type="button" onClick={() => setMobileFiltersOpen((open) => !open)} aria-expanded={mobileFiltersOpen} aria-controls="catalogo-filtros" className="mt-4 flex w-full min-h-12 items-center justify-between border border-white/10 bg-surface-oxide px-4 py-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:border-copper/60 lg:hidden">
+      <span className="flex items-center gap-2.5">Filtros{activeFilterCount > 0 && <span className="rounded-full bg-copper px-2 py-0.5 text-[10px] font-bold text-black">{activeFilterCount}</span>}</span>
+      <svg className={`transition-transform duration-200 ${mobileFiltersOpen ? "rotate-180" : ""}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+    </button>
+
     <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
-      <aside className="h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 lg:sticky lg:top-24"><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
+      <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-5">
           <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Marca</span><select className={control} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(all); }}><option value={all}>Todas as marcas</option>{brands.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Modelo</span><select className={control} value={model} disabled={!models.length} onChange={(e) => setModel(e.target.value)}><option value={all}>Todos os modelos</option>{models.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>

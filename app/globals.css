@@ -54,7 +54,7 @@ body {
 
 ::selection { background: rgba(244, 119, 36, 0.35); color: #fff; }
 
-a, button { -webkit-tap-highlight-color: transparent; }
+a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 :focus-visible {
   outline: 2px solid var(--copper-light);
