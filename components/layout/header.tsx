@@ -131,7 +131,7 @@ export function Header() {
             <Link href="/sobre" className={`${navClass("/sobre")} w-fit`} onClick={() => setMobileOpen(false)}>
               Sobre Nós
             </Link>
-            <Link href="/contacto" className="text-sm font-medium uppercase tracking-wide text-silver hover:text-copper" onClick={() => setMobileOpen(false)}>
+            <Link href="/contacto" className={`${navClass("/contacto")} w-fit`} onClick={() => setMobileOpen(false)}>
               Contacto
             </Link>
           </nav>
