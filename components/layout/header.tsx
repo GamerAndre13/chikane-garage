@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase/client";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -30,6 +31,22 @@ export function Header() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // O link "Backoffice" só aparece a utilizadores com role admin.
+  // (O /admin já é bloqueado pelo proxy — isto é só para não mostrar a entrada.)
+  useEffect(() => {
+    const id = user?.id;
+    if (!id) return;
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", id)
+      .maybeSingle()
+      .then(
+        ({ data }) => setIsAdmin(data?.role === "admin"),
+        () => setIsAdmin(false)
+      );
+  }, [user]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -65,12 +82,14 @@ export function Header() {
         <div className="ml-6 flex items-center gap-3">
           {user ? (
             <>
-              <Link
-                href="/admin"
-                className="hidden text-xs font-medium uppercase tracking-widest text-copper hover:text-copper-light transition-colors sm:block"
-              >
-                Backoffice
-              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="hidden text-xs font-medium uppercase tracking-widest text-copper hover:text-copper-light transition-colors sm:block"
+                >
+                  Backoffice
+                </Link>
+              )}
               <Link
                 href="/conta/perfil"
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-silver hover:border-copper hover:text-copper transition-colors"
