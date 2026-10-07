@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirma a tua conta</title>
+</head>
+<body style="margin: 0; padding: 20px; background-color: #0a0a0a; font-family: Arial, Helvetica, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; background: #111; border: 1px solid #222; border-radius: 12px; padding: 30px;">
+
+    <h1 style="margin: 0 0 4px; color: #fff; font-size: 24px; text-transform: uppercase; letter-spacing: 2px;">
+      Chikane <span style="color: #f47724;">Garage</span>
+    </h1>
+    <p style="margin: 0 0 24px; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 3px;">
+      Garagem · Catálogo · Comunidade
+    </p>
+
+    <p style="margin: 0 0 12px; color: #ccc; font-size: 16px; line-height: 1.6;">
+      Recebemos o pedido de criação de conta associado a
+      <strong style="color: #fff;">{{ .Email }}</strong>.
+    </p>
+
+    <p style="margin: 0 0 24px; color: #888; font-size: 14px; line-height: 1.7;">
+      Confirma o teu endereço de email para activares a tua conta. É aí que
+      guardas os teus veículos favoritos e acompanhas o que entra na garagem.
+    </p>
+
+    <p style="margin: 0 0 24px;">
+      <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 14px 28px; background: #f47724; color: #000; text-decoration: none; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border-radius: 6px;">
+        Confirmar conta
+      </a>
+    </p>
+
+    <p style="margin: 0 0 6px; color: #666; font-size: 12px; line-height: 1.6;">
+      Se o botão não funcionar, copia e cola este link no teu navegador:
+    </p>
+    <p style="margin: 0 0 24px; word-break: break-all;">
+      <a href="{{ .ConfirmationURL }}" style="color: #f47724; font-size: 12px; text-decoration: underline;">{{ .ConfirmationURL }}</a>
+    </p>
+
+    <p style="margin: 0; padding-top: 20px; border-top: 1px solid #333; color: #666; font-size: 12px; line-height: 1.6;">
+      Se não pediste esta conta, ignora este email — nada será activado.<br>
+      © Chikane Garage. Todos os direitos reservados.<br>
+      <a href="https://chikanegarage.blog" style="color: #888; text-decoration: underline;">chikanegarage.blog</a>
+    </p>
+
+  </div>
+</body>
+</html>

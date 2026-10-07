@@ -16,6 +16,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email } = body;
 
+    // URL base do site: em produção o build pode não incluir NEXT_PUBLIC_SITE_URL,
+    // por isso usamos a origem do próprio pedido como fallback.
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+
     // Validate email
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
           <p style="margin: 10px 0 0; font-size: 16px; color: #fff; font-weight: bold;">${
             v.price ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"
           }</p>
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/catalogo/${v.slug}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #f47724; color: #000; text-decoration: none; font-size: 12px; font-weight: bold; border-radius: 4px;">Ver detalhes</a>
+          <a href="${siteUrl}/catalogo/${v.slug}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #f47724; color: #000; text-decoration: none; font-size: 12px; font-weight: bold; border-radius: 4px;">Ver detalhes</a>
         </div>
       `
           )
@@ -107,7 +111,7 @@ export async function POST(request: NextRequest) {
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
       <p style="color: #666; font-size: 12px; margin: 0;">
         © ${new Date().getFullYear()} Chikane Garage. Todos os direitos reservados.<br>
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(
+        <a href="${siteUrl}/unsubscribe?email=${encodeURIComponent(
           email
         )}" style="color: #666; text-decoration: underline;">Cancelar subscrição</a>
       </p>
@@ -117,12 +121,19 @@ export async function POST(request: NextRequest) {
 </html>
           `,
         });
-        console.log("Email sent successfully:", JSON.stringify(result));
+        // O SDK do Resend não lança exceção em erros da API — temos de ler result.error
+        if (result.error) {
+          console.error("Resend API error:", JSON.stringify(result.error));
+        } else {
+          console.log("Email sent successfully:", result.data?.id);
+        }
       } catch (emailError) {
         console.error("Email send error:", emailError);
       }
     } else {
-      console.log("Resend not initialized - email skipped");
+      console.error(
+        "RESEND_API_KEY em falta no ambiente - email do newsletter NAO enviado"
+      );
     }
 
     return NextResponse.json({ success: true });
