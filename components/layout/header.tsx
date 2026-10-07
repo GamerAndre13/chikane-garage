@@ -57,6 +57,9 @@ export function Header() {
           <Link href="/sobre" className={navClass("/sobre")}>
             Sobre Nós
           </Link>
+          <Link href="/contacto" className={navClass("/contacto")}>
+            Contacto
+          </Link>
         </nav>
 
         <div className="ml-6 flex items-center gap-3">

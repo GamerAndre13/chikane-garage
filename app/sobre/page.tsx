@@ -82,7 +82,7 @@ export default function SobrePage() {
         </div>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Step 1 */}
-          <div className="border border-white/10 bg-[#111] p-6">
+          <div className="border border-white/10 bg-surface p-6">
             <div className="flex h-12 w-12 items-center justify-center border border-copper/30 bg-copper/10">
               <span className="font-display text-xl font-bold text-copper">01</span>
             </div>
@@ -96,7 +96,7 @@ export default function SobrePage() {
           </div>
 
           {/* Step 2 */}
-          <div className="border border-white/10 bg-[#111] p-6">
+          <div className="border border-white/10 bg-surface p-6">
             <div className="flex h-12 w-12 items-center justify-center border border-copper/30 bg-copper/10">
               <span className="font-display text-xl font-bold text-copper">02</span>
             </div>
@@ -110,7 +110,7 @@ export default function SobrePage() {
           </div>
 
           {/* Step 3 */}
-          <div className="border border-white/10 bg-[#111] p-6">
+          <div className="border border-white/10 bg-surface p-6">
             <div className="flex h-12 w-12 items-center justify-center border border-copper/30 bg-copper/10">
               <span className="font-display text-xl font-bold text-copper">03</span>
             </div>
@@ -124,7 +124,7 @@ export default function SobrePage() {
           </div>
 
           {/* Step 4 */}
-          <div className="border border-white/10 bg-[#111] p-6">
+          <div className="border border-white/10 bg-surface p-6">
             <div className="flex h-12 w-12 items-center justify-center border border-copper/30 bg-copper/10">
               <span className="font-display text-xl font-bold text-copper">04</span>
             </div>
