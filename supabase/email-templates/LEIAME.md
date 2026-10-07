@@ -24,7 +24,7 @@ saiam de `no-reply@chikanegarage.blog` via Resend em vez de
    |---|---|
    | Enable SMTP | ✅ |
    | Host | `smtp.resend.com` |
-   | Port | `465` (SSL) |
+   | Port | `587` (STARTTLS) |
    | Username | `resend` |
    | Password | `<RESEND_API_KEY>` |
    | Sender email | `no-reply@chikanegarage.blog` |
@@ -33,7 +33,13 @@ saiam de `no-reply@chikanegarage.blog` via Resend em vez de
 3. **Save**.
 
 Referência oficial: <https://resend.com/docs/send-with-supabase-smtp>
-(portos alternativos: 25/587/2587 STARTTLS — se 465 falhar, usar 587).
+(usa **587** — é o valor da doc da Supabase; 465 também aceita, mas
+**nunca uma porta inválida**: a causa original do bug de confirmação foi a
+porta estar `461` — typo —, que fazia o signup pendurar e dar 504.)
+
+**Estado:** SMTP verificado fim-a-fim a 2026-10-07 (via Management API):
+signup devolve 200 e o email de confirmação chega ao Resend com o template
+personalizado.
 
 ## 2. Template da confirmação de conta
 
@@ -51,7 +57,9 @@ Variáveis usadas (a Supabase substitui-as ao enviar):
 ## 3. Teste
 
 1. Criar uma conta nova em <https://chikanegarage.blog/conta>.
-2. Deve chegar o email "Confirma a tua conta" com o botão cobre.
+2. Deve chegar o email de confirmação — assunto default da Supabase
+   (*Confirm your email address*; não é editável) com o corpo do template
+   personalizado (título «Confirma a tua conta»).
 3. Clicar no botão → conta activa e sessão iniciada.
 
 ---
