@@ -51,6 +51,14 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
       { key: "photo_about_garage", label: "Sobre · A garagem", hint: "Secção «A garagem». Recomendado 1000×800.", photo: true },
     ],
   },
+  {
+    title: "Avatares de perfil",
+    description:
+      "Lista de imagens de carros para avatares aleatórios. Uma por linha ou envia ficheiros — os avatares serão atribuídos aleatoriamente a todos os utilizadores.",
+    fields: [
+      { key: "avatar_pool", label: "Avatares (lista)", hint: "Um URL por linha. Os uploads são adicionados à lista.", full: true },
+    ],
+  },
 ];
 
 export default function DefinicoesPage() {
@@ -83,6 +91,7 @@ export default function DefinicoesPage() {
           photo_home_history: row.photo_home_history ?? "",
           photo_about_hero: row.photo_about_hero ?? "",
           photo_about_garage: row.photo_about_garage ?? "",
+          avatar_pool: row.avatar_pool ?? "",
         });
       }
       setLoading(false);
@@ -130,7 +139,7 @@ export default function DefinicoesPage() {
       const faltaMigration = /does not exist|row-level security/i.test(saveError.message);
       setError(
         faltaMigration
-          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql e supabase/005_site_settings_fotos.sql no SQL Editor do Supabase e volta a tentar."
+          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql e supabase/005_backoffice_site.sql no SQL Editor do Supabase e volta a tentar."
           : `Erro ao guardar: ${saveError.message}`
       );
       return;
@@ -292,7 +301,7 @@ export default function DefinicoesPage() {
                   </div>
                 ) : field.full ? (
                   <textarea
-                    rows={2}
+                    rows={6}
                     style={{ ...inputStyle, resize: "vertical" as const }}
                     value={form[field.key] ?? ""}
                     onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -307,6 +316,43 @@ export default function DefinicoesPage() {
                 )}
 
                 <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#6f6f68" }}>{field.hint}</div>
+
+                {field.key === "avatar_pool" && (
+                  <div className="mt-2">
+                    <label
+                      className="cursor-pointer inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium"
+                      style={{ backgroundColor: "#b87333", color: "#0a0a0a" }}
+                    >
+                      {uploadingKey === "avatar_pool" ? "A enviar..." : "Enviar foto para adicionar à lista"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        disabled={uploadingKey === "avatar_pool"}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setUploadingKey("avatar_pool");
+                            setError(null);
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            fd.append("name", "avatar_pool");
+                            uploadSiteImage(fd).then((res) => {
+                              setUploadingKey(null);
+                              if (res.error) setError(res.error);
+                              if (res.url) {
+                                const current = form[field.key] ?? "";
+                                const newVal = current ? current + "\n" + res.url : res.url;
+                                setForm((prev) => ({ ...prev, [field.key]: newVal }));
+                              }
+                            });
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
             ))}
           </div>

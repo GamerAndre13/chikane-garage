@@ -16,4 +16,5 @@ export type SiteSettings = {
   photo_home_history?: string | null;
   photo_about_hero?: string | null;
   photo_about_garage?: string | null;
+  avatar_pool?: string | null;
 };

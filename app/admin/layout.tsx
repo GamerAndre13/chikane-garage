@@ -6,6 +6,7 @@ const links = [
   { href: "/admin/veiculos", label: "Viaturas" },
   { href: "/admin/conteudo", label: "Conteúdo" },
   { href: "/admin/pedidos", label: "Pedidos" },
+  { href: "/admin/contas", label: "Contas" },
   { href: "/admin/definicoes", label: "Definições" },
 ];
 
