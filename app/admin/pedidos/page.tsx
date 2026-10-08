@@ -206,7 +206,7 @@ export default function PedidosPage() {
                     {c.status === "new" && (
                       <button
                         onClick={() => updateContactStatus(c.id, "read")}
-                        className="text-xs mr-2"
+                        className="text-xs mr-2 hover:opacity-80 cursor-pointer"
                         style={{ color: "#3b82f6" }}
                       >
                         Marcar Lido
@@ -215,7 +215,7 @@ export default function PedidosPage() {
                     {c.status === "read" && (
                       <button
                         onClick={() => updateContactStatus(c.id, "confirmed")}
-                        className="text-xs mr-2"
+                        className="text-xs mr-2 hover:opacity-80 cursor-pointer"
                         style={{ color: "#22c55e" }}
                       >
                         Confirmar
@@ -277,16 +277,16 @@ export default function PedidosPage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2">
-                        <button onClick={() => confirmTestDrive(d)} className="text-xs" style={{ color: "#22c55e" }}>
+                        <button onClick={() => confirmTestDrive(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#22c55e" }}>
                           Confirmar
                         </button>
-                        <button onClick={() => rejectTestDrive(d.id)} className="text-xs" style={{ color: "#ef4444" }}>
+                        <button onClick={() => rejectTestDrive(d.id)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#ef4444" }}>
                           Rejeitar
                         </button>
                         {d.status === "confirmed" && (
                           <button
                             onClick={() => updateTestDriveStatus(d.id, "completed")}
-                            className="text-xs"
+                            className="text-xs hover:opacity-80 cursor-pointer"
                             style={{ color: "#3b82f6" }}
                           >
                             Concluir
@@ -301,7 +301,7 @@ export default function PedidosPage() {
                           className="px-2 py-1 text-xs border rounded bg-transparent"
                           style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}
                         />
-                        <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs" style={{ color: "#c0c0b8" }}>
+                        <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#c0c0b8" }}>
                           Alterar
                         </button>
                       </div>
