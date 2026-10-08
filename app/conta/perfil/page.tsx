@@ -345,7 +345,7 @@ export default function PerfilPage() {
               <div className="mt-3 border border-border bg-surface-raised p-3">
                 <p className="text-xs text-muted mb-2">Tens a certeza? Após enviar, o pedido fica em espera até ser aprovado por um administrador.</p>
                 <div className="flex gap-2">
-                  <button type="button" className="flex-1 border border-border px-3 py-2 font-display text-xs uppercase tracking-widest text-muted hover:border-copper hover:text-foreground transition-colors"
+                  <button type="button" className="flex-1 border border-border px-3 py-2 font-display text-xs uppercase tracking-widest text-muted hover:bg-red hover:text-background transition-colors"
                     disabled={requestingDelete}
                     onClick={requestDeletion}>
                     {requestingDelete ? "A enviar..." : "Sim, eliminar"}
