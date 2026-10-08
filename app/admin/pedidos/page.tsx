@@ -33,7 +33,7 @@ export default function PedidosPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"contactos" | "testdrives">("contactos");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const [contactsRes, drivesRes] = await Promise.all([
       supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
@@ -42,10 +42,11 @@ export default function PedidosPage() {
     setContacts(contactsRes.data || []);
     setTestDrives(drivesRes.data || []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
+     
   }, [fetchData]);
 
   const updateContactStatus = async (id: string, status: string) => {
