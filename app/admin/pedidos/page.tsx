@@ -86,14 +86,30 @@ export default function PedidosPage() {
 
   const confirmTestDrive = async (td: TestDrive) => {
     const confirmedDate = td.confirmed_date || td.preferred_date;
-    await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: confirmedDate }).eq("id", td.id);
-    await sendTestDriveEmail(td, confirmedDate, "confirm");
-    fetchData();
+    try {
+      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: confirmedDate }).eq("id", td.id);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      await sendTestDriveEmail(td, confirmedDate, "confirm");
+      fetchData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro");
+    }
   };
 
   const rejectTestDrive = async (id: string) => {
-    await supabase.from("test_drives").update({ status: "rejected" }).eq("id", id);
-    fetchData();
+    try {
+      const { error } = await supabase.from("test_drives").update({ status: "rejected" }).eq("id", id);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      fetchData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro");
+    }
   };
 
   const updateTestDriveConfirmedDate = async (td: TestDrive) => {
@@ -103,9 +119,17 @@ export default function PedidosPage() {
       return;
     }
     const confirmedDate = input.value;
-    await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: confirmedDate }).eq("id", td.id);
-    await sendTestDriveEmail(td, confirmedDate, "update");
-    fetchData();
+    try {
+      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: confirmedDate }).eq("id", td.id);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      await sendTestDriveEmail(td, confirmedDate, "update");
+      fetchData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro");
+    }
   };
 
   const formatDate = (dateStr: string) => {
