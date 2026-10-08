@@ -38,8 +38,7 @@ export default function PerfilPage() {
       await loadProfileInternal(cu);
     };
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router]);
   const loadProfileInternal = async (user: { id: string; email?: string | null }) => {
     setLoading(true);
     try {
@@ -50,7 +49,7 @@ export default function PerfilPage() {
           .from("profiles")
           .select("full_name, email, phone, avatar_url, deletion_requested_at")
           .eq("id", user.id)
-          .single(),
+          .maybeSingle(),
         supabase.from("site_settings").select("avatar_pool").limit(1).maybeSingle(),
       ]);
 
