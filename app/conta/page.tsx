@@ -41,7 +41,7 @@ function ContaPageContent() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName } },
+          options: { data: { full_name: fullName }, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}` },
         });
         if (error) throw error;
 
@@ -105,9 +105,16 @@ function ContaPageContent() {
           <label className="block text-xs uppercase tracking-wide text-muted">Password *</label>
           <input name="password" type="password" required minLength={6} className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
         </div>
-        <button type="submit" disabled={loading} className="w-full bg-copper px-6 py-3 font-display text-sm uppercase tracking-widest text-background disabled:opacity-50">
-          {loading ? "A processar..." : mode === "login" ? "Entrar" : "Criar Conta"}
-        </button>
+        {mode === "register" && (
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="subscribe_newsletter" name="subscribe_newsletter" className="w-4 h-4" defaultChecked />
+            <label htmlFor="subscribe_newsletter" className="text-xs text-muted">Subscrever ao newsletter</label>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="remember_me" name="remember_me" className="w-4 h-4" />
+          <label htmlFor="remember_me" className="text-xs text-muted">Manter sessão iniciada</label>
+        </div>
       </form>
 
       <div className="mt-6 flex items-center gap-4">
