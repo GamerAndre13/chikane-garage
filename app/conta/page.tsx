@@ -115,6 +115,9 @@ function ContaPageContent() {
           <input type="checkbox" id="remember_me" name="remember_me" className="w-4 h-4" />
           <label htmlFor="remember_me" className="text-xs text-muted">Manter sessão iniciada</label>
         </div>
+        <button type="submit" disabled={loading} className="w-full bg-copper px-6 py-3 font-display text-sm uppercase tracking-widest text-background disabled:opacity-50">
+          {loading ? "A processar..." : mode === "login" ? "Entrar" : "Criar Conta"}
+        </button>
       </form>
 
       <div className="mt-6 flex items-center gap-4">
