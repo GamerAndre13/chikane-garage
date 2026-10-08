@@ -326,10 +326,10 @@ export default function PerfilPage() {
             <FavoritesList />
           </section>
 
-          <section className="border border-red/30 bg-red/5 p-6">
-            <h2 className="font-display text-lg uppercase tracking-wide text-red mb-4">Zona de Perigo</h2>
-            <p className="text-xs text-red-light mb-4">Eliminar a tua conta é irreversível.</p>
-            <button type="button" className="border border-border px-4 py-2 font-display text-xs uppercase tracking-widest text-muted hover:bg-copper hover:text-background transition-colors w-full"
+          <section className="border border-border bg-surface p-6">
+            <h2 className="font-display text-lg uppercase tracking-wide text-copper mb-4">Zona de Perigo</h2>
+            <p className="text-xs text-muted mb-4">Eliminar a tua conta é irreversível.</p>
+            <button type="button" className="border border-border px-4 py-2 font-display text-xs uppercase tracking-widest text-muted hover:border-copper hover:text-foreground transition-colors w-full"
               disabled={deletionRequested || requestingDelete}
               onClick={() => setShowDeleteConfirm(true)}>
               {deletionRequested ? "Pedido de eliminação em espera" : "Eliminar Conta"}
@@ -342,10 +342,10 @@ export default function PerfilPage() {
               </button>
             )}
             {showDeleteConfirm && (
-              <div className="mt-3 border border-red/30 bg-red/5 p-3">
-                <p className="text-xs text-red-light mb-2">Tens a certeza? Após enviar, o pedido fica em espera até ser aprovado por um administrador.</p>
+              <div className="mt-3 border border-border bg-surface-raised p-3">
+                <p className="text-xs text-muted mb-2">Tens a certeza? Após enviar, o pedido fica em espera até ser aprovado por um administrador.</p>
                 <div className="flex gap-2">
-                  <button type="button" className="flex-1 border border-red px-3 py-2 font-display text-xs uppercase tracking-widest text-red hover:bg-red hover:text-background transition-colors"
+                  <button type="button" className="flex-1 border border-border px-3 py-2 font-display text-xs uppercase tracking-widest text-muted hover:border-copper hover:text-foreground transition-colors"
                     disabled={requestingDelete}
                     onClick={requestDeletion}>
                     {requestingDelete ? "A enviar..." : "Sim, eliminar"}

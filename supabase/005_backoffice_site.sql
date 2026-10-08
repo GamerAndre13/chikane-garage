@@ -43,7 +43,7 @@ AS $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Sem permissão';
   END IF;
@@ -69,12 +69,12 @@ AS $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Sem permissão';
   END IF;
 
-  DELETE FROM auth.users WHERE id = target_id;
+  DELETE FROM auth.users WHERE auth.users.id = target_id;
 END;
 $$;
 
@@ -91,14 +91,12 @@ AS $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
   ) THEN
     RAISE EXCEPTION 'Sem permissão';
   END IF;
 
-  UPDATE public.profiles
-  SET deletion_requested_at = NULL, updated_at = NOW()
-  WHERE id = target_id AND deletion_requested_at IS NOT NULL;
+  UPDATE public.profiles SET deletion_requested_at = NULL, updated_at = NOW() WHERE profiles.id = target_id AND deletion_requested_at IS NOT NULL;
 END;
 $$;
 

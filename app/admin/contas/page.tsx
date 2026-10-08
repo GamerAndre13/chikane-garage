@@ -19,14 +19,20 @@ export default function ContasPage() {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase.rpc("admin_pending_deletions");
-    if (error) {
-      setError(error.message);
+    try {
+      const { data, error } = await supabase.rpc("admin_pending_deletions");
+      if (error) {
+        setError(error.message);
+        setItems([]);
+      } else {
+        setItems((data as PendingDeletion[]) || []);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao carregar");
       setItems([]);
-    } else {
-      setItems((data as PendingDeletion[]) || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -44,25 +50,35 @@ export default function ContasPage() {
   const approveDelete = async (id: string) => {
     setActingId(id);
     setError(null);
-    const { error } = await supabase.rpc("admin_delete_user", { target_id: id });
-    setActingId(null);
-    if (error) {
-      setError(error.message);
-      return;
+    try {
+      const { error } = await supabase.rpc("admin_delete_user", { target_id: id });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      await fetchData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao eliminar");
+    } finally {
+      setActingId(null);
     }
-    await fetchData();
   };
 
   const rejectDelete = async (id: string) => {
     setActingId(id);
     setError(null);
-    const { error } = await supabase.rpc("admin_clear_deletion_request", { target_id: id });
-    setActingId(null);
-    if (error) {
-      setError(error.message);
-      return;
+    try {
+      const { error } = await supabase.rpc("admin_clear_deletion_request", { target_id: id });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      await fetchData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao recusar");
+    } finally {
+      setActingId(null);
     }
-    await fetchData();
   };
 
   const formatDate = (d: string | null) => {
