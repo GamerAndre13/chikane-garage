@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 
@@ -22,30 +22,49 @@ const STATUS_OPTIONS = [
 
 export default function VeiculosList() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-    setVehicles(data || []);
+    const v = data || [];
+    setAllVehicles(v);
+    setVehicles(v);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    supabase.from("vehicles").select("*").order("created_at", { ascending: false }).then(({ data }) => {
-      if (!active) return;
-      setVehicles(data || []);
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, []);
+    fetchVehicles();
+     
+  }, [fetchVehicles]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja apagar esta viatura?")) return;
     await supabase.from("vehicles").delete().eq("id", id);
     fetchVehicles();
   };
+
+  useEffect(() => {
+    let filtered = [...allVehicles];
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      filtered = filtered.filter((v) => {
+        return (
+          `${v.brand || ""} ${v.model || ""} ${v.trim || ""}`.toLowerCase().includes(term) ||
+          String(v.registration_year || "").includes(term) ||
+          String(v.price || "").includes(term)
+        );
+      });
+    }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((v) => v.status === statusFilter);
+    }
+    setVehicles(filtered);
+     
+  }, [search, statusFilter, allVehicles]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setUpdating(id);
@@ -56,6 +75,11 @@ export default function VeiculosList() {
     if (error) alert("Erro ao atualizar status: " + error.message);
     else fetchVehicles();
     setUpdating(null);
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
   };
 
   if (loading) {
@@ -79,6 +103,36 @@ export default function VeiculosList() {
         >
           + Nova Viatura
         </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-3 items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Pesquisar (marca, modelo, ano, preço)"
+          className="px-3 py-2 text-sm border rounded bg-background"
+          style={{ borderColor: "#2a2a2a", color: "#f5f5f0" }}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 text-sm border rounded bg-background"
+          style={{ borderColor: "#2a2a2a", color: "#f5f5f0" }}
+        >
+          <option value="all">Todos os estados</option>
+          <option value="available">Disponível</option>
+          <option value="reserved">Reservada</option>
+          <option value="sold">Vendida</option>
+        </select>
+        {(search || statusFilter !== "all") && (
+          <button onClick={clearFilters} className="px-3 py-2 text-xs border rounded" style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}>
+            Limpar filtros
+          </button>
+        )}
+        <div className="ml-auto text-xs" style={{ color: "#9a9a94" }}>
+          {vehicles.length} de {allVehicles.length} viaturas
+        </div>
       </div>
 
       <div className="border rounded overflow-hidden" style={{ borderColor: "#2a2a2a" }}>
