@@ -266,6 +266,7 @@ CREATE POLICY "favorites_delete_own" ON public.favorites FOR DELETE USING (auth.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.contact_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT DEFAULT '',
