@@ -111,24 +111,46 @@ function ContactoContent() {
         setLoading(false);
         return;
       }
-      const { error } = await supabase.from("test_drives").insert({
-        ...common,
-        vehicle_id: vehicle.id,
-        preferred_date,
-        preferred_time: (fd.get("preferred_time") as string) || null,
-        notes: (fd.get("notes") as string) || null,
-        status: "pending",
-      });
-      if (error) setError("Erro ao enviar. Tenta novamente.");
-      else { setSuccess(true); (e.target as HTMLFormElement).reset(); }
+      try {
+        const { error } = await supabase.from("test_drives").insert({
+          ...common,
+          vehicle_id: vehicle.id,
+          preferred_date,
+          preferred_time: (fd.get("preferred_time") as string) || null,
+          notes: (fd.get("notes") as string) || null,
+          status: "pending",
+        });
+        if (error) {
+          console.error("Erro test_drives:", error);
+          setError(error.message || "Erro ao enviar. Tenta novamente.");
+        } else {
+          setSuccess(true);
+          setError(null);
+          (e.target as HTMLFormElement).reset();
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "Erro ao enviar. Tenta novamente.");
+      }
     } else {
-      const { error } = await supabase.from("contact_requests").insert({
-        ...common,
-        vehicle_id: vehicle?.id || null,
-        message,
-      });
-      if (error) setError("Erro ao enviar. Tenta novamente.");
-      else { setSuccess(true); (e.target as HTMLFormElement).reset(); }
+      try {
+        const { error } = await supabase.from("contact_requests").insert({
+          ...common,
+          vehicle_id: vehicle?.id || null,
+          message,
+        });
+        if (error) {
+          console.error("Erro contact_requests:", error);
+          setError(error.message || "Erro ao enviar. Tenta novamente.");
+        } else {
+          setSuccess(true);
+          setError(null);
+          (e.target as HTMLFormElement).reset();
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "Erro ao enviar. Tenta novamente.");
+      }
     }
     setLoading(false);
   }
