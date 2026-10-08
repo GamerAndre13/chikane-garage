@@ -132,8 +132,18 @@ export default function PedidosPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("pt-PT", {
+  const formatDate = (dateStr: string, includeTime = false) => {
+    const d = new Date(dateStr);
+    if (includeTime) {
+      return d.toLocaleString("pt-PT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    return d.toLocaleDateString("pt-PT", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -284,8 +294,8 @@ export default function PedidosPage() {
                   <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.email}</td>
                   <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.phone || "-"}</td>
                   <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{formatVehicle(d)}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.preferred_date ? formatDate(d.preferred_date) : "-"}</td>
-                  <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{d.confirmed_date ? formatDate(d.confirmed_date) : "-"}</td>
+                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.preferred_date ? formatDate(d.preferred_date, true) : "-"}</td>
+                  <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "-"}</td>
                   <td className="px-4 py-3">
                     <span
                       className="px-2 py-1 rounded text-xs font-medium"
