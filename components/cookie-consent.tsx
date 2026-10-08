@@ -30,7 +30,7 @@ export function CookieConsent() {
     const open = () => setSettingsOpen(true);
     window.addEventListener("chikane:cookie-settings", open);
     return () => window.removeEventListener("chikane:cookie-settings", open);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function save(value: boolean) {
     const next = { necessary: true as const, analytics: value && Boolean(ANALYTICS_ID), savedAt: new Date().toISOString() };
@@ -63,7 +63,7 @@ export function CookieConsent() {
             {ANALYTICS_ID && <button type="button" onClick={() => save(true)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-copper-light">Aceitar analytics</button>}
           </> : <>
             <button type="button" onClick={() => save(false)} className="min-h-11 border border-white/25 px-4 py-2 text-xs font-semibold text-white">Rejeitar opcionais</button>
-            <button type="button" onClick={() => save(analytics)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black">Guardar escolhas</button>
+            <button type="button" onClick={() => save(analytics)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black">Aceito opcionais</button>
           </>}
         </div>
       </div>
