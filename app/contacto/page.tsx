@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { validarTelemovelPT } from "@/lib/validacao";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 
@@ -154,9 +155,9 @@ function ContactoContent() {
       setLoading(false);
       return;
     }
-    // Todos os campos do formulário são obrigatórios
-    if (phone.length < 3 || phone.length > 30) {
-      setError("Indica um número de telefone (mínimo 3 caracteres).");
+    // Telemóvel português obrigatório: 9 dígitos a começar por 9 (+351 opcional)
+    if (!validarTelemovelPT(phone)) {
+      setError("Indica um telemóvel português válido (9 dígitos, começa por 9).");
       setLoading(false);
       return;
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { validarTelemovelPT } from "@/lib/validacao";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { MyRequests } from "@/components/ui/my-requests";
 import { pickFromPool } from "@/lib/avatar-pool";
@@ -104,7 +105,14 @@ export default function PerfilPage() {
 
     const formData = new FormData(e.currentTarget);
     const full_name = formData.get("full_name") as string;
-    const phone = formData.get("phone") as string;
+    const phone = ((formData.get("phone") as string) || "").trim();
+
+    // Campo opcional: se preenchido, tem de ser um telemóvel português válido
+    if (phone && !validarTelemovelPT(phone)) {
+      setError("Indica um telemóvel português válido (9 dígitos, começa por 9).");
+      setSaving(false);
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
