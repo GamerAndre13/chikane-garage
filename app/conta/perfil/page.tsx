@@ -8,6 +8,15 @@ import { MyRequests } from "@/components/ui/my-requests";
 import { pickFromPool } from "@/lib/avatar-pool";
 import { uploadAvatar } from "@/app/actions/upload";
 
+// Mensagem clara quando a base de dados ainda não tem a coluna/ativação necessária.
+function friendlyDbError(msg: string): string {
+  const low = (msg || "").toLowerCase();
+  if (low.includes("deletion_requested_at") || low.includes("schema cache") || low.includes("pgrst205")) {
+    return "A funcionalidade ainda não está ativa na base de dados. Executa as migrations 005–008 no SQL Editor do Supabase e tenta novamente.";
+  }
+  return msg || "Erro ao guardar o pedido. Tenta novamente.";
+}
+
 export default function PerfilPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -29,16 +38,6 @@ export default function PerfilPage() {
   const [deletionRequested, setDeletionRequested] = useState(false);
   const [cancellingDelete, setCancellingDelete] = useState(false);
 
-  useEffect(() => {
-    const run = async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) { router.push("/conta"); return; }
-      const cu = { id: u.user.id, email: u.user.email || "" };
-      setUser(cu);
-      await loadProfileInternal(cu);
-    };
-    run();
-  }, [router]);
   const loadProfileInternal = async (user: { id: string; email?: string | null }) => {
     setLoading(true);
     try {
@@ -78,6 +77,17 @@ export default function PerfilPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const run = async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) { router.push("/conta"); return; }
+      const cu = { id: u.user.id, email: u.user.email || "" };
+      setUser(cu);
+      await loadProfileInternal(cu);
+    };
+    run();
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -120,7 +130,7 @@ export default function PerfilPage() {
       .eq("id", user.id);
     setRequestingDelete(false);
     if (error) {
-      setError(error.message);
+      setError(friendlyDbError(error.message));
       return;
     }
     setDeletionRequested(true);
@@ -139,7 +149,7 @@ export default function PerfilPage() {
       .eq("id", user.id);
     setCancellingDelete(false);
     if (error) {
-      setError(error.message);
+      setError(friendlyDbError(error.message));
       return;
     }
     setDeletionRequested(false);

@@ -10,6 +10,21 @@ interface PendingDeletion {
   deletion_requested_at: string | null;
 }
 
+// Mensagem clara quando as RPCs/colunas ainda não foram criadas na BD.
+function friendlyDbError(msg: string): string {
+  const low = (msg || "").toLowerCase();
+  if (
+    low.includes("admin_pending_deletions") ||
+    low.includes("admin_delete_user") ||
+    low.includes("admin_clear_deletion_request") ||
+    low.includes("does not exist") ||
+    low.includes("sem permissão")
+  ) {
+    return "Funcionalidade ainda não ativa na base de dados. Executa as migrations 005 e 007 no SQL Editor do Supabase.";
+  }
+  return msg || "Erro ao carregar";
+}
+
 export default function ContasPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<PendingDeletion[]>([]);
@@ -22,13 +37,13 @@ export default function ContasPage() {
     try {
       const { data, error } = await supabase.rpc("admin_pending_deletions");
       if (error) {
-        setError(error.message);
+        setError(friendlyDbError(error.message));
         setItems([]);
       } else {
         setItems((data as PendingDeletion[]) || []);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao carregar");
+      setError(e instanceof Error ? friendlyDbError(e.message) : "Erro ao carregar");
       setItems([]);
     } finally {
       setLoading(false);
@@ -53,12 +68,12 @@ export default function ContasPage() {
     try {
       const { error } = await supabase.rpc("admin_delete_user", { target_id: id });
       if (error) {
-        setError(error.message);
+        setError(friendlyDbError(error.message));
         return;
       }
       await fetchData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao eliminar");
+      setError(e instanceof Error ? friendlyDbError(e.message) : "Erro ao eliminar");
     } finally {
       setActingId(null);
     }
@@ -70,12 +85,12 @@ export default function ContasPage() {
     try {
       const { error } = await supabase.rpc("admin_clear_deletion_request", { target_id: id });
       if (error) {
-        setError(error.message);
+        setError(friendlyDbError(error.message));
         return;
       }
       await fetchData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao recusar");
+      setError(e instanceof Error ? friendlyDbError(e.message) : "Erro ao recusar");
     } finally {
       setActingId(null);
     }
