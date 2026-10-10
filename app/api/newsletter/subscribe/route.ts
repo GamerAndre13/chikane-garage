@@ -25,15 +25,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
     }
 
-    // Save to Supabase
+    // Verifica na tabela antes de subscrever de novo (RPC SECURITY DEFINER)
     const supabase = await createClient();
-    const { error: dbError } = await supabase
-      .from("newsletter_subscribers")
-      .insert({ email });
+    const { data: isNew, error: dbError } = await supabase.rpc("subscribe_newsletter", {
+      p_email: email,
+    });
 
-    if (dbError && dbError.code !== "23505") {
+    if (dbError) {
       console.error("Database error:", dbError);
       return NextResponse.json({ error: "Erro ao subscrever" }, { status: 500 });
+    }
+
+    // Já subscrito (ativo): não volta a enviar email de confirmação
+    if (isNew === false) {
+      return NextResponse.json({ success: true, already: true });
     }
 
     // Get this week's featured vehicle

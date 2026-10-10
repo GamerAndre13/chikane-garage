@@ -38,7 +38,11 @@ export default function NewsletterForm() {
 
     const data = await response.json();
 
-    if (response.ok) {
+    if (response.ok && data.already) {
+      setStatus("done");
+      setMessage("Já te encontras na newsletter.");
+      setEmail("");
+    } else if (response.ok) {
       setStatus("done");
       setMessage("Obrigado! Verifica o teu email para confirmar a subscrição.");
       setEmail("");
