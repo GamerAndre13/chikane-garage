@@ -311,35 +311,60 @@ export default function PedidosPage() {
                   <td className="px-4 py-3" style={{ color: "#9a9a94" }}>{formatDate(d.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <button onClick={() => confirmTestDrive(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#22c55e" }}>
-                          Confirmar
-                        </button>
-                        <button onClick={() => rejectTestDrive(d.id)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#ef4444" }}>
-                          Rejeitar
-                        </button>
-                        {d.status === "confirmed" && (
+                      <div className="flex gap-2 flex-wrap">
+                        {d.status !== "completed" && (
+                          <>
+                            <button onClick={() => confirmTestDrive(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#22c55e" }}>
+                              Confirmar
+                            </button>
+                            <button onClick={() => rejectTestDrive(d.id)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#ef4444" }}>
+                              Rejeitar
+                            </button>
+                            {d.status === "confirmed" && (
+                              <button
+                                onClick={() => updateTestDriveStatus(d.id, "completed")}
+                                className="text-xs hover:opacity-80 cursor-pointer"
+                                style={{ color: "#3b82f6" }}
+                              >
+                                Concluir
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {d.status === "completed" && (
                           <button
-                            onClick={() => updateTestDriveStatus(d.id, "completed")}
+                            onClick={() => {
+                              const notes = prompt("Notas do test-drive (ex.: efetuado, alterado, cliente comprou...)", d.admin_notes || "");
+                              if (notes !== null) {
+                                supabase.from("test_drives").update({ admin_notes: notes }).eq("id", d.id).then(() => fetchData());
+                              }
+                            }}
                             className="text-xs hover:opacity-80 cursor-pointer"
-                            style={{ color: "#3b82f6" }}
+                            style={{ color: "#c0c0b8" }}
                           >
-                            Concluir
+                            Editar info
                           </button>
                         )}
                       </div>
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="datetime-local"
-                          id={`confirmed-date-${d.id}`}
-                          defaultValue={d.confirmed_date ? new Date(new Date(d.confirmed_date).getTime() - new Date(d.confirmed_date).getTimezoneOffset() * 60000).toISOString().slice(0,16) : d.preferred_date ? new Date(new Date(d.preferred_date).getTime() - new Date(d.preferred_date).getTimezoneOffset() * 60000).toISOString().slice(0,16) : ""}
-                          className="px-2 py-1 text-xs border rounded bg-transparent"
-                          style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}
-                        />
-                        <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#c0c0b8" }}>
-                          Alterar
-                        </button>
-                      </div>
+                      {d.status !== "completed" && (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="datetime-local"
+                            id={`confirmed-date-${d.id}`}
+                            defaultValue={d.confirmed_date ? new Date(new Date(d.confirmed_date).getTime() - new Date(d.confirmed_date).getTimezoneOffset() * 60000).toISOString().slice(0,16) : d.preferred_date ? new Date(new Date(d.preferred_date).getTime() - new Date(d.preferred_date).getTimezoneOffset() * 60000).toISOString().slice(0,16) : ""}
+                            className="px-2 py-1 text-xs border rounded bg-transparent"
+                            style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}
+                          />
+                          <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#c0c0b8" }}>
+                            Alterar
+                          </button>
+                        </div>
+                      )}
+                      {d.status === "completed" && d.admin_notes && (
+                        <div className="text-[11px] text-muted max-w-[200px]" style={{ color: "#9a9a94", wordBreak: "break-word" }}>
+                          {d.admin_notes}
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
