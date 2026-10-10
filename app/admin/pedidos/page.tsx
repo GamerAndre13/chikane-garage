@@ -24,6 +24,7 @@ interface TestDrive {
   preferred_date: string;
   confirmed_date?: string | null;
   status: string;
+  admin_notes?: string | null;
   created_at: string;
 }
 
