@@ -13,6 +13,7 @@ DROP INDEX IF EXISTS vehicles_single_spotlight;
 CREATE UNIQUE INDEX vehicles_single_spotlight ON public.vehicles ((spotlight)) WHERE spotlight = true;
 
 -- RPC para marcar/limpar o destaque da semana (apenas admins)
+-- UPDATE com WHERE (obrigatório no Supabase) e num único statement.
 CREATE OR REPLACE FUNCTION public.admin_set_spotlight(p_vehicle_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -27,15 +28,10 @@ BEGIN
     RAISE EXCEPTION 'Sem permissão';
   END IF;
 
-  -- Remove todas as marcas de destaque
-  UPDATE public.vehicles SET spotlight = false;
-
-  IF p_vehicle_id IS NOT NULL THEN
-    IF NOT EXISTS (SELECT 1 FROM public.vehicles WHERE id = p_vehicle_id) THEN
-      RETURN false;
-    END IF;
-    UPDATE public.vehicles SET spotlight = true WHERE id = p_vehicle_id;
-  END IF;
+  -- p_vehicle_id NULL limpa tudo; caso contrário marca só essa viatura
+  UPDATE public.vehicles
+  SET spotlight = (id = p_vehicle_id)
+  WHERE id IS NOT NULL;
 
   RETURN true;
 END;
