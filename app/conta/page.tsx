@@ -5,6 +5,41 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { Suspense } from "react";
 
+// Valida o email antes de criar conta / entrar. Devolve mensagem de erro ou null.
+function validateEmail(value: string): string | null {
+  if (!value) return "Introduz o teu email.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return "Introduz um email válido (ex.: nome@exemplo.com).";
+  }
+  const [local, domain] = value.split("@");
+  if (!local || !domain) return "Introduz um email válido (ex.: nome@exemplo.com).";
+  if (domain.includes("..") || local.startsWith(".") || local.endsWith(".")) {
+    return "Introduz um email válido (ex.: nome@exemplo.com).";
+  }
+  const tld = domain.split(".").pop() || "";
+  if (tld.length < 2) {
+    return "O domínio do email parece inválido (ex.: nome@exemplo.com).";
+  }
+  const comuns = ["gmail.com", "hotmail.com", "outlook.com", "sapo.pt", "yahoo.com", "icloud.com", "live.com", "hotmail.pt"];
+  const sugestoes: Record<string, string> = {
+    "gmail.con": "gmail.com",
+    "gmail.co": "gmail.com",
+    "gmial.com": "gmail.com",
+    "gmai.com": "gmail.com",
+    "hotmail.con": "hotmail.com",
+    "hotmail.co": "hotmail.com",
+    "outlok.com": "outlook.com",
+    "outlook.con": "outlook.com",
+  };
+  if (sugestoes[domain]) {
+    return `Quiseste dizer ${sugestoes[domain]}? Verifica o email.`;
+  }
+  if (comuns.includes(domain)) return null;
+  const tldValido = /^[a-z]{2,}$/.test(tld);
+  if (!tldValido) return "O domínio do email parece inválido.";
+  return null;
+}
+
 function ContaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,9 +62,30 @@ function ContaPageContent() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
+    const email = ((formData.get("email") as string) || "").trim().toLowerCase();
     const password = formData.get("password") as string;
     const fullName = formData.get("full_name") as string;
+
+    // Validar email antes de tentar criar conta / entrar
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      setLoading(false);
+      return;
+    }
+
+    if (mode === "register") {
+      if (!fullName || fullName.trim().length < 2) {
+        setError("Indica o teu nome completo.");
+        setLoading(false);
+        return;
+      }
+      if (!password || password.length < 6) {
+        setError("A password deve ter pelo menos 6 caracteres.");
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (mode === "login") {
