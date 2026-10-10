@@ -148,9 +148,9 @@ FROM public.vehicles WHERE slug = 'bmw-320d-msport-2021';
 -- CONTEÚDO CMS
 -- ============================================================
 INSERT INTO public.site_content (section_key, title, body) VALUES
-  ('hero.tagline', 'Seleção Rigorosa · Garantia Chikane', ''),
-  ('hero.slogan', 'Precision. Imported. Passion Delivered.', ''),
-  ('hero.intro', 'Viaturas diesel BMW de performance, selecionadas a dedo na Europa e entregues em Portugal com garantia completa.', ''),
+  ('hero.tagline', 'Frase de destaque (hero)', 'Seleção rigorosa · Garantia garantida'),
+  ('hero.slogan', 'Slogan (hero)', 'Precision. Perfected. Passion Delivered.'),
+  ('hero.intro', 'Introdução do hero', 'Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.'),
   ('garage.title', 'A Garagem', 'Cada viatura passou por seleção rigorosa.'),
   ('newsletter.title', 'As viaturas saem antes de chegarem ao site', 'Regista-te para novidades.')
 ON CONFLICT (section_key) DO NOTHING;

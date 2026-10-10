@@ -11,9 +11,9 @@ export const metadata = {
 };
 
 const FALLBACK = {
-  "hero.tagline": "Catálogo · Informação por viatura",
-  "hero.slogan": "Precision.\nImported.\nPassion Delivered.",
-  "hero.intro": "Consulta o catálogo e pede informação sobre disponibilidade, equipamento e condições de cada viatura.",
+  "hero.tagline": "Seleção rigorosa · Garantia garantida",
+  "hero.slogan": "Precision.\nPerfected.\nPassion Delivered.",
+  "hero.intro": "Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.",
   "garage.title": "A Garagem",
   "garage.text": "No catálogo encontras os dados e o equipamento registados para cada viatura. Contacta a equipa para confirmar disponibilidade e as condições aplicáveis à unidade.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
@@ -71,11 +71,21 @@ export default async function HomePage() {
   const spotlight = ((spotlightRes.data?.[0] as Vehicle | undefined) ?? vehicles[0]) || null;
   const photos = settingsRes.data as Pick<SiteSettings, "photo_home_hero" | "photo_home_history"> | null;
 
+  // Normaliza chaves (aceita "hero.tagline" e "hero_tagline") para o CMS
+  // funcionar independentemente da convenção usada na base de dados.
+  const normalizeKey = (k: string) => k.replace(/\./g, "");
   const contentMap: Record<string, string> = {};
   for (const row of (contentRes.data || []) as SiteContent[]) {
-    if (row.body) contentMap[row.section_key] = row.body;
+    if (row.body) {
+      contentMap[row.section_key] = row.body;
+      contentMap[normalizeKey(row.section_key)] = row.body;
+    }
   }
-  const t = (key: string) => contentMap[key] || FALLBACK[key as keyof typeof FALLBACK] || "";
+  const t = (key: string) =>
+    contentMap[key] ||
+    contentMap[normalizeKey(key)] ||
+    FALLBACK[key as keyof typeof FALLBACK] ||
+    "";
 
   return (
     <div className="bg-background-alt">
