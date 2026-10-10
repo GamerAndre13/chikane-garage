@@ -214,10 +214,11 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           <p className="mt-7 font-display text-4xl font-medium text-copper sm:text-5xl">{vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
           <p className="mt-1 text-xs text-muted">Preço final. Fala connosco para confirmar todos os detalhes.</p>
 
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex-1 bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
-            <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex-1 border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Marcar test-drive</Link>
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded border border-border bg-surface-mid p-2 sm:flex sm:flex-col sm:gap-2 lg:grid lg:grid-cols-2">
+            <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex-1 bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Info</Link>
+            <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex-1 border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Test-drive</Link>
           </div>
+          <p className="mt-2 text-center text-[11px] text-muted">Escolhe a opção: pedir informação ou marcar test-drive.</p>
 
           <VehicleSpecifications primary={primarySpecs} additional={additionalSpecs} />
 

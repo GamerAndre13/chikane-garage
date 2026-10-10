@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
@@ -22,11 +22,21 @@ const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wider te
 
 function ContactoContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const testdriveSlug = searchParams.get("testdrive");
   const vehicleSlug = searchParams.get("vehicle");
 
   // test-drive mode é ativado quando vem ?testdrive=<slug>
   const isTestDrive = Boolean(testdriveSlug);
+
+  // Alterna entre "pedir info" e "marcar test-drive" na mesma viatura
+  const switchMode = (mode: "info" | "testdrive") => {
+    const slug = testdriveSlug || vehicleSlug;
+    if (!slug) return;
+    const params = new URLSearchParams();
+    params.set(mode === "testdrive" ? "testdrive" : "vehicle", slug);
+    router.replace(`/contacto?${params.toString()}`);
+  };
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -200,6 +210,25 @@ function ContactoContent() {
         </p>
         <h1 className="mt-3 font-display text-5xl font-bold uppercase tracking-wide text-foreground">{heading}</h1>
         <p className="mt-4 text-base leading-relaxed text-muted">{sub}</p>
+
+        {(testdriveSlug || vehicleSlug) && (
+          <div className="mt-6 grid grid-cols-2 gap-2 rounded border border-border bg-surface-mid p-2">
+            <button
+              type="button"
+              onClick={() => switchMode("info")}
+              className={`cursor-pointer rounded px-4 py-3 font-display text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${!isTestDrive ? "bg-copper text-black" : "border border-border text-muted hover:text-foreground"}`}
+            >
+              Pedir info
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("testdrive")}
+              className={`cursor-pointer rounded px-4 py-3 font-display text-xs font-semibold uppercase tracking-[0.2em] transition-colors ${isTestDrive ? "bg-copper text-black" : "border border-border text-muted hover:text-foreground"}`}
+            >
+              Test-drive
+            </button>
+          </div>
+        )}
 
         {vehicleLoading ? (
           <p className="mt-8 text-sm text-muted">A carregar viatura...</p>
