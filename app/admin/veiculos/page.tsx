@@ -12,6 +12,7 @@ interface Vehicle {
   registration_year: number;
   price: number;
   status: string;
+  spotlight?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -73,6 +74,17 @@ export default function VeiculosList() {
       sold_at: newStatus === "sold" ? new Date().toISOString() : null,
     }).eq("id", id);
     if (error) alert("Erro ao atualizar status: " + error.message);
+    else fetchVehicles();
+    setUpdating(null);
+  };
+
+  // Marca/limpa o destaque da semana (só pode existir um)
+  const handleSpotlight = async (id: string, current: boolean) => {
+    setUpdating(id);
+    const { error } = await supabase.rpc("admin_set_spotlight", {
+      p_vehicle_id: current ? null : id,
+    });
+    if (error) alert("Erro ao atualizar destaque: " + error.message);
     else fetchVehicles();
     setUpdating(null);
   };
@@ -143,6 +155,7 @@ export default function VeiculosList() {
               <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ano</th>
               <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Preço</th>
               <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Status</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Destaque</th>
               <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ações</th>
             </tr>
           </thead>
@@ -176,6 +189,21 @@ export default function VeiculosList() {
                       ))}
                     </select>
                   </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleSpotlight(v.id, !!v.spotlight)}
+                      disabled={updating === v.id}
+                      title={v.spotlight ? "Remover destaque da semana" : "Definir como destaque da semana"}
+                      className="px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
+                      style={{
+                        backgroundColor: v.spotlight ? "#f4772420" : "transparent",
+                        color: v.spotlight ? "#f47724" : "#9a9a94",
+                        border: `1px solid ${v.spotlight ? "#f47724" : "#2a2a2a"}`,
+                      }}
+                    >
+                      {v.spotlight ? "★ Destaque" : "☆ Destaque"}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/veiculos/editar/${v.id}`}
@@ -197,7 +225,7 @@ export default function VeiculosList() {
             })}
             {vehicles.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center" style={{ color: "#9a9a94" }}>
+                <td colSpan={6} className="px-4 py-8 text-center" style={{ color: "#9a9a94" }}>
                   Nenhuma viatura encontrada
                 </td>
               </tr>

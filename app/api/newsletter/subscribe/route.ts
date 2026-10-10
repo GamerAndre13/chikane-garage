@@ -41,16 +41,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, already: true });
     }
 
-    // Get this week's featured vehicle
-    const { data: vehicles } = await supabase
-      .from("vehicles")
-      .select("brand, model, trim, price, cover_image_url, slug")
-      .eq("status", "available")
-      .order("created_at", { ascending: false })
-      .limit(1);
+    // Viatura em destaque da semana: primeiro a marcada como spotlight,
+    // com fallback para a mais recente disponível.
+    const [spotlightRes, latestRes] = await Promise.all([
+      supabase
+        .from("vehicles")
+        .select("brand, model, trim, price, cover_image_url, slug")
+        .eq("spotlight", true)
+        .eq("status", "available")
+        .limit(1),
+      supabase
+        .from("vehicles")
+        .select("brand, model, trim, price, cover_image_url, slug")
+        .eq("status", "available")
+        .order("created_at", { ascending: false })
+        .limit(1),
+    ]);
+
+    const vehicles = (spotlightRes.data?.length
+      ? spotlightRes.data
+      : (latestRes.data || [])) as {
+      brand: string | null;
+      model: string | null;
+      trim: string | null;
+      price: number | null;
+      cover_image_url: string | null;
+      slug: string;
+    }[];
 
     // Build vehicles HTML
-    const vehiclesHtml = vehicles?.length
+    const vehiclesHtml = vehicles.length
       ? vehicles
           .map(
             (v) => `

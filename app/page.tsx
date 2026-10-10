@@ -51,18 +51,25 @@ type SiteContent = { section_key: string; body: string | null };
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [vehiclesRes, contentRes, settingsRes] = await Promise.all([
+  const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
       .eq("status", "available")
       .order("created_at", { ascending: false })
       .limit(3),
+    supabase
+      .from("vehicles")
+      .select("*, vehicle_images(url, position, alt_text)")
+      .eq("spotlight", true)
+      .limit(1),
     supabase.from("site_content").select("section_key, body"),
     supabase.from("site_settings").select("photo_home_hero, photo_home_history").limit(1).maybeSingle(),
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
+  // A viatura marcada como destaque da semana (fallback: a mais recente)
+  const spotlight = ((spotlightRes.data?.[0] as Vehicle | undefined) ?? vehicles[0]) || null;
   const photos = settingsRes.data as Pick<SiteSettings, "photo_home_hero" | "photo_home_history"> | null;
 
   const contentMap: Record<string, string> = {};
@@ -106,6 +113,64 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ─── SPOTLIGHT DA SEMANA ─── */}
+      {spotlight && (
+        <section className="border-y border-copper/15 bg-surface-oxide">
+          <div className="mx-auto grid max-w-[1440px] items-stretch lg:grid-cols-2">
+            <Reveal className="relative min-h-[340px] overflow-hidden lg:min-h-[560px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={spotlight.cover_image_url || "/placeholder-car.jpg"}
+                alt={`${spotlight.brand ?? ""} ${spotlight.model ?? ""}`}
+                className="h-full w-full object-cover"
+              />
+              <span className="absolute left-4 top-4 z-10 border border-copper bg-black/75 px-3 py-1.5 font-display text-[10px] font-semibold uppercase tracking-[0.2em] text-copper">
+                ★ Spotlight da semana
+              </span>
+            </Reveal>
+            <div className="flex flex-col justify-center bg-surface-mid p-8 sm:p-12 lg:p-16">
+              <Reveal delay={120}>
+                <p className="font-display text-[10px] uppercase tracking-[0.3em] text-copper">Spotlight da semana</p>
+                <h2 className="mt-4 font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white sm:text-6xl">
+                  {spotlight.brand} {spotlight.model}
+                </h2>
+                {spotlight.trim && (
+                  <p className="mt-3 font-display text-xs uppercase tracking-[0.18em] text-copper">{spotlight.trim}</p>
+                )}
+                <p className="mt-5 max-w-lg text-sm leading-relaxed text-white/55">
+                  {spotlight.description || "Viatura selecionada e inspecionada ao detalhe pela Chikane Garage."}
+                </p>
+                <div className="mt-6 grid max-w-md grid-cols-3 gap-3 border-y border-white/10 py-4">
+                  <div>
+                    <span className="block font-display text-[8px] uppercase tracking-[0.13em] text-white/40">Ano</span>
+                    <span className="mt-1 block text-sm text-white">{spotlight.registration_year ?? "—"}</span>
+                  </div>
+                  <div>
+                    <span className="block font-display text-[8px] uppercase tracking-[0.13em] text-white/40">Quilómetros</span>
+                    <span className="mt-1 block text-sm text-white">{spotlight.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span>
+                  </div>
+                  <div>
+                    <span className="block font-display text-[8px] uppercase tracking-[0.13em] text-white/40">Potência</span>
+                    <span className="mt-1 block text-sm text-white">{spotlight.power_hp ?? "—"} cv</span>
+                  </div>
+                </div>
+                <div className="mt-7 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                  <Link
+                    href={`/catalogo/${spotlight.slug}`}
+                    className="inline-flex items-center justify-center bg-copper px-8 py-3.5 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light"
+                  >
+                    Ver viatura
+                  </Link>
+                  <span className="font-display text-2xl font-semibold text-white">
+                    {spotlight.price != null ? `${spotlight.price.toLocaleString("pt-PT")} €` : "Sob consulta"}
+                  </span>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ─── DESTAQUE ─── */}
       <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
