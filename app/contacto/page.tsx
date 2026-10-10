@@ -60,6 +60,26 @@ function ContactoContent() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // Insere o pedido e, caso a coluna user_id ainda não exista na BD,
+  // repete o insert sem ela para o formulário não falhar em produção.
+  async function insertResilient(
+    table: "contact_requests" | "test_drives",
+    payload: Record<string, unknown>
+  ) {
+    const { error } = await supabase.from(table).insert(payload);
+    if (!error) return null;
+    const msg = `${error.message} ${error.details ?? ""}`.toLowerCase();
+    const missingUserId =
+      payload.user_id !== undefined && (msg.includes("user_id") || error.code === "PGRST204");
+    if (missingUserId) {
+      const rest: Record<string, unknown> = { ...payload };
+      delete rest.user_id;
+      const retry = await supabase.from(table).insert(rest);
+      return retry.error;
+    }
+    return error;
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -134,7 +154,7 @@ function ContactoContent() {
       }
     } else {
       try {
-        const { error } = await supabase.from("contact_requests").insert({
+        const error = await insertResilient("contact_requests", {
           ...common,
           vehicle_id: vehicle?.id || null,
           message,
