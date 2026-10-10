@@ -371,7 +371,6 @@ function ContactoContent() {
                     ))}
                   </optgroup>
                 </select>
-                <p className="mt-1 text-xs text-muted">Disponível entre as 10h–12h e 14h–17h, sempre às :00 ou :30.</p>
               </div>
               <div>
                 <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas *</label>

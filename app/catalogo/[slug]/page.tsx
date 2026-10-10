@@ -214,15 +214,10 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           <p className="mt-7 font-display text-4xl font-medium text-copper sm:text-5xl">{vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
           <p className="mt-1 text-xs text-muted">Preço final. Fala connosco para confirmar todos os detalhes.</p>
 
-          <div className="mt-7 grid grid-cols-2 gap-3">
+          <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 overflow-hidden rounded border border-copper">
-                <Link href={`/contacto?vehicle=${vehicle.slug}`} className="px-4 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.2em] text-copper transition-colors hover:bg-copper hover:text-black">Info</Link>
-                <Link href={`/contacto?testdrive=${vehicle.slug}`} className="border-l border-copper px-4 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.2em] text-copper transition-colors hover:bg-copper hover:text-black">Test-drive</Link>
-              </div>
-              <p className="text-center text-[11px] text-muted">Info / Test-drive</p>
-            </div>
+            <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Pedir informações</Link>
+            <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Marcar test-drive</Link>
           </div>
 
           <VehicleSpecifications primary={primarySpecs} additional={additionalSpecs} />

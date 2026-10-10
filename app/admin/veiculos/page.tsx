@@ -81,11 +81,36 @@ export default function VeiculosList() {
   // Marca/limpa o destaque da semana (só pode existir um)
   const handleSpotlight = async (id: string, current: boolean) => {
     setUpdating(id);
+    // Tenta o RPC (011); se falhar (RPC antigo/ausente), usa update direto
+    // com WHERE — assim "remover destaque" funciona sempre.
     const { error } = await supabase.rpc("admin_set_spotlight", {
       p_vehicle_id: current ? null : id,
     });
-    if (error) alert("Erro ao atualizar destaque: " + error.message);
-    else fetchVehicles();
+    if (!error) {
+      fetchVehicles();
+      setUpdating(null);
+      return;
+    }
+
+    // Limpa qualquer destaque existente (true ou null → false)
+    const clearRes = await supabase
+      .from("vehicles")
+      .update({ spotlight: false })
+      .or("spotlight.eq.true,spotlight.is.null");
+    if (clearRes.error) {
+      alert("Erro ao atualizar destaque: " + clearRes.error.message);
+      setUpdating(null);
+      return;
+    }
+    if (!current) {
+      const setRes = await supabase.from("vehicles").update({ spotlight: true }).eq("id", id);
+      if (setRes.error) {
+        alert("Erro ao atualizar destaque: " + setRes.error.message);
+        setUpdating(null);
+        return;
+      }
+    }
+    fetchVehicles();
     setUpdating(null);
   };
 

@@ -132,19 +132,21 @@ export default function PerfilPage() {
     setError(null);
     setSuccess(null);
 
-    let error: { message: string; code?: string } | null = null;
+    let error: { message: string } | null = null;
 
     // Usa o RPC (fiável e sem dependências de RLS); se a função ainda
     // não existir na BD, tenta o update direto.
-    const { error: rpcError } = await supabase.rpc("request_account_deletion");
+    const { data: rpcOk, error: rpcError } = await supabase.rpc("request_account_deletion");
     if (rpcError && (rpcError.message || "").toLowerCase().includes("request_account_deletion")) {
       const { error: updError } = await supabase
         .from("profiles")
         .update({ deletion_requested_at: new Date().toISOString() })
         .eq("id", user.id);
-      error = updError;
+      error = updError ? { message: updError.message } : null;
     } else if (rpcError) {
-      error = rpcError as { message: string };
+      error = { message: rpcError.message };
+    } else if (rpcOk !== true) {
+      error = { message: "Não encontrámos o teu perfil para registar o pedido." };
     }
 
     setRequestingDelete(false);
@@ -152,9 +154,11 @@ export default function PerfilPage() {
       setError(friendlyDbError(error.message));
       return;
     }
-    setDeletionRequested(true);
+
+    // Relê o perfil da BD para garantir que o estado "em espera" fica persistido
+    await loadProfileInternal(user);
     setShowDeleteConfirm(false);
-    setSuccess("Pedido de eliminação enviado. Está em espera de aprovação por um administrador.");
+    setSuccess("Pedido de eliminação enviado. A tua conta fica com o estado «em espera para eliminar» até aprovação de um administrador.");
   }
 
   async function cancelDeletion() {
@@ -181,7 +185,8 @@ export default function PerfilPage() {
       setError(friendlyDbError(error.message));
       return;
     }
-    setDeletionRequested(false);
+
+    await loadProfileInternal(user);
     setSuccess("Pedido de eliminação cancelado.");
   }
 
@@ -370,7 +375,7 @@ export default function PerfilPage() {
             <button type="button" className="border border-border px-4 py-2 font-display text-xs uppercase tracking-widest text-muted hover:border-copper hover:text-foreground transition-colors w-full"
               disabled={deletionRequested || requestingDelete}
               onClick={() => setShowDeleteConfirm(true)}>
-              {deletionRequested ? "Pedido de eliminação em espera" : "Eliminar Conta"}
+              {deletionRequested ? "Em espera para eliminar" : "Eliminar Conta"}
             </button>
             {deletionRequested && (
               <button type="button" className="mt-2 border border-border px-4 py-2 font-display text-xs uppercase tracking-widest text-muted hover:border-copper hover:text-foreground transition-colors w-full"

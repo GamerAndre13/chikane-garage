@@ -28,9 +28,10 @@ BEGIN
     RAISE EXCEPTION 'Sem permissão';
   END IF;
 
-  -- p_vehicle_id NULL limpa tudo; caso contrário marca só essa viatura
+  -- p_vehicle_id NULL limpa tudo; caso contrário marca só essa viatura.
+  -- COALESCE garante que limpar grava false (nunca NULL).
   UPDATE public.vehicles
-  SET spotlight = (id = p_vehicle_id)
+  SET spotlight = COALESCE(id = p_vehicle_id, false)
   WHERE id IS NOT NULL;
 
   RETURN true;
