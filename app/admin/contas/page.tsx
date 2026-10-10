@@ -59,7 +59,6 @@ export default function ContasPage() {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const approveDelete = async (id: string) => {
@@ -108,14 +107,14 @@ export default function ContasPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p style={{ color: "#9a9a94" }}>A carregar...</p>
+        <p style={{ color: "var(--muted)" }}>A carregar...</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>
+      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
         Contas — Pedidos de eliminação
       </h1>
 
@@ -125,22 +124,22 @@ export default function ContasPage() {
         </div>
       )}
 
-      <div className="border rounded overflow-hidden" style={{ borderColor: "#2a2a2a" }}>
-        <table className="w-full text-sm" style={{ backgroundColor: "#141414" }}>
+      <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
+        <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
           <thead>
-            <tr className="border-b" style={{ borderColor: "#2a2a2a" }}>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Utilizador</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Email</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Pedido em</th>
-              <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ações</th>
+            <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Utilizador</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Email</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Pedido em</th>
+              <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="border-b" style={{ borderColor: "#2a2a2a" }}>
-                <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{item.full_name || "-"}</td>
-                <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{item.email || "-"}</td>
-                <td className="px-4 py-3" style={{ color: "#9a9a94" }}>{formatDate(item.deletion_requested_at)}</td>
+              <tr key={item.id} className="border-b" style={{ borderColor: "var(--border)" }}>
+                <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.full_name || "-"}</td>
+                <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.email || "-"}</td>
+                <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(item.deletion_requested_at)}</td>
                 <td className="px-4 py-3 text-right flex gap-2 justify-end">
                   <button
                     onClick={() => approveDelete(item.id)}
@@ -154,7 +153,7 @@ export default function ContasPage() {
                     onClick={() => rejectDelete(item.id)}
                     disabled={actingId === item.id}
                     className="text-xs px-2 py-1 rounded"
-                    style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}
+                    style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                   >
                     {actingId === item.id ? "A recusar..." : "Recusar"}
                   </button>
@@ -163,7 +162,7 @@ export default function ContasPage() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center" style={{ color: "#9a9a94" }}>
+                <td colSpan={4} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
                   Sem pedidos de eliminação pendentes
                 </td>
               </tr>

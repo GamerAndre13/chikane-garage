@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Imagens: permitir domínios externos (Unsplash, R2 public URL)
+  // Imagens: permitir domínios externos (Unsplash, R2 public URL).
+  // unoptimized: o OpenNext/Cloudflare não serve o optimizer de imagens do
+  // Next sem um binding/loader próprio — manter as URLs originais evita
+  // imagens partidas em produção (o next/image continua a dar width/height).
   images: {
+    unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "*.r2.cloudflarestorage.com" },

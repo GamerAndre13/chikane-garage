@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 interface ContentRow {
@@ -20,15 +20,24 @@ export default function ConteudoCMS() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ContentRow>>({});
 
-  useEffect(() => {
-    fetchContents();
-  }, []);
-
-  const fetchContents = async () => {
+  const fetchContents = useCallback(async () => {
     const { data } = await supabase.from("site_content").select("*").order("section_key");
     setContents(data || []);
     setLoading(false);
-  };
+  }, []);
+
+  // Carga inicial — IIFE com flag de cancelamento (evita setState em efeito
+  // e setState depois de desmontar o componente).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("site_content").select("*").order("section_key");
+      if (cancelled) return;
+      setContents(data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleEdit = (item: ContentRow) => {
     setEditingId(item.id);
@@ -73,7 +82,7 @@ export default function ConteudoCMS() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p style={{ color: "#9a9a94" }}>A carregar...</p>
+        <p style={{ color: "var(--muted)" }}>A carregar...</p>
       </div>
     );
   }
@@ -82,9 +91,9 @@ export default function ConteudoCMS() {
     width: "100%",
     padding: "0.5rem 0.75rem",
     borderRadius: "0.375rem",
-    border: "1px solid #2a2a2a",
-    backgroundColor: "#0a0a0a",
-    color: "#f5f5f0",
+    border: "1px solid var(--border)",
+    backgroundColor: "var(--background-alt)",
+    color: "var(--foreground)",
     fontSize: "0.875rem",
   };
 
@@ -94,15 +103,15 @@ export default function ConteudoCMS() {
     fontSize: "0.75rem",
     textTransform: "uppercase" as const,
     letterSpacing: "0.05em",
-    color: "#9a9a94",
+    color: "var(--muted)",
   };
 
   return (
     <div>
-      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>
+      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
         Conteúdo do Site (CMS)
       </h1>
-      <p className="mb-6" style={{ color: "#9a9a94", fontSize: "0.875rem" }}>
+      <p className="mb-6" style={{ color: "var(--muted)", fontSize: "0.875rem" }}>
         Edite os textos e conteúdos do site. Cada linha representa uma secção.
       </p>
 
@@ -111,15 +120,15 @@ export default function ConteudoCMS() {
           <div
             key={item.id}
             style={{
-              backgroundColor: "#141414",
-              border: "1px solid #2a2a2a",
+              backgroundColor: "var(--surface-mid)",
+              border: "1px solid var(--border)",
               borderRadius: "0.5rem",
               padding: "1rem",
             }}
           >
             {editingId === item.id ? (
               <div>
-                <div style={{ marginBottom: "0.5rem", fontSize: "0.75rem", color: "#b87333" }}>
+                <div style={{ marginBottom: "0.5rem", fontSize: "0.75rem", color: "var(--copper-deep)" }}>
                   A editar: {item.section_key}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
@@ -179,14 +188,14 @@ export default function ConteudoCMS() {
                   <button
                     onClick={handleSave}
                     className="px-3 py-1.5 rounded text-xs font-medium"
-                    style={{ backgroundColor: "#b87333", color: "#0a0a0a" }}
+                    style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
                   >
                     Guardar
                   </button>
                   <button
                     onClick={handleCancel}
                     className="px-3 py-1.5 rounded text-xs"
-                    style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}
+                    style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                   >
                     Cancelar
                   </button>
@@ -195,18 +204,18 @@ export default function ConteudoCMS() {
             ) : (
               <div className="flex justify-between items-start">
                 <div>
-                  <div style={{ fontSize: "0.75rem", color: "#b87333", marginBottom: "0.25rem" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--copper-deep)", marginBottom: "0.25rem" }}>
                     {item.section_key}
                   </div>
-                  <div style={{ color: "#f5f5f0", fontWeight: 500 }}>{item.title}</div>
+                  <div style={{ color: "var(--foreground)", fontWeight: 500 }}>{item.title}</div>
                   {item.subtitle && (
-                    <div style={{ color: "#9a9a94", fontSize: "0.875rem" }}>{item.subtitle}</div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.875rem" }}>{item.subtitle}</div>
                   )}
                 </div>
                 <button
                   onClick={() => handleEdit(item)}
                   className="px-3 py-1.5 rounded text-xs transition-colors"
-                  style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}
+                  style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                 >
                   Editar
                 </button>
@@ -215,7 +224,7 @@ export default function ConteudoCMS() {
           </div>
         ))}
         {contents.length === 0 && (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#9a9a94" }}>
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--muted)" }}>
             Nenhum conteúdo encontrado. Crie tabelas no Supabase.
           </div>
         )}

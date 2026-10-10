@@ -35,7 +35,7 @@ export default async function AdminDashboard() {
     .limit(5);
 
   const stats = [
-    { label: "Total Viaturas", value: totalVehicles ?? 0, color: "#b87333", href: "/admin/veiculos" },
+    { label: "Total Viaturas", value: totalVehicles ?? 0, color: "var(--copper-deep)", href: "/admin/veiculos" },
     { label: "Disponíveis", value: availableVehicles ?? 0, color: "#22c55e", href: "/admin/veiculos" },
     { label: "Reservadas", value: reservedVehicles ?? 0, color: "#f59e0b", href: "/admin/veiculos" },
     { label: "Vendidas", value: soldVehicles ?? 0, color: "#ef4444", href: "/admin/veiculos" },
@@ -46,13 +46,13 @@ export default async function AdminDashboard() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>
+        <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
           Dashboard
         </h1>
         <Link
           href="/admin/analytics"
           className="text-xs uppercase tracking-widest px-4 py-2 border rounded"
-          style={{ borderColor: "#b87333", color: "#b87333" }}
+          style={{ borderColor: "var(--copper-deep)", color: "var(--copper-deep)" }}
         >
           📊 Analytics
         </Link>
@@ -64,13 +64,13 @@ export default async function AdminDashboard() {
           <Link
             key={stat.label}
             href={stat.href}
-            className="block border p-5 rounded transition-colors hover:border-[#b87333]"
-            style={{ borderColor: "#2a2a2a", backgroundColor: "#141414" }}
+            className="block border p-5 rounded transition-colors hover:border-[var(--copper-deep)]"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
           >
             <p className="text-3xl font-display" style={{ color: stat.color }}>
               {stat.value}
             </p>
-            <p className="mt-1 text-xs uppercase tracking-wide" style={{ color: "#9a9a94" }}>
+            <p className="mt-1 text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>
               {stat.label}
             </p>
           </Link>
@@ -82,7 +82,7 @@ export default async function AdminDashboard() {
         <Link
           href="/admin/veiculos/novo"
           className="block border p-4 rounded text-center transition-colors hover:border-[#22c55e]"
-          style={{ borderColor: "#2a2a2a", backgroundColor: "#141414" }}
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
         >
           <span className="text-2xl">🚗</span>
           <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#22c55e" }}>
@@ -92,7 +92,7 @@ export default async function AdminDashboard() {
         <Link
           href="/admin/conteudo"
           className="block border p-4 rounded text-center transition-colors hover:border-[#f59e0b]"
-          style={{ borderColor: "#2a2a2a", backgroundColor: "#141414" }}
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
         >
           <span className="text-2xl">✏️</span>
           <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#f59e0b" }}>
@@ -104,25 +104,25 @@ export default async function AdminDashboard() {
       {/* Recent Activity */}
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         {/* Recent Contacts */}
-        <div className="border rounded p-5" style={{ borderColor: "#2a2a2a", backgroundColor: "#141414" }}>
+        <div className="border rounded p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "#f5f5f0" }}>
+            <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
               Contactos Recentes
             </h2>
-            <Link href="/admin/pedidos" className="text-xs" style={{ color: "#b87333" }}>
+            <Link href="/admin/pedidos" className="text-xs" style={{ color: "var(--copper-deep)" }}>
               Ver todos →
             </Link>
           </div>
           {(!recentContacts || recentContacts.length === 0) ? (
-            <p className="text-sm" style={{ color: "#9a9a94" }}>Sem contactos ainda.</p>
+            <p className="text-sm" style={{ color: "var(--muted)" }}>Sem contactos ainda.</p>
           ) : (
             <div className="space-y-3">
               {recentContacts.map((c) => (
-                <div key={c.id} className="flex items-start justify-between border-b pb-3" style={{ borderColor: "#2a2a2a" }}>
+                <div key={c.id} className="flex items-start justify-between border-b pb-3" style={{ borderColor: "var(--border)" }}>
                   <div>
-                    <p className="text-sm" style={{ color: "#f5f5f0" }}>{c.name}</p>
-                    <p className="text-xs" style={{ color: "#9a9a94" }}>{c.email}</p>
-                    {c.message && <p className="text-xs mt-1 truncate max-w-[200px]" style={{ color: "#6b6b6b" }}>{c.message}</p>}
+                    <p className="text-sm" style={{ color: "var(--foreground)" }}>{c.name}</p>
+                    <p className="text-xs" style={{ color: "var(--muted)" }}>{c.email}</p>
+                    {c.message && <p className="text-xs mt-1 truncate max-w-[200px]" style={{ color: "var(--muted-deep)" }}>{c.message}</p>}
                   </div>
                   <span
                     className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
@@ -140,25 +140,25 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Recent Test Drives */}
-        <div className="border rounded p-5" style={{ borderColor: "#2a2a2a", backgroundColor: "#141414" }}>
+        <div className="border rounded p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "#f5f5f0" }}>
+            <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
               Test Drives Recentes
             </h2>
-            <Link href="/admin/pedidos" className="text-xs" style={{ color: "#b87333" }}>
+            <Link href="/admin/pedidos" className="text-xs" style={{ color: "var(--copper-deep)" }}>
               Ver todos →
             </Link>
           </div>
           {(!recentTestDrives || recentTestDrives.length === 0) ? (
-            <p className="text-sm" style={{ color: "#9a9a94" }}>Sem test drives ainda.</p>
+            <p className="text-sm" style={{ color: "var(--muted)" }}>Sem test drives ainda.</p>
           ) : (
             <div className="space-y-3">
               {recentTestDrives.map((d) => (
-                <div key={d.id} className="flex items-start justify-between border-b pb-3" style={{ borderColor: "#2a2a2a" }}>
+                <div key={d.id} className="flex items-start justify-between border-b pb-3" style={{ borderColor: "var(--border)" }}>
                   <div>
-                    <p className="text-sm" style={{ color: "#f5f5f0" }}>{d.name}</p>
-                    <p className="text-xs" style={{ color: "#9a9a94" }}>{d.email}</p>
-                    {d.preferred_date && <p className="text-xs mt-1" style={{ color: "#6b6b6b" }}>📅 {d.preferred_date}</p>}
+                    <p className="text-sm" style={{ color: "var(--foreground)" }}>{d.name}</p>
+                    <p className="text-xs" style={{ color: "var(--muted)" }}>{d.email}</p>
+                    {d.preferred_date && <p className="text-xs mt-1" style={{ color: "var(--muted-deep)" }}>📅 {d.preferred_date}</p>}
                   </div>
                   <span
                     className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 
@@ -22,7 +22,6 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export default function VeiculosList() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -33,14 +32,21 @@ export default function VeiculosList() {
     const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
     const v = data || [];
     setAllVehicles(v);
-    setVehicles(v);
     setLoading(false);
   }, []);
 
+  // Carga inicial — IIFE com flag de cancelamento para evitar setState
+  // depois de desmontar (evita o aviso react-hooks/set-state-in-effect).
   useEffect(() => {
-    fetchVehicles();
-     
-  }, [fetchVehicles]);
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+      if (cancelled) return;
+      setAllVehicles(data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja apagar esta viatura?")) return;
@@ -48,7 +54,8 @@ export default function VeiculosList() {
     fetchVehicles();
   };
 
-  useEffect(() => {
+  // Filtro local (pesquisa + estado) derivado por memo — evita setState em efeito
+  const visibleVehicles = useMemo(() => {
     let filtered = [...allVehicles];
     if (search.trim()) {
       const term = search.trim().toLowerCase();
@@ -63,9 +70,8 @@ export default function VeiculosList() {
     if (statusFilter !== "all") {
       filtered = filtered.filter((v) => v.status === statusFilter);
     }
-    setVehicles(filtered);
-     
-  }, [search, statusFilter, allVehicles]);
+    return filtered;
+  }, [allVehicles, search, statusFilter]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setUpdating(id);
@@ -122,7 +128,7 @@ export default function VeiculosList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p style={{ color: "#9a9a94" }}>A carregar...</p>
+        <p style={{ color: "var(--muted)" }}>A carregar...</p>
       </div>
     );
   }
@@ -130,13 +136,13 @@ export default function VeiculosList() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>
+        <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
           Viaturas
         </h1>
         <Link
           href="/admin/veiculos/novo"
           className="px-4 py-2 rounded text-sm font-medium transition-colors"
-          style={{ backgroundColor: "#b87333", color: "#0a0a0a" }}
+          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
         >
           + Nova Viatura
         </Link>
@@ -149,13 +155,13 @@ export default function VeiculosList() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Pesquisar (marca, modelo, ano, preço)"
           className="px-3 py-2 text-sm border rounded bg-background"
-          style={{ borderColor: "#2a2a2a", color: "#f5f5f0" }}
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 text-sm border rounded bg-background"
-          style={{ borderColor: "#2a2a2a", color: "#f5f5f0" }}
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
         >
           <option value="all">Todos os estados</option>
           <option value="available">Disponível</option>
@@ -163,37 +169,37 @@ export default function VeiculosList() {
           <option value="sold">Vendida</option>
         </select>
         {(search || statusFilter !== "all") && (
-          <button onClick={clearFilters} className="px-3 py-2 text-xs border rounded" style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}>
+          <button onClick={clearFilters} className="px-3 py-2 text-xs border rounded" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
             Limpar filtros
           </button>
         )}
-        <div className="ml-auto text-xs" style={{ color: "#9a9a94" }}>
-          {vehicles.length} de {allVehicles.length} viaturas
+        <div className="ml-auto text-xs" style={{ color: "var(--muted)" }}>
+          {visibleVehicles.length} de {allVehicles.length} viaturas
         </div>
       </div>
 
-      <div className="border rounded overflow-hidden" style={{ borderColor: "#2a2a2a" }}>
-        <table className="w-full text-sm" style={{ backgroundColor: "#141414" }}>
+      <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
+        <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
           <thead>
-            <tr className="border-b" style={{ borderColor: "#2a2a2a" }}>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Modelo</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ano</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Preço</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Status</th>
-              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Destaque</th>
-              <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ações</th>
+            <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Modelo</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Ano</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Preço</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Status</th>
+              <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Destaque</th>
+              <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {vehicles.map((v) => {
+            {visibleVehicles.map((v) => {
               const statusOpt = STATUS_OPTIONS.find((s) => s.value === v.status) || STATUS_OPTIONS[0];
               return (
-                <tr key={v.id} className="border-b transition-colors" style={{ borderColor: "#2a2a2a" }}>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>
+                <tr key={v.id} className="border-b transition-colors" style={{ borderColor: "var(--border)" }}>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
                     {v.brand} {v.model} {v.trim || ""}
                   </td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{v.registration_year}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{v.registration_year}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
                     {v.price ? `${v.price.toLocaleString("pt-PT")} €` : "-"}
                   </td>
                   <td className="px-4 py-3">
@@ -221,9 +227,9 @@ export default function VeiculosList() {
                       title={v.spotlight ? "Remover destaque da semana" : "Definir como destaque da semana"}
                       className="px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
                       style={{
-                        backgroundColor: v.spotlight ? "#f4772420" : "transparent",
-                        color: v.spotlight ? "#f47724" : "#9a9a94",
-                        border: `1px solid ${v.spotlight ? "#f47724" : "#2a2a2a"}`,
+                        backgroundColor: v.spotlight ? "color-mix(in srgb, var(--copper) 12%, transparent)" : "transparent",
+                        color: v.spotlight ? "var(--copper)" : "var(--muted)",
+                        border: `1px solid ${v.spotlight ? "var(--copper)" : "var(--border)"}`,
                       }}
                     >
                       {v.spotlight ? "★ Destaque" : "☆ Destaque"}
@@ -233,7 +239,7 @@ export default function VeiculosList() {
                     <Link
                       href={`/admin/veiculos/editar/${v.id}`}
                       className="mr-3 text-xs transition-colors"
-                      style={{ color: "#b87333" }}
+                      style={{ color: "var(--copper-deep)" }}
                     >
                       Editar
                     </Link>
@@ -248,9 +254,9 @@ export default function VeiculosList() {
                 </tr>
               );
             })}
-            {vehicles.length === 0 && (
+            {visibleVehicles.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center" style={{ color: "#9a9a94" }}>
+                <td colSpan={6} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
                   Nenhuma viatura encontrada
                 </td>
               </tr>

@@ -10,6 +10,8 @@ export function FavoriteButton({ vehicleId }: { vehicleId: string }) {
     <button
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(vehicleId); }}
       disabled={!loaded}
+      aria-label={active ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+      aria-pressed={active}
       className="absolute top-3 right-3 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-border transition-colors hover:border-copper"
       title={active ? "Remover dos favoritos" : "Adicionar aos favoritos"}
     >

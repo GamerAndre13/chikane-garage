@@ -36,7 +36,6 @@ export default function PedidosPage() {
   const [activeTab, setActiveTab] = useState<"contactos" | "testdrives">("contactos");
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
     const [contactsRes, drivesRes] = await Promise.all([
       supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
       supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
@@ -46,10 +45,22 @@ export default function PedidosPage() {
     setLoading(false);
   }, []);
 
+  // Carga inicial — IIFE com flag de cancelamento (evita setState em efeito
+  // e setState depois de desmontar o componente).
   useEffect(() => {
-    fetchData();
-     
-  }, [fetchData]);
+    let cancelled = false;
+    (async () => {
+      const [contactsRes, drivesRes] = await Promise.all([
+        supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
+        supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
+      ]);
+      if (cancelled) return;
+      setContacts(contactsRes.data || []);
+      setTestDrives(drivesRes.data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const updateContactStatus = async (id: string, status: string) => {
     await supabase.from("contact_requests").update({ status }).eq("id", id);
@@ -212,7 +223,7 @@ export default function PedidosPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p style={{ color: "#9a9a94" }}>A carregar...</p>
+        <p style={{ color: "var(--muted)" }}>A carregar...</p>
       </div>
     );
   }
@@ -222,7 +233,7 @@ export default function PedidosPage() {
 
   return (
     <div>
-      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>
+      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
         Pedidos
       </h1>
 
@@ -232,8 +243,8 @@ export default function PedidosPage() {
           onClick={() => setActiveTab("contactos")}
           className="px-4 py-2 rounded text-sm font-medium transition-colors"
           style={{
-            backgroundColor: activeTab === "contactos" ? "#b87333" : "#1c1c1c",
-            color: activeTab === "contactos" ? "#0a0a0a" : "#9a9a94",
+            backgroundColor: activeTab === "contactos" ? "var(--copper-deep)" : "var(--surface-raised)",
+            color: activeTab === "contactos" ? "var(--background-alt)" : "var(--muted)",
           }}
         >
           Contactos {newContactsCount > 0 && `(${newContactsCount})`}
@@ -242,8 +253,8 @@ export default function PedidosPage() {
           onClick={() => setActiveTab("testdrives")}
           className="px-4 py-2 rounded text-sm font-medium transition-colors"
           style={{
-            backgroundColor: activeTab === "testdrives" ? "#b87333" : "#1c1c1c",
-            color: activeTab === "testdrives" ? "#0a0a0a" : "#9a9a94",
+            backgroundColor: activeTab === "testdrives" ? "var(--copper-deep)" : "var(--surface-raised)",
+            color: activeTab === "testdrives" ? "var(--background-alt)" : "var(--muted)",
           }}
         >
           Test Drives {newDrivesCount > 0 && `(${newDrivesCount})`}
@@ -252,40 +263,40 @@ export default function PedidosPage() {
 
       {/* Contact Requests Table */}
       {activeTab === "contactos" && (
-        <div className="border rounded overflow-hidden" style={{ borderColor: "#2a2a2a" }}>
-          <table className="w-full text-sm" style={{ backgroundColor: "#141414" }}>
+        <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
+          <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
             <thead>
-              <tr className="border-b" style={{ borderColor: "#2a2a2a" }}>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Nome</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Email</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Telefone</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Mensagem</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Status</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Data</th>
-                <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ações</th>
+              <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Nome</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Email</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Telefone</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Mensagem</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Status</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Data</th>
+                <th className="px-4 py-3 text-right uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {contacts.map((c) => (
-                <tr key={c.id} className="border-b" style={{ borderColor: "#2a2a2a" }}>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{c.name}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{c.email}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{c.phone || "-"}</td>
-                  <td className="px-4 py-3" style={{ color: "#9a9a94", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <tr key={c.id} className="border-b" style={{ borderColor: "var(--border)" }}>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.name}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.email}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.phone || "-"}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--muted)", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.message || "-"}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className="px-2 py-1 rounded text-xs font-medium"
                       style={{
-                        backgroundColor: `${statusColors[c.status] || "#9a9a94"}20`,
-                        color: statusColors[c.status] || "#9a9a94",
+                        backgroundColor: `color-mix(in srgb, ${statusColors[c.status] || "var(--muted)"} 12%, transparent)`,
+                        color: statusColors[c.status] || "var(--muted)",
                       }}
                     >
                       {c.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3" style={{ color: "#9a9a94" }}>{formatDate(c.created_at)}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(c.created_at)}</td>
                   <td className="px-4 py-3 text-right">
                     {c.status === "new" && (
                       <button
@@ -310,7 +321,7 @@ export default function PedidosPage() {
               ))}
               {contacts.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center" style={{ color: "#9a9a94" }}>
+                  <td colSpan={7} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
                     Nenhum contacto encontrado
                   </td>
                 </tr>
@@ -322,42 +333,42 @@ export default function PedidosPage() {
 
       {/* Test Drives Table */}
       {activeTab === "testdrives" && (
-        <div className="border rounded overflow-hidden" style={{ borderColor: "#2a2a2a" }}>
-          <table className="w-full text-sm" style={{ backgroundColor: "#141414" }}>
+        <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
+          <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
             <thead>
-              <tr className="border-b" style={{ borderColor: "#2a2a2a" }}>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Nome</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Email</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Telefone</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Viatura</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Data Preferida</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Data Confirmada</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Status</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Data</th>
-                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "#9a9a94" }}>Ações</th>
+              <tr className="border-b" style={{ borderColor: "var(--border)" }}>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Nome</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Email</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Telefone</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Viatura</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Data Preferida</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Data Confirmada</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Status</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Data</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {testDrives.map((d) => (
-                <tr key={d.id} className="border-b" style={{ borderColor: "#2a2a2a" }}>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.name}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.email}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.phone || "-"}</td>
-                  <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{formatVehicle(d)}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{formatPreferred(d)}</td>
-                  <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "-"}</td>
+                <tr key={d.id} className="border-b" style={{ borderColor: "var(--border)" }}>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{d.name}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{d.email}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{d.phone || "-"}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{formatVehicle(d)}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{formatPreferred(d)}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "-"}</td>
                   <td className="px-4 py-3">
                     <span
                       className="px-2 py-1 rounded text-xs font-medium"
                       style={{
-                        backgroundColor: `${statusColors[d.status] || "#9a9a94"}20`,
-                        color: statusColors[d.status] || "#9a9a94",
+                        backgroundColor: `color-mix(in srgb, ${statusColors[d.status] || "var(--muted)"} 12%, transparent)`,
+                        color: statusColors[d.status] || "var(--muted)",
                       }}
                     >
                       {d.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3" style={{ color: "#9a9a94" }}>{formatDate(d.created_at)}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(d.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2 flex-wrap">
@@ -389,7 +400,7 @@ export default function PedidosPage() {
                               }
                             }}
                             className="text-xs hover:opacity-80 cursor-pointer"
-                            style={{ color: "#c0c0b8" }}
+                            style={{ color: "var(--silver)" }}
                           >
                             Editar info
                           </button>
@@ -411,15 +422,15 @@ export default function PedidosPage() {
                             max={maxDateLocal30()}
                             step={1800}
                             className="px-2 py-1 text-xs border rounded bg-transparent"
-                            style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}
+                            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
                           />
-                          <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#c0c0b8" }}>
+                          <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "var(--silver)" }}>
                             Alterar
                           </button>
                         </div>
                       )}
                       {d.status === "completed" && d.admin_notes && (
-                        <div className="text-[11px] text-muted max-w-[200px]" style={{ color: "#9a9a94", wordBreak: "break-word" }}>
+                        <div className="text-[11px] text-muted max-w-[200px]" style={{ color: "var(--muted)", wordBreak: "break-word" }}>
                           {d.admin_notes}
                         </div>
                       )}
@@ -429,7 +440,7 @@ export default function PedidosPage() {
               ))}
               {testDrives.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center" style={{ color: "#9a9a94" }}>
+                  <td colSpan={9} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
                     Nenhum pedido de test drive encontrado
                   </td>
                 </tr>

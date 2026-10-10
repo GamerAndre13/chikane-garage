@@ -1,12 +1,28 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 
 type VehicleRef = { id: string; brand: string; model: string; slug: string };
+
+// Converte erros técnicos (Supabase/email/rede) em mensagens amigáveis,
+// sem expor detalhes internos ao utilizador.
+function friendlyError(msg?: string): string {
+  const low = (msg || "").toLowerCase();
+  if (
+    low.includes("chikane-garage.blog") ||
+    low.includes("chikanegarage") ||
+    low.includes("smtp") ||
+    low.includes("fetch") ||
+    low.includes("network")
+  ) {
+    return "Não foi possível completar o pedido. Tenta novamente em instantes.";
+  }
+  return msg && msg.length > 0 ? msg : "Ocorreu um erro ao enviar. Tenta novamente.";
+}
 
 // Slots de hora permitidos: 10h–12h e 14h–17h, sempre :00 ou :30
 const ALLOWED_TIMES = [
@@ -27,7 +43,6 @@ const inputStyle = {
   backgroundColor: "var(--background-alt)",
   color: "var(--foreground)",
   fontSize: "0.875rem",
-  outline: "none",
 } as const;
 
 const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted";
@@ -55,6 +70,18 @@ function ContactoContent() {
   const [error, setError] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<VehicleRef | null>(null);
   const [vehicleLoading, setVehicleLoading] = useState(!!testdriveSlug || !!vehicleSlug);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  // Ao chegar via ?vehicle=… / ?testdrive=…, leva o utilizador ao formulário
+  // e foca o primeiro campo (o formulário está abaixo do cartão de contactos).
+  useEffect(() => {
+    if (!testdriveSlug && !vehicleSlug) return;
+    const timer = window.setTimeout(() => {
+      nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      nameRef.current?.focus();
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [testdriveSlug, vehicleSlug]);
 
   // Carregar a viatura a partir do slug (resolve id, usado nas tabelas)
   useEffect(() => {
@@ -191,7 +218,7 @@ function ContactoContent() {
         });
         if (error) {
           console.error("Erro test_drives:", error);
-          setError(error.message || "Erro ao enviar. Tenta novamente.");
+          setError(friendlyError(error.message));
         } else {
           setSuccess(true);
           setError(null);
@@ -199,7 +226,7 @@ function ContactoContent() {
         }
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Erro ao enviar. Tenta novamente.");
+        setError(friendlyError(err instanceof Error ? err.message : undefined));
       }
     } else {
       try {
@@ -210,7 +237,7 @@ function ContactoContent() {
         });
         if (error) {
           console.error("Erro contact_requests:", error);
-          setError(error.message || "Erro ao enviar. Tenta novamente.");
+          setError(friendlyError(error.message));
         } else {
           setSuccess(true);
           setError(null);
@@ -218,7 +245,7 @@ function ContactoContent() {
         }
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Erro ao enviar. Tenta novamente.");
+        setError(friendlyError(err instanceof Error ? err.message : undefined));
       }
     }
     setLoading(false);
@@ -270,7 +297,7 @@ function ContactoContent() {
         )}
 
         {vehicleLoading ? (
-          <p className="mt-8 text-sm text-muted">A carregar viatura...</p>
+          <p className="mt-8 text-sm text-muted">A carregar viatura…</p>
         ) : (
           vehicle && (
             <div className="mt-6 flex items-center justify-between rounded border border-copper/30 bg-copper/5 px-4 py-3">
@@ -288,13 +315,13 @@ function ContactoContent() {
         )}
 
         {success && (
-          <div className="mt-8 border-l-4 border-green-500 bg-green-500/10 p-4 text-sm text-green-400">
+          <div role="status" className="mt-8 border-l-4 border-green-500 bg-green-500/10 p-4 text-sm text-green-400">
             {isTestDrive
               ? "Pedido de test drive enviado! Entramos em contacto para confirmar a data."
               : "Mensagem enviada com sucesso!"}
           </div>
         )}
-        {error && <div className="mt-8 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
+        {error && <div role="alert" className="mt-8 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
 
         {temContactos && (
           <div className="mt-6 rounded border border-border bg-surface-mid p-5">
@@ -338,7 +365,7 @@ function ContactoContent() {
           <div className="hidden" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" tabIndex={-1} autoComplete="off" /></div>
           <div>
             <label htmlFor="contact-name" className={labelCls}>Nome *</label>
-            <input id="contact-name" name="name" autoComplete="name" minLength={2} maxLength={120} required style={inputStyle} />
+            <input id="contact-name" name="name" autoComplete="name" minLength={2} maxLength={120} required ref={nameRef} style={inputStyle} />
           </div>
           <div>
             <label htmlFor="contact-email" className={labelCls}>Email *</label>
@@ -391,7 +418,7 @@ function ContactoContent() {
             disabled={loading}
             className="bg-copper px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light disabled:opacity-50"
           >
-            {loading ? "A enviar..." : isTestDrive ? "Reservar Test Drive" : "Enviar Mensagem"}
+            {loading ? "A enviar…" : isTestDrive ? "Reservar Test Drive" : "Enviar Mensagem"}
           </button>
         </form>
       </div>
@@ -401,7 +428,7 @@ function ContactoContent() {
 
 export default function ContactoPage() {
   return (
-    <Suspense fallback={<div className="flex h-64 items-center justify-center"><p className="text-muted">A carregar...</p></div>}>
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><p className="text-muted">A carregar…</p></div>}>
       <ContactoContent />
     </Suspense>
   );

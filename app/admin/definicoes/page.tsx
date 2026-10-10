@@ -153,9 +153,9 @@ export default function DefinicoesPage() {
     width: "100%",
     padding: "0.5rem 0.75rem",
     borderRadius: "0.375rem",
-    border: "1px solid #2a2a2a",
-    backgroundColor: "#0a0a0a",
-    color: "#f5f5f0",
+    border: "1px solid var(--border)",
+    backgroundColor: "var(--background-alt)",
+    color: "var(--foreground)",
     fontSize: "0.875rem",
   };
 
@@ -165,13 +165,13 @@ export default function DefinicoesPage() {
     fontSize: "0.75rem",
     textTransform: "uppercase" as const,
     letterSpacing: "0.05em",
-    color: "#9a9a94",
+    color: "var(--muted)",
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p style={{ color: "#9a9a94" }}>A carregar...</p>
+        <p style={{ color: "var(--muted)" }}>A carregar...</p>
       </div>
     );
   }
@@ -182,11 +182,11 @@ export default function DefinicoesPage() {
         <div>
           <h1
             className="text-2xl uppercase tracking-wide"
-            style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}
+            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
           >
             Definições do Site
           </h1>
-          <p className="mt-2" style={{ color: "#9a9a94", fontSize: "0.875rem" }}>
+          <p className="mt-2" style={{ color: "var(--muted)", fontSize: "0.875rem" }}>
             Contactos, redes sociais, rodapé e fotografias. As alterações ficam visíveis no site a seguir.
           </p>
         </div>
@@ -194,7 +194,7 @@ export default function DefinicoesPage() {
           href="/"
           target="_blank"
           className="shrink-0 rounded px-3 py-1.5 text-xs transition-colors"
-          style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}
+          style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
         >
           Ver no site ↗
         </Link>
@@ -213,18 +213,18 @@ export default function DefinicoesPage() {
         <div
           key={group.title}
           style={{
-            backgroundColor: "#141414",
-            border: "1px solid #2a2a2a",
+            backgroundColor: "var(--surface-mid)",
+            border: "1px solid var(--border)",
             borderRadius: "0.5rem",
             padding: "1rem",
             marginBottom: "1rem",
           }}
         >
           <div style={{ marginBottom: "0.75rem" }}>
-            <div style={{ fontSize: "0.75rem", color: "#b87333", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            <div style={{ fontSize: "0.75rem", color: "var(--copper-deep)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
               {group.title}
             </div>
-            <div style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "#9a9a94" }}>
+            <div style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted)" }}>
               {group.description}
             </div>
           </div>
@@ -242,8 +242,8 @@ export default function DefinicoesPage() {
                           height: "6.5rem",
                           flexShrink: 0,
                           borderRadius: "0.375rem",
-                          border: "1px solid #2a2a2a",
-                          backgroundColor: "#0a0a0a",
+                          border: "1px solid var(--border)",
+                          backgroundColor: "var(--background-alt)",
                           overflow: "hidden",
                           display: "flex",
                           alignItems: "center",
@@ -258,7 +258,7 @@ export default function DefinicoesPage() {
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         ) : (
-                          <span style={{ padding: "0 0.5rem", fontSize: "0.7rem", color: "#6f6f68", textAlign: "center" }}>
+                          <span style={{ padding: "0 0.5rem", fontSize: "0.7rem", color: "var(--muted-deep)", textAlign: "center" }}>
                             Imagem por omissão
                           </span>
                         )}
@@ -266,7 +266,7 @@ export default function DefinicoesPage() {
                       <div className="flex flex-col gap-2">
                         <label
                           className="cursor-pointer rounded px-3 py-1.5 text-center text-xs font-medium"
-                          style={{ backgroundColor: "#b87333", color: "#0a0a0a", opacity: uploadingKey === field.key ? 0.6 : 1 }}
+                          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: uploadingKey === field.key ? 0.6 : 1 }}
                         >
                           {uploadingKey === field.key ? "A enviar..." : form[field.key] ? "Trocar foto" : "Enviar foto"}
                           <input
@@ -285,7 +285,7 @@ export default function DefinicoesPage() {
                           <button
                             onClick={() => setForm((prev) => ({ ...prev, [field.key]: "" }))}
                             className="rounded px-3 py-1.5 text-xs"
-                            style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}
+                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                           >
                             Remover
                           </button>
@@ -315,13 +315,13 @@ export default function DefinicoesPage() {
                   />
                 )}
 
-                <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#6f6f68" }}>{field.hint}</div>
+                <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "var(--muted-deep)" }}>{field.hint}</div>
 
                 {field.key === "avatar_pool" && (
                   <div className="mt-2">
                     <label
                       className="cursor-pointer inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium"
-                      style={{ backgroundColor: "#b87333", color: "#0a0a0a" }}
+                      style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
                     >
                       {uploadingKey === "avatar_pool" ? "A enviar..." : "Enviar foto para adicionar à lista"}
                       <input
@@ -364,7 +364,7 @@ export default function DefinicoesPage() {
           onClick={handleSave}
           disabled={saving}
           className="rounded px-4 py-2 text-xs font-medium transition-opacity"
-          style={{ backgroundColor: "#b87333", color: "#0a0a0a", opacity: saving ? 0.6 : 1 }}
+          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}
         >
           {saving ? "A guardar..." : "Guardar definições"}
         </button>

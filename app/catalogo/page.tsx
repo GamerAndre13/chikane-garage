@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { CatalogBrowser } from "@/components/ui/catalog-browser";
 
 export const metadata = {
   title: "Catálogo | Chikane Garage",
-  description: "Descobre a seleção atual de viaturas de performance BMW da Chikane Garage.",
+  description: "Descobre a seleção atual de viaturas de performance selecionadas da Chikane Garage.",
 };
 
 type Vehicle = {
@@ -31,6 +32,8 @@ export default async function CatalogoPage() {
       <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-none tracking-tight text-white sm:text-7xl">Catálogo</h1>
       <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">Consulta as características registadas para cada viatura e contacta-nos para confirmar disponibilidade e condições de venda.</p>
     </header>
-    <CatalogBrowser vehicles={vehicles}/>
+    <Suspense fallback={null}>
+      <CatalogBrowser vehicles={vehicles}/>
+    </Suspense>
   </div>;
 }

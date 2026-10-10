@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { SiteSettings } from "@/lib/site-settings";
@@ -21,18 +22,20 @@ export default async function SobrePage() {
     <div className="bg-background">
       {/* Hero Section */}
       <section className="relative flex min-h-[62vh] items-end overflow-hidden sm:min-h-[72vh]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={photos?.photo_about_hero || "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1800&q=75"}
           alt="Automóvel numa garagem, imagem ilustrativa"
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          fill
+          sizes="100vw"
+          priority
+          className="object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/65 to-black/20" />
         <div className="relative z-10 mx-auto w-full max-w-[1440px] px-5 pb-16 pt-24 sm:px-8 sm:pb-20 lg:px-12">
           <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">
             Chikane Garage
           </p>
-          <h1 className="mt-6 max-w-4xl font-display text-5xl font-bold uppercase leading-[0.92] tracking-tight text-white sm:text-7xl lg:text-[6.5rem]">
+          <h1 className="mt-6 max-w-4xl font-display text-5xl font-bold uppercase leading-[0.92] tracking-tight text-white text-balance sm:text-7xl lg:text-[6.5rem]">
             Viaturas.
             <br />
             <span className="text-copper">Sem rodeios.</span>
@@ -57,7 +60,7 @@ export default async function SobrePage() {
             <p className="font-display text-[10px] uppercase tracking-[0.26em] text-copper">
               A garagem
             </p>
-            <h2 className="mt-4 font-display text-3xl font-semibold uppercase leading-tight text-white sm:text-4xl">
+            <h2 className="mt-4 font-display text-3xl font-semibold uppercase leading-tight text-white text-balance sm:text-4xl">
               Compramos como se fosse para nós.
               <br />
               <span className="text-white/60">Porque já foi.</span>
@@ -70,11 +73,12 @@ export default async function SobrePage() {
             </p>
           </div>
           <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={photos?.photo_about_garage || "https://images.unsplash.com/photo-1486262715619-01b8c2297602?auto=format&fit=crop&w=1000&q=75"}
               alt="Detalhe de manutenção automóvel"
-              className="h-full w-full object-cover"
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover"
             />
           </div>
         </div>
@@ -86,7 +90,7 @@ export default async function SobrePage() {
           <p className="font-display text-[10px] uppercase tracking-[0.26em] text-copper">
             O processo
           </p>
-          <h2 className="mt-4 font-display text-3xl font-semibold uppercase leading-tight text-white sm:text-4xl">
+          <h2 className="mt-4 font-display text-3xl font-semibold uppercase leading-tight text-white text-balance sm:text-4xl">
             Da escolha à sua garagem
           </h2>
         </div>
@@ -156,7 +160,7 @@ export default async function SobrePage() {
             <p className="font-display text-[10px] uppercase tracking-[0.26em] text-copper">
               Como funciona
             </p>
-            <h2 className="mt-4 font-display text-3xl font-semibold uppercase leading-tight text-white sm:text-4xl">
+            <h2 className="mt-4 font-display text-3xl font-semibold uppercase leading-tight text-white text-balance sm:text-4xl">
               Informação por viatura
             </h2>
             <p className="mt-5 text-sm leading-7 text-white/70">

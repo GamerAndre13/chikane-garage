@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -11,6 +11,7 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const navClass = (href: string) => {
@@ -48,6 +49,25 @@ export function Header() {
       );
   }, [user]);
 
+  // Fecha o menu móvel com a tecla Escape ou ao clicar fora do header
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    const onClickOutside = (event: MouseEvent) => {
+      if (event.target instanceof Node && headerRef.current && !headerRef.current.contains(event.target)) {
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("click", onClickOutside);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("click", onClickOutside);
+    };
+  }, [mobileOpen]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     setUser(null);
@@ -56,7 +76,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+    <header ref={headerRef} className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex h-[76px] max-w-[1440px] items-center px-5 sm:px-8 lg:px-12">
         <Link href="/" className="flex items-center gap-2">
           <span className="font-display text-lg font-bold uppercase tracking-[0.18em] text-foreground">

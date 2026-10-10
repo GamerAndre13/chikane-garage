@@ -11,6 +11,9 @@ export function VehiclePhotoPicker({ onChange }: { onChange: (files: File[], cov
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
+    // Pré-visualizações locais de ficheiros (object URLs): o setState é o
+    // ponto certo para sincronizar as URLs com os ficheiros selecionados.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreviews(urls);
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [files]);

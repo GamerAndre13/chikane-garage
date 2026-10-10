@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { supabase, setRememberPreference } from "@/lib/supabase/client";
 import { Suspense } from "react";
 
 // Valida o email antes de criar conta / entrar. Devolve mensagem de erro ou null.
@@ -40,6 +40,20 @@ function validateEmail(value: string): string | null {
   return null;
 }
 
+// Converte erros da API de autenticação em mensagens amigáveis em português,
+// sem expor detalhes técnicos do Supabase ao utilizador.
+function friendlyAuthError(msg: string): string {
+  const low = msg.toLowerCase();
+  if (low.includes("invalid login credentials")) return "Email ou password incorretos. Verifica e tenta novamente.";
+  if (low.includes("email not confirmed") || low.includes("email_not_confirmed")) return "Ainda não confirmaste o email. Vê a caixa de entrada (e o spam).";
+  if (low.includes("already registered")) return "Já existe uma conta com este email. Entra ou faz reset da password.";
+  if (low.includes("rate limit") || low.includes("too many requests")) return "Demasiadas tentativas. Espera um pouco e tenta novamente.";
+  if (low.includes("password should be at least")) return "A password deve ter pelo menos 6 caracteres.";
+  if (low.includes("unable to validate email")) return "O endereço de email parece inválido.";
+  if (low.includes("chikane-garage.blog") || low.includes("chikanegarage") || low.includes("smtp") || low.includes("failed to fetch") || low.includes("network")) return "Não foi possível completar o pedido. Tenta novamente em instantes.";
+  return msg;
+}
+
 function ContaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,6 +79,8 @@ function ContaPageContent() {
     const email = ((formData.get("email") as string) || "").trim().toLowerCase();
     const password = formData.get("password") as string;
     const fullName = formData.get("full_name") as string;
+    // "Manter sessão iniciada": sem isso os cookies de sessão caem ao fechar o browser
+    const remember = formData.get("remember_me") === "on";
 
     // Validar email antes de tentar criar conta / entrar
     const emailError = validateEmail(email);
@@ -91,6 +107,7 @@ function ContaPageContent() {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setRememberPreference(remember);
         router.push(redirect);
         router.refresh();
       } else {
@@ -102,15 +119,18 @@ function ContaPageContent() {
         if (error) throw error;
 
         if (data.user && !data.session) {
+          // Preferência guardada para quando a conta for confirmada por email
+          setRememberPreference(remember);
           setError("Verifica o teu email para confirmar a conta.");
           setMode("login");
         } else {
+          setRememberPreference(remember);
           router.push(redirect);
           router.refresh();
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
+      setError(friendlyAuthError(err instanceof Error ? err.message : "Erro desconhecido"));
     } finally {
       setLoading(false);
     }
@@ -124,7 +144,7 @@ function ContaPageContent() {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirect)}`,
       },
     });
-    if (oauthError) setError(oauthError.message);
+    if (oauthError) setError(friendlyAuthError(oauthError.message));
   }
 
   // Erro local (formulário) ou erro devolvido pelo /auth/callback
@@ -141,7 +161,7 @@ function ContaPageContent() {
       </p>
 
       {mensagemErro && (
-        <div className="mt-4 border border-red bg-red/10 px-4 py-3 text-sm text-red-light">
+        <div role="alert" className="mt-4 border border-red bg-red/10 px-4 py-3 text-sm text-red-light">
           {mensagemErro}
         </div>
       )}
@@ -149,17 +169,17 @@ function ContaPageContent() {
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         {mode === "register" && (
           <div>
-            <label className="block text-xs uppercase tracking-wide text-muted">Nome completo *</label>
-            <input name="full_name" required className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+            <label htmlFor="conta-full-name" className="block text-xs uppercase tracking-wide text-muted">Nome completo *</label>
+            <input id="conta-full-name" name="full_name" autoComplete="name" spellCheck={false} required className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" />
           </div>
         )}
         <div>
-          <label className="block text-xs uppercase tracking-wide text-muted">Email *</label>
-          <input name="email" type="email" required className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+          <label htmlFor="conta-email" className="block text-xs uppercase tracking-wide text-muted">Email *</label>
+          <input id="conta-email" name="email" type="email" autoComplete="email" spellCheck={false} required className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-wide text-muted">Password *</label>
-          <input name="password" type="password" required minLength={6} className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+          <label htmlFor="conta-password" className="block text-xs uppercase tracking-wide text-muted">Password *</label>
+          <input id="conta-password" name="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={6} className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" />
         </div>
         {mode === "register" && (
           <div className="flex items-center gap-2">
@@ -172,7 +192,7 @@ function ContaPageContent() {
           <label htmlFor="remember_me" className="text-xs text-muted">Manter sessão iniciada</label>
         </div>
         <button type="submit" disabled={loading} className="w-full bg-copper px-6 py-3 font-display text-sm uppercase tracking-widest text-background disabled:opacity-50">
-          {loading ? "A processar..." : mode === "login" ? "Entrar" : "Criar Conta"}
+          {loading ? "A processar…" : mode === "login" ? "Entrar" : "Criar Conta"}
         </button>
       </form>
 
@@ -205,7 +225,7 @@ function ContaPageContent() {
 
 export default function ContaPage() {
   return (
-    <Suspense fallback={<div className="flex h-64 items-center justify-center"><p className="text-muted">A carregar...</p></div>}>
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><p className="text-muted">A carregar…</p></div>}>
       <ContaPageContent />
     </Suspense>
   );

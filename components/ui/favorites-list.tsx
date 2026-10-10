@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 
@@ -9,45 +10,51 @@ type FavoriteVehicle = {
   vehicle_id: string;
   created_at: string;
   vehicles?: {
-    brand: string;
-    model: string;
-    trim: string;
-    price: number;
-    cover_image_url: string;
+    brand: string | null;
+    model: string | null;
+    trim: string | null;
+    price: number | null;
+    cover_image_url: string | null;
     slug: string;
   } | null;
+};
+
+// O Supabase devolve `vehicles` como array de um elemento (ou null) — normalizar
+type RawFavorite = Omit<FavoriteVehicle, "vehicles"> & {
+  vehicles?: FavoriteVehicle["vehicles"] | FavoriteVehicle["vehicles"][];
 };
 
 export function FavoritesList() {
   const [favorites, setFavorites] = useState<FavoriteVehicle[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Carga inicial — IIFE com flag de cancelamento (evita setState em efeito
+  // e setState depois de desmontar o componente).
   useEffect(() => {
-    loadFavorites();
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { if (!cancelled) setLoading(false); return; }
+
+      const { data } = await supabase
+        .from("favorites")
+        .select("id, vehicle_id, created_at, vehicles(brand, model, trim, price, cover_image_url, slug)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+
+      const normalized = (data || []).map((fav: RawFavorite) => ({
+        ...fav,
+        vehicles: Array.isArray(fav.vehicles) ? fav.vehicles[0] ?? null : fav.vehicles,
+      }));
+      setFavorites(normalized);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  async function loadFavorites() {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-
-    const { data } = await supabase
-      .from("favorites")
-      .select("id, vehicle_id, created_at, vehicles(brand, model, trim, price, cover_image_url, slug)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    // Supabase retorna vehicles como array, normalizar
-    const normalized = (data || []).map((fav: any) => ({
-      ...fav,
-      vehicles: Array.isArray(fav.vehicles) ? fav.vehicles[0] ?? null : fav.vehicles,
-    }));
-    setFavorites(normalized);
-    setLoading(false);
-  }
-
   if (loading) {
-    return <p className="text-sm text-muted">A carregar...</p>;
+    return <p className="text-sm text-muted">A carregar…</p>;
   }
 
   if (favorites.length === 0) {
@@ -66,8 +73,7 @@ export function FavoritesList() {
       {favorites.map((fav) => (
         <div key={fav.id} className="flex items-center gap-3 p-3 border border-border bg-background rounded">
           {fav.vehicles?.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={fav.vehicles.cover_image_url} alt="" className="w-12 h-12 rounded object-cover" />
+            <Image src={fav.vehicles.cover_image_url} alt="" width={48} height={48} sizes="48px" className="w-12 h-12 rounded object-cover" />
           ) : (
             <div className="w-12 h-12 rounded bg-copper/20 flex items-center justify-center">
               <span className="text-copper text-xs font-display">🚗</span>
@@ -79,7 +85,7 @@ export function FavoritesList() {
                 <p className="text-sm font-medium text-foreground truncate">
                   {fav.vehicles.brand} {fav.vehicles.model} {fav.vehicles.trim}
                 </p>
-                <p className="text-xs text-copper">{fav.vehicles.price.toLocaleString("pt-PT")} €</p>
+                <p className="text-xs tabular-nums text-copper">{fav.vehicles.price != null ? `${fav.vehicles.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
               </Link>
             ) : (
               <p className="text-sm text-muted">Viatura removida</p>

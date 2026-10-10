@@ -69,9 +69,9 @@ const inputStyle = {
   width: "100%",
   padding: "0.5rem 0.75rem",
   borderRadius: "0.375rem",
-  border: "1px solid #2a2a2a",
-  backgroundColor: "#0a0a0a",
-  color: "#f5f5f0",
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--background-alt)",
+  color: "var(--foreground)",
   fontSize: "0.875rem",
 } as const;
 
@@ -83,7 +83,7 @@ const labelStyle = {
   fontSize: "0.75rem",
   textTransform: "uppercase" as const,
   letterSpacing: "0.05em",
-  color: "#9a9a94",
+  color: "var(--muted)",
 } as const;
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -222,13 +222,13 @@ export default function EditarVeiculo() {
     else router.push("/admin/veiculos");
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><p style={{ color: "#9a9a94" }}>A carregar...</p></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><p style={{ color: "var(--muted)" }}>A carregar...</p></div>;
 
   return (
     <div>
-      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "#f5f5f0" }}>Editar Viatura</h1>
-      <form onSubmit={handleSubmit} style={{ backgroundColor: "#141414", border: "1px solid #2a2a2a", borderRadius: "0.5rem", padding: "1.5rem" }}>
-        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "#b87333" }}>Identificação</p>
+      <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>Editar Viatura</h1>
+      <form onSubmit={handleSubmit} style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
+        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Marca *">
             <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
@@ -246,7 +246,7 @@ export default function EditarVeiculo() {
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
 
-        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Especificações Técnicas</p>
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Especificações Técnicas</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Motor"><input style={inputStyle} value={form.engine} onChange={handleChange("engine")} /></Field>
           <Field label="Potência (CV)"><input type="number" min="0" style={inputStyle} value={form.power_hp} onChange={handleChange("power_hp")} /></Field>
@@ -258,7 +258,7 @@ export default function EditarVeiculo() {
           <Field label="CO₂ (g/km)"><input type="number" min="0" style={inputStyle} value={form.co2_emissions} onChange={handleChange("co2_emissions")} /></Field>
         </div>
 
-        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Veículo</p>
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
@@ -268,13 +268,13 @@ export default function EditarVeiculo() {
           <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
-        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Origem & Legalização</p>
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
         </div>
 
-        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "#b87333" }}>Preço & Status</p>
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
@@ -282,7 +282,7 @@ export default function EditarVeiculo() {
         </div>
 
         {/* Galeria de imagens (R2) */}
-        <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid #2a2a2a" }}>
+        <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>
           <VehicleGallery ref={galleryRef} vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => setMultiple({ cover_image_url: url })} />
         </div>
 
@@ -290,14 +290,14 @@ export default function EditarVeiculo() {
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />
-          <label htmlFor="featured" style={{ color: "#f5f5f0", fontSize: "0.875rem" }}>Destaque</label>
+          <label htmlFor="featured" style={{ color: "var(--foreground)", fontSize: "0.875rem" }}>Destaque</label>
         </div>
 
         <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem" }}>
-          <button type="submit" disabled={saving} className="px-4 py-2 rounded text-sm font-medium transition-opacity" style={{ backgroundColor: "#b87333", color: "#0a0a0a", opacity: saving ? 0.6 : 1 }}>
+          <button type="submit" disabled={saving} className="px-4 py-2 rounded text-sm font-medium transition-opacity" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}>
             {saving ? "A guardar..." : "Guardar Alterações"}
           </button>
-          <button type="button" onClick={() => router.push("/admin/veiculos")} className="px-4 py-2 rounded text-sm transition-colors" style={{ border: "1px solid #2a2a2a", color: "#9a9a94" }}>
+          <button type="button" onClick={() => router.push("/admin/veiculos")} className="px-4 py-2 rounded text-sm transition-colors" style={{ border: "1px solid var(--border)", color: "var(--muted)" }}>
             Cancelar
           </button>
         </div>

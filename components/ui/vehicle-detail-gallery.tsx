@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 type Photo = { url: string; alt?: string };
 
@@ -8,8 +9,14 @@ function GalleryPhoto({ url, alt }: { url: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
   return (
     <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt={alt} className={`kenburns h-full w-full object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setLoaded(true)} />
+      <Image
+        src={url}
+        alt={alt}
+        fill
+        sizes="(max-width: 768px) 100vw, 66vw"
+        className={`kenburns object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+        onLoad={() => setLoaded(true)}
+      />
       {!loaded && <div aria-hidden="true" className="shimmer absolute inset-0" />}
     </>
   );
@@ -39,8 +46,7 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
       <div className="order-2 flex gap-2 overflow-x-auto pb-1">
         {photos.map((photo, index) => (
           <button key={`${photo.url}-${index}`} type="button" onClick={() => setActive(index)} aria-label={`Ver fotografia ${index + 1}`} aria-pressed={active === index} className={`aspect-[4/3] w-24 shrink-0 overflow-hidden border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:w-28 ${active === index ? "border-copper" : "border-border hover:border-muted"}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.url} alt={photo.alt || `${title}, fotografia ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />
+            <Image src={photo.url} alt={photo.alt || `${title}, fotografia ${index + 1}`} fill sizes="112px" className="object-cover" />
           </button>
         ))}
       </div>

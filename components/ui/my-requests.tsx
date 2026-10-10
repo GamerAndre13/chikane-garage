@@ -24,13 +24,6 @@ type DriveRow = {
 // Supabase devolve relação 1:1 como array; normalizar
 const pick = (v: unknown) => (Array.isArray(v) ? (v[0] ?? null) : v);
 
-const REQ_STATUS: Record<string, string> = {
-  new: "Nova",
-  read: "Lida",
-  confirmed: "Confirmada",
-  replied: "Respondida",
-  archived: "Arquivada",
-};
 const DRIVE_STATUS: Record<string, string> = {
   pending: "Pendente",
   confirmed: "Confirmado",
@@ -89,7 +82,7 @@ export function MyRequests() {
     })();
   }, []);
 
-  if (loading) return <p className="text-sm text-muted">A carregar...</p>;
+  if (loading) return <p className="text-sm text-muted">A carregar…</p>;
 
   const hasNothing = requests.length === 0 && drives.length === 0;
 
@@ -111,7 +104,7 @@ export function MyRequests() {
     <div className="space-y-6">
       {drives.length > 0 && (
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-muted mb-2">Test Drives</h3>
+          <h3 className="text-xs uppercase tracking-widest text-muted mb-2">Marcações de test-drive</h3>
           <div className="space-y-2">
             {drives.map((d) => (
               <div key={d.id} className="flex items-center justify-between gap-3 rounded border border-border bg-background p-3">

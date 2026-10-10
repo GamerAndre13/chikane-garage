@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
@@ -14,7 +15,7 @@ type Vehicle = {
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
 };
 
-const control = "w-full appearance-none border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper disabled:cursor-not-allowed disabled:opacity-40";
+const control = "w-full appearance-none border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60 disabled:cursor-not-allowed disabled:opacity-40";
 const all = "all";
 const unique = (items: (string | number | null | undefined)[]) => [...new Set(items.filter((item): item is string | number => item !== null && item !== undefined && item !== ""))].sort((a, b) => String(a).localeCompare(String(b), "pt-PT", { numeric: true }));
 
@@ -38,21 +39,52 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1 }: 
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const param = (key: string): string => searchParams.get(key) ?? all;
+
+  // Os filtros vivem no URL (?marca=…&preco_a=…): ao abrir por um link com
+  // parâmetros o estado inicial vem daí (permite partilhar filtros).
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [brand, setBrand] = useState(all);
-  const [model, setModel] = useState(all);
-  const [fuel, setFuel] = useState(all);
-  const [color, setColor] = useState(all);
-  const [bodyStyle, setBodyStyle] = useState(all);
-  const [minPower, setMinPower] = useState(all);
-  const [maxPower, setMaxPower] = useState(all);
-  const [minYear, setMinYear] = useState(all);
-  const [maxYear, setMaxYear] = useState(all);
-  const [minPrice, setMinPrice] = useState(all);
-  const [maxPrice, setMaxPrice] = useState(all);
-  const [minMileage, setMinMileage] = useState(all);
-  const [maxMileage, setMaxMileage] = useState(all);
+  const [brand, setBrand] = useState(() => param("marca"));
+  const [model, setModel] = useState(() => param("modelo"));
+  const [fuel, setFuel] = useState(() => param("combustivel"));
+  const [color, setColor] = useState(() => param("cor"));
+  const [bodyStyle, setBodyStyle] = useState(() => param("estilo"));
+  const [minPower, setMinPower] = useState(() => param("cv_a"));
+  const [maxPower, setMaxPower] = useState(() => param("cv_b"));
+  const [minYear, setMinYear] = useState(() => param("ano_a"));
+  const [maxYear, setMaxYear] = useState(() => param("ano_b"));
+  const [minPrice, setMinPrice] = useState(() => param("preco_a"));
+  const [maxPrice, setMaxPrice] = useState(() => param("preco_b"));
+  const [minMileage, setMinMileage] = useState(() => param("km_a"));
+  const [maxMileage, setMaxMileage] = useState(() => param("km_b"));
+
+  // Mantém o URL sincronizado com os filtros sem recarregar a página.
+  // replaceState não cria entradas no histórico: "voltar atrás" volta à página
+  // anterior e o filtro fica sempre preservado no URL atual.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    const setParam = (key: string, value: string) => {
+      if (value !== all && value !== "") params.set(key, value);
+    };
+    setParam("q", query);
+    setParam("marca", brand);
+    setParam("modelo", model);
+    setParam("combustivel", fuel);
+    setParam("cor", color);
+    setParam("estilo", bodyStyle);
+    setParam("cv_a", minPower);
+    setParam("cv_b", maxPower);
+    setParam("ano_a", minYear);
+    setParam("ano_b", maxYear);
+    setParam("preco_a", minPrice);
+    setParam("preco_b", maxPrice);
+    setParam("km_a", minMileage);
+    setParam("km_b", maxMileage);
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
 
   const brands = useMemo(() => unique(vehicles.map((v) => v.brand)) as string[], [vehicles]);
   const models = useMemo(() => unique(vehicles.filter((v) => brand === all || v.brand === brand).map((v) => v.model)) as string[], [vehicles, brand]);
@@ -80,8 +112,8 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
 
   return <>
     <div className="mt-9 flex flex-col gap-3 border border-white/10 bg-surface-oxide p-3 sm:flex-row sm:p-4">
-      <label className="relative flex-1"><span className="sr-only">Pesquisar viaturas</span><svg className="absolute left-4 top-1/2 -translate-y-1/2 text-copper" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pesquisar por modelo, versão, ano..." className="w-full border border-white/10 bg-black px-12 py-4 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus:border-copper" /></label>
-      <div className="flex items-center justify-between gap-5 border border-white/10 bg-black px-5 py-3 sm:min-w-52"><span className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">Em garagem</span><span className="font-display text-lg text-white">{filtered.length.toString().padStart(2, "0")} <span className="text-xs text-white/40">/ {vehicles.length.toString().padStart(2, "0")}</span></span></div>
+      <label className="relative flex-1"><span className="sr-only">Pesquisar viaturas</span><svg className="absolute left-4 top-1/2 -translate-y-1/2 text-copper" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pesquisar por modelo, versão, ano..." className="w-full border border-white/10 bg-black px-12 py-4 text-sm text-white placeholder:text-white/35 outline-none transition-colors focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" /></label>
+      <div className="flex items-center justify-between gap-5 border border-white/10 bg-black px-5 py-3 sm:min-w-52"><span className="font-display text-[10px] uppercase tracking-[0.18em] text-white/60">Em garagem</span><span className="font-display text-lg tabular-nums text-white">{filtered.length.toString().padStart(2, "0")} <span className="text-xs text-white/60">/ {vehicles.length.toString().padStart(2, "0")}</span></span></div>
     </div>
 
     {/* ── Toggle de filtros (mobile) ── */}
@@ -93,19 +125,19 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
       <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-5">
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Marca</span><select className={control} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(all); }}><option value={all}>Todas as marcas</option>{brands.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Modelo</span><select className={control} value={model} disabled={!models.length} onChange={(e) => setModel(e.target.value)}><option value={all}>Todos os modelos</option>{models.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Combustível</span><select className={control} value={fuel} onChange={(e) => setFuel(e.target.value)}><option value={all}>Todos</option>{fuels.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Cor exterior</span><select className={control} value={color} onChange={(e) => setColor(e.target.value)}><option value={all}>Todas as cores</option>{colors.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/50">Estilo</span><select className={control} value={bodyStyle} onChange={(e) => setBodyStyle(e.target.value)}><option value={all}>Todos os estilos</option>{bodyStyles.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
+          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Marca</span><select className={control} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(all); }}><option value={all}>Todas as marcas</option>{brands.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Modelo</span><select className={control} value={model} disabled={!models.length} onChange={(e) => setModel(e.target.value)}><option value={all}>Todos os modelos</option>{models.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Combustível</span><select className={control} value={fuel} onChange={(e) => setFuel(e.target.value)}><option value={all}>Todos</option>{fuels.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
+          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Cor exterior</span><select className={control} value={color} onChange={(e) => setColor(e.target.value)}><option value={all}>Todas as cores</option>{colors.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
+          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Estilo</span><select className={control} value={bodyStyle} onChange={(e) => setBodyStyle(e.target.value)}><option value={all}>Todos os estilos</option>{bodyStyles.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
           <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
           <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
           <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} />
           <RangeFilter label="Quilometragem" values={mileages} min={minMileage} max={maxMileage} onMin={setMinMileage} onMax={setMaxMileage} step={1000} unit="km" />
         </div>
       </aside>
-      <section aria-live="polite"><div className="mb-5 flex items-center gap-4"><span className="h-px flex-1 bg-white/10"/><p className="font-display text-[10px] uppercase tracking-[0.2em] text-white/45">{filtered.length} viaturas <span className="text-copper">em garagem</span></p></div>
-        {filtered.length === 0 ? <div className="border border-white/10 bg-surface-oxide px-6 py-20 text-center"><p className="font-display text-xl uppercase tracking-wide text-white">Nenhuma viatura encontrada</p><p className="mt-2 text-sm text-white/45">Altera os filtros ou tenta outra pesquisa.</p><button type="button" onClick={clear} className="mt-6 border border-copper px-5 py-3 font-display text-xs uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-white">Limpar filtros</button></div> : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((v, index) => { const status = statusLabel(v.status); return <Reveal key={v.id} className="h-full" delay={Math.min(index * 55, 330)}><article className="card-lift group h-full overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={photosFor(v)} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id}/></div>{status && <span className="absolute bottom-3 left-3 z-20 border border-current bg-black/80 px-3 py-1 font-display text-[10px] uppercase tracking-[0.15em]" style={{color:status.color}}>{status.label}</span>}</VehicleCardGallery><Link href={`/catalogo/${v.slug}`} className="block p-4 sm:p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper"><p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/45">{v.brand || ""} <span className="text-copper">·</span> {v.registration_year || ""}</p><h3 className="mt-2 font-display text-xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>{v.trim && <p className="mt-1 font-display text-[10px] uppercase tracking-[0.15em] text-copper">{v.trim}</p>}<div className="mt-4 grid grid-cols-2 gap-y-2 border-y border-white/10 py-3 text-xs"><span className="text-white/40">Quilometragem</span><span className="text-right text-white/80">{v.mileage_km != null ? `${v.mileage_km.toLocaleString("pt-PT")} km` : "—"}</span><span className="text-white/40">Potência</span><span className="text-right text-white/80">{v.power_hp != null ? `${v.power_hp} cv` : "—"}</span><span className="text-white/40">Combustível</span><span className="text-right text-white/80">{v.fuel_type || "—"}</span></div><div className="mt-4 flex items-end justify-between"><span className="font-display text-xl font-semibold text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] uppercase tracking-[0.13em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div></Link></article></Reveal>; })}</div>}
+      <section aria-live="polite"><div className="mb-5 flex items-center gap-4"><span className="h-px flex-1 bg-white/10"/><p className="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">{filtered.length} viaturas <span className="text-copper">em garagem</span></p></div>
+        {filtered.length === 0 ? <div className="border border-white/10 bg-surface-oxide px-6 py-20 text-center"><p className="font-display text-xl uppercase tracking-wide text-white">Nenhuma viatura encontrada</p><p className="mt-2 text-sm text-white/60">Altera os filtros ou tenta outra pesquisa.</p><button type="button" onClick={clear} className="mt-6 border border-copper px-5 py-3 font-display text-xs uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-white">Limpar filtros</button></div> : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((v, index) => { const status = statusLabel(v.status); return <Reveal key={v.id} className="h-full" delay={Math.min(index * 55, 330)}><article className="card-lift group h-full overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={photosFor(v)} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id}/></div>{status && <span className="absolute bottom-3 left-3 z-20 border border-current bg-black/80 px-3 py-1 font-display text-[10px] uppercase tracking-[0.15em]" style={{color:status.color}}>{status.label}</span>}</VehicleCardGallery><Link href={`/catalogo/${v.slug}`} className="block p-4 sm:p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper"><p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/60">{v.brand || ""} <span className="text-copper">·</span> {v.registration_year || ""}</p><h3 className="mt-2 font-display text-xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>{v.trim && <p className="mt-1 font-display text-[10px] uppercase tracking-[0.15em] text-copper">{v.trim}</p>}<div className="mt-4 grid grid-cols-2 gap-y-2 border-y border-white/10 py-3 text-xs"><span className="text-white/60">Quilometragem</span><span className="text-right tabular-nums text-white/80">{v.mileage_km != null ? `${v.mileage_km.toLocaleString("pt-PT")} km` : "—"}</span><span className="text-white/60">Potência</span><span className="text-right tabular-nums text-white/80">{v.power_hp != null ? `${v.power_hp} cv` : "—"}</span><span className="text-white/60">Combustível</span><span className="text-right text-white/80">{v.fuel_type || "—"}</span></div><div className="mt-4 flex items-end justify-between"><span className="font-display text-xl font-semibold tabular-nums text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] uppercase tracking-[0.13em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div></Link></article></Reveal>; })}</div>}
       </section>
     </div>
   </>;

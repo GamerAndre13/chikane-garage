@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 
+// Mensagens devolvidas ao cliente — fonte única de verdade (o formulário
+// mostra exatamente o que o servidor envia, sem frases duplicadas no cliente).
+const MSG_ALREADY = "Este email já está inscrito na newsletter.";
+const MSG_WELCOME = "Obrigado! Verifica o teu email para confirmar a subscrição.";
+
 // Initialize Resend lazily to avoid build errors when API key is missing
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
       }
       const already = insertRes.error?.code === "23505";
       if (already) {
-        return NextResponse.json({ success: true, already: true });
+        return NextResponse.json({ success: true, already: true, message: MSG_ALREADY });
       }
     } else if (dbError) {
       console.error("Database error:", dbError);
@@ -50,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Já subscrito (ativo): não volta a enviar email de confirmação
     if (isNew === false) {
-      return NextResponse.json({ success: true, already: true });
+      return NextResponse.json({ success: true, already: true, message: MSG_ALREADY });
     }
 
     // Viatura em destaque da semana: primeiro a marcada como spotlight,
@@ -173,7 +178,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: MSG_WELCOME });
   } catch (error) {
     console.error("Newsletter error:", error);
     return NextResponse.json(
