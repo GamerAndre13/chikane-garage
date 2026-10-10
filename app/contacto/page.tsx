@@ -132,7 +132,7 @@ function ContactoContent() {
         return;
       }
       try {
-        const { error } = await supabase.from("test_drives").insert({
+        const error = await insertResilient("test_drives", {
           ...common,
           vehicle_id: vehicle.id,
           preferred_date,
