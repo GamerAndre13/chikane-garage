@@ -126,13 +126,23 @@ export default async function HomePage() {
       {spotlight && (
         <section className="border-y border-copper/15 bg-surface-oxide">
           <div className="mx-auto grid max-w-[1440px] items-stretch lg:grid-cols-2">
-            <Reveal className="relative min-h-[340px] overflow-hidden lg:min-h-[560px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={spotlight.cover_image_url || "/placeholder-car.jpg"}
-                alt={`${spotlight.brand ?? ""} ${spotlight.model ?? ""}`}
-                className="h-full w-full object-cover"
-              />
+            <Reveal className="relative min-h-[340px] overflow-hidden bg-surface-mid lg:min-h-[560px]">
+              {spotlight.cover_image_url ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={spotlight.cover_image_url}
+                    alt={`${spotlight.brand ?? ""} ${spotlight.model ?? ""}`}
+                    className="h-full w-full object-cover"
+                  />
+                </>
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-surface-mid via-surface to-surface-oxide px-8">
+                  <p className="text-center font-display text-2xl font-bold uppercase tracking-wide text-white/60">
+                    {spotlight.brand} {spotlight.model}
+                  </p>
+                </div>
+              )}
               <span className="absolute left-4 top-4 z-10 border border-copper bg-black/75 px-3 py-1.5 font-display text-[10px] font-semibold uppercase tracking-[0.2em] text-copper">
                 ★ Spotlight da semana
               </span>
