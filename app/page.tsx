@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import NewsletterForm from "@/components/newsletter-form";
-import VgpuSpeedLines from "@/components/ui/vgpu-speed-lines";
 import { Reveal } from "@/components/ui/reveal";
 import type { SiteSettings } from "@/lib/site-settings";
 
@@ -88,8 +87,7 @@ export default async function HomePage() {
             backgroundImage: `url('${photos?.photo_home_hero || "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1920&q=80"}')`,
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/50" />
-        <VgpuSpeedLines />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
         <div className="relative z-10 mx-auto w-full max-w-[1440px] px-5 text-left sm:px-8 lg:px-12">
           <p className="font-display text-[11px] uppercase tracking-[0.32em] text-copper">
