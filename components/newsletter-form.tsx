@@ -40,7 +40,7 @@ export default function NewsletterForm() {
 
     if (response.ok && data.already) {
       setStatus("done");
-      setMessage("Já te encontras na newsletter.");
+      setMessage("Este email já está inscrito na newsletter.");
       setEmail("");
     } else if (response.ok) {
       setStatus("done");

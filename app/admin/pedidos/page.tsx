@@ -22,6 +22,7 @@ interface TestDrive {
   vehicle_id: string | null;
   vehicle?: { id: string; brand: string; model: string } | null;
   preferred_date: string;
+  preferred_time?: string | null;
   confirmed_date?: string | null;
   status: string;
   admin_notes?: string | null;
@@ -86,14 +87,27 @@ export default function PedidosPage() {
   };
 
   const confirmTestDrive = async (td: TestDrive) => {
-    const confirmedDate = td.confirmed_date || td.preferred_date;
+    // Usa a data/hora escolhida no campo se houver; senão combina
+    // preferred_date + preferred_time (sempre em UTC ISO para a BD).
+    const input = document.getElementById(`confirmed-date-${td.id}`) as HTMLInputElement | null;
+    let isoDate: string;
+    if (input?.value) {
+      isoDate = new Date(input.value).toISOString();
+    } else if (td.preferred_date) {
+      const time = td.preferred_time || "10:00";
+      isoDate = new Date(`${td.preferred_date}T${time}`).toISOString();
+    } else {
+      alert("Seleciona uma data e hora para confirmar.");
+      return;
+    }
+
     try {
-      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: confirmedDate }).eq("id", td.id);
+      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: isoDate, confirmed_at: isoDate }).eq("id", td.id);
       if (error) {
         alert(error.message);
         return;
       }
-      await sendTestDriveEmail(td, confirmedDate, "confirm");
+      await sendTestDriveEmail(td, isoDate, "confirm");
       fetchData();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Erro");
@@ -119,18 +133,43 @@ export default function PedidosPage() {
       alert("Seleciona uma data e hora para confirmar/alterar.");
       return;
     }
-    const confirmedDate = input.value;
+    const isoDate = new Date(input.value).toISOString();
+    if (Number.isNaN(new Date(input.value).getTime())) {
+      alert("Data/hora inválida.");
+      return;
+    }
     try {
-      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: confirmedDate }).eq("id", td.id);
+      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: isoDate, confirmed_at: isoDate }).eq("id", td.id);
       if (error) {
         alert(error.message);
         return;
       }
-      await sendTestDriveEmail(td, confirmedDate, "update");
+      await sendTestDriveEmail(td, isoDate, "update");
       fetchData();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Erro");
     }
+  };
+
+  // Converte uma data ISO (UTC) para o valor local do input datetime-local
+  const toLocalInputValue = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  // Limites do datetime-local (hoje a +30 dias, em hora local)
+  const todayLocal30 = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00`;
+  };
+  const maxDateLocal30 = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59`;
   };
 
   const formatDate = (dateStr: string, includeTime = false) => {
@@ -149,6 +188,16 @@ export default function PedidosPage() {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  // Mostra a data preferida (DATE) + hora preferida (TEXT) sem saltos de fuso
+  const formatPreferred = (td: TestDrive) => {
+    if (!td.preferred_date) return "-";
+    const [y, m, day] = td.preferred_date.split("-");
+    let out = `${day}/${m}/${y}`;
+    if (td.preferred_time) out += ` · ${td.preferred_time}`;
+    else out += " · —";
+    return out;
   };
 
   const statusColors: Record<string, string> = {
@@ -295,7 +344,7 @@ export default function PedidosPage() {
                   <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.email}</td>
                   <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.phone || "-"}</td>
                   <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{formatVehicle(d)}</td>
-                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{d.preferred_date ? formatDate(d.preferred_date, true) : "-"}</td>
+                  <td className="px-4 py-3" style={{ color: "#f5f5f0" }}>{formatPreferred(d)}</td>
                   <td className="px-4 py-3" style={{ color: "#c0c0b8" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "-"}</td>
                   <td className="px-4 py-3">
                     <span
@@ -351,7 +400,16 @@ export default function PedidosPage() {
                           <input
                             type="datetime-local"
                             id={`confirmed-date-${d.id}`}
-                            defaultValue={d.confirmed_date ? new Date(new Date(d.confirmed_date).getTime() - new Date(d.confirmed_date).getTimezoneOffset() * 60000).toISOString().slice(0,16) : d.preferred_date ? new Date(new Date(d.preferred_date).getTime() - new Date(d.preferred_date).getTimezoneOffset() * 60000).toISOString().slice(0,16) : ""}
+                            defaultValue={
+                              d.confirmed_date
+                                ? toLocalInputValue(d.confirmed_date)
+                                : d.preferred_date
+                                ? `${d.preferred_date}T${d.preferred_time || "10:00"}`
+                                : ""
+                            }
+                            min={todayLocal30()}
+                            max={maxDateLocal30()}
+                            step={1800}
                             className="px-2 py-1 text-xs border rounded bg-transparent"
                             style={{ borderColor: "#2a2a2a", color: "#c0c0b8" }}
                           />

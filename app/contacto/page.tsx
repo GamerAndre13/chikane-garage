@@ -8,6 +8,18 @@ import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@
 
 type VehicleRef = { id: string; brand: string; model: string; slug: string };
 
+// Slots de hora permitidos: 10h–12h e 14h–17h, sempre :00 ou :30
+const ALLOWED_TIMES = [
+  "10:00", "10:30", "11:00", "11:30", "12:00",
+  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00",
+];
+
+// Prazo máximo para marcar: 30 dias a partir de hoje
+const FORMAT_DATE = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 const inputStyle = {
   width: "100%",
   padding: "0.75rem 1rem",
@@ -68,7 +80,10 @@ function ContactoContent() {
     })();
   }, []);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = FORMAT_DATE(new Date());
+  const maxDateD = new Date();
+  maxDateD.setDate(maxDateD.getDate() + 30);
+  const maxDate = FORMAT_DATE(maxDateD);
 
   // Insere o pedido e, caso a coluna user_id ainda não exista na BD,
   // repete o insert sem ela para o formulário não falhar em produção.
@@ -105,9 +120,16 @@ function ContactoContent() {
 
     const name = String(fd.get("name") || "").trim();
     const email = String(fd.get("email") || "").trim().toLowerCase();
+    const phone = String(fd.get("phone") || "").trim();
     const message = String(fd.get("message") || "").trim();
     if (name.length < 2 || name.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Confirma o nome e introduz um email válido.");
+      setLoading(false);
+      return;
+    }
+    // Todos os campos do formulário são obrigatórios
+    if (phone.length < 3 || phone.length > 30) {
+      setError("Indica um número de telefone (mínimo 3 caracteres).");
       setLoading(false);
       return;
     }
@@ -125,14 +147,31 @@ function ContactoContent() {
       user_id: uid,
       name,
       email,
-      phone: (fd.get("phone") as string) || null,
+      phone: phone || null,
     };
 
     if (isTestDrive) {
-      // Guerra no fluxo de test drive: data é obrigatória
+      // Data e hora são obrigatórias e dentro das regras (hoje → +30 dias, slots 10-12 / 14-17)
       const preferred_date = fd.get("preferred_date") as string;
+      const preferred_time = fd.get("preferred_time") as string;
+      const notes = String(fd.get("notes") || "").trim();
       if (!preferred_date) {
-        setError("Escolhe uma data preferida para o test drive.");
+        setError("Escolhe uma data preferida para o test drive (calendário).");
+        setLoading(false);
+        return;
+      }
+      if (preferred_date < today || preferred_date > maxDate) {
+        setError("A data do test drive deve ser entre hoje e os próximos 30 dias.");
+        setLoading(false);
+        return;
+      }
+      if (!ALLOWED_TIMES.includes(preferred_time)) {
+        setError("Escolhe uma hora disponível (10h–12h ou 14h–17h, de :00 ou :30).");
+        setLoading(false);
+        return;
+      }
+      if (notes.length < 2 || notes.length > 2000) {
+        setError("Preenche o campo de notas/dúvidas (mínimo 2 caracteres).");
         setLoading(false);
         return;
       }
@@ -146,8 +185,8 @@ function ContactoContent() {
           ...common,
           vehicle_id: vehicle.id,
           preferred_date,
-          preferred_time: (fd.get("preferred_time") as string) || null,
-          notes: (fd.get("notes") as string) || null,
+          preferred_time,
+          notes,
           status: "pending",
         });
         if (error) {
@@ -306,24 +345,37 @@ function ContactoContent() {
             <input id="contact-email" name="email" type="email" autoComplete="email" maxLength={254} required style={inputStyle} />
           </div>
           <div>
-            <label htmlFor="contact-phone" className={labelCls}>Telefone</label>
-            <input id="contact-phone" name="phone" type="tel" autoComplete="tel" maxLength={30} style={inputStyle} />
+            <label htmlFor="contact-phone" className={labelCls}>Telefone *</label>
+            <input id="contact-phone" name="phone" type="tel" autoComplete="tel" maxLength={30} required style={inputStyle} />
           </div>
 
           {isTestDrive && (
             <>
               <div>
-                <label htmlFor="contact-date" className={labelCls}>Data preferida *</label>
-                <input id="contact-date" name="preferred_date" type="date" min={today} required style={inputStyle} />
-                <p className="mt-1 text-xs text-muted">Mínimo: hoje.</p>
+                <label htmlFor="contact-date" className={labelCls}>Data preferida (calendário) *</label>
+                <input id="contact-date" name="preferred_date" type="date" min={today} max={maxDate} required style={inputStyle} />
+                <p className="mt-1 text-xs text-muted">Entre hoje e {maxDate} (máx. 30 dias).</p>
               </div>
               <div>
-                <label htmlFor="contact-time" className={labelCls}>Hora preferida</label>
-                <input id="contact-time" name="preferred_time" type="time" style={inputStyle} />
+                <label htmlFor="contact-time" className={labelCls}>Hora preferida *</label>
+                <select id="contact-time" name="preferred_time" required defaultValue="" style={{ ...inputStyle, cursor: "pointer" }}>
+                  <option value="" disabled>Escolhe uma hora…</option>
+                  <optgroup label="Manhã (10h–12h)">
+                    {ALLOWED_TIMES.slice(0, 5).map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Tarde (14h–17h)">
+                    {ALLOWED_TIMES.slice(5).map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                <p className="mt-1 text-xs text-muted">Disponível entre as 10h–12h e 14h–17h, sempre às :00 ou :30.</p>
               </div>
               <div>
-                <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas</label>
-                <textarea id="contact-notes" name="notes" rows={3} maxLength={2000} style={{ ...inputStyle, resize: "vertical" as const }} />
+                <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas *</label>
+                <textarea id="contact-notes" name="notes" rows={3} minLength={2} maxLength={2000} required style={{ ...inputStyle, resize: "vertical" as const }} />
               </div>
             </>
           )}

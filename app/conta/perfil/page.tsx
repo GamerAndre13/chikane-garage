@@ -11,8 +11,15 @@ import { uploadAvatar } from "@/app/actions/upload";
 // Mensagem clara quando a base de dados ainda não tem a coluna/ativação necessária.
 function friendlyDbError(msg: string): string {
   const low = (msg || "").toLowerCase();
-  if (low.includes("deletion_requested_at") || low.includes("schema cache") || low.includes("pgrst205")) {
-    return "A funcionalidade ainda não está ativa na base de dados. Executa as migrations 005–008 no SQL Editor do Supabase e tenta novamente.";
+  if (
+    low.includes("deletion_requested_at") ||
+    low.includes("schema cache") ||
+    low.includes("pgrst205") ||
+    low.includes("row-level security") ||
+    low.includes("request_account_deletion") ||
+    low.includes("cancel_account_deletion")
+  ) {
+    return "A funcionalidade ainda não está ativa na base de dados. Executa a migration 013 no SQL Editor do Supabase e tenta novamente.";
   }
   return msg || "Erro ao guardar o pedido. Tenta novamente.";
 }
@@ -124,10 +131,22 @@ export default function PerfilPage() {
     setRequestingDelete(true);
     setError(null);
     setSuccess(null);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ deletion_requested_at: new Date().toISOString() })
-      .eq("id", user.id);
+
+    let error: { message: string; code?: string } | null = null;
+
+    // Usa o RPC (fiável e sem dependências de RLS); se a função ainda
+    // não existir na BD, tenta o update direto.
+    const { error: rpcError } = await supabase.rpc("request_account_deletion");
+    if (rpcError && (rpcError.message || "").toLowerCase().includes("request_account_deletion")) {
+      const { error: updError } = await supabase
+        .from("profiles")
+        .update({ deletion_requested_at: new Date().toISOString() })
+        .eq("id", user.id);
+      error = updError;
+    } else if (rpcError) {
+      error = rpcError as { message: string };
+    }
+
     setRequestingDelete(false);
     if (error) {
       setError(friendlyDbError(error.message));
@@ -143,10 +162,20 @@ export default function PerfilPage() {
     setCancellingDelete(true);
     setError(null);
     setSuccess(null);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ deletion_requested_at: null })
-      .eq("id", user.id);
+
+    let error: { message: string } | null = null;
+
+    const { error: rpcError } = await supabase.rpc("cancel_account_deletion");
+    if (rpcError && (rpcError.message || "").toLowerCase().includes("cancel_account_deletion")) {
+      const { error: updError } = await supabase
+        .from("profiles")
+        .update({ deletion_requested_at: null })
+        .eq("id", user.id);
+      error = updError ? { message: updError.message } : null;
+    } else if (rpcError) {
+      error = { message: rpcError.message };
+    }
+
     setCancellingDelete(false);
     if (error) {
       setError(friendlyDbError(error.message));

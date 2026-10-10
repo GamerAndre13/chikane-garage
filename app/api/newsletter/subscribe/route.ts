@@ -31,7 +31,19 @@ export async function POST(request: NextRequest) {
       p_email: email,
     });
 
-    if (dbError) {
+    // Fallback: se o RPC ainda não existir na BD, insere diretamente e
+    // trata o duplicado (23505) como "já inscrito".
+    if (dbError && (dbError.message || "").toLowerCase().includes("subscribe_newsletter")) {
+      const insertRes = await supabase.from("newsletter_subscribers").insert({ email });
+      if (insertRes.error && insertRes.error.code !== "23505") {
+        console.error("Database error:", insertRes.error);
+        return NextResponse.json({ error: "Erro ao subscrever" }, { status: 500 });
+      }
+      const already = insertRes.error?.code === "23505";
+      if (already) {
+        return NextResponse.json({ success: true, already: true });
+      }
+    } else if (dbError) {
       console.error("Database error:", dbError);
       return NextResponse.json({ error: "Erro ao subscrever" }, { status: 500 });
     }

@@ -24,11 +24,20 @@ export async function POST(request: NextRequest) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
-    const formattedDate = new Date(confirmedDate).toLocaleString("pt-PT", {
-      dateStyle: "full",
-      timeStyle: "short",
-      timeZone: "Europe/Lisbon",
-    });
+    // Date-only ("2026-10-11") é tratada a partir das 10:00 (hora de Lisboa);
+    // datas completas são interpretadas como UTC.
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(confirmedDate);
+    const formattedDate = isDateOnly
+      ? new Date(`${confirmedDate}T10:00:00`).toLocaleString("pt-PT", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "Europe/Lisbon",
+        })
+      : new Date(confirmedDate).toLocaleString("pt-PT", {
+          dateStyle: "full",
+          timeStyle: "short",
+          timeZone: "Europe/Lisbon",
+        });
 
     const html = `
       <!DOCTYPE html>
