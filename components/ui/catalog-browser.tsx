@@ -91,13 +91,10 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, ye
   return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
 }
 
-// Select de filtro com chevron que roda apenas enquanto a lista está aberta.
-// Antes usava "group-focus-within", o que deixava a seta virada depois de
-// escolher a opção (o select mantém o foco) — agora abre no foco/clique e
-// volta ao normal ao fechar (onChange/onBlur).
+// Select de filtro simples, sem seta personalizada ("sem nada"): o user abre
+// a lista no clique e escolhe; sem ícones a rodar.
 function SelectField({ label, value, onChange, disabled, placeholder, options }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder: string; options: { value: string; label: string }[] }) {
-  const [open, setOpen] = useState(false);
-  return <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={value} disabled={disabled} onFocus={() => setOpen(true)} onMouseDown={() => setOpen(true)} onBlur={() => setOpen(false)} onChange={(e) => { onChange(e.target.value); setOpen(false); }}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><svg aria-hidden="true" className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>;
+  return <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><select className={`${control} cursor-pointer`} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
@@ -212,7 +209,7 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     </button>
 
     <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
-      <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
+      <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:bottom-0 lg:block lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-5">
           <SelectField label="Marca" value={brand} onChange={(value) => { setBrand(value); setModel(all); }} placeholder="Todas as marcas" options={brands.map((value) => ({ value, label: value }))} />
           <SelectField label="Modelo" value={model} onChange={setModel} placeholder="Todos os modelos" disabled={!models.length} options={models.map((value) => ({ value, label: value }))} />

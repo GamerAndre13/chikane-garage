@@ -408,6 +408,11 @@ GRANT SELECT ON public.test_drives TO authenticated;
 GRANT INSERT ON public.contact_requests TO anon;
 GRANT INSERT ON public.test_drives TO anon;
 
+-- Leitura pública (catálogo e galeria de fotografias)
+GRANT SELECT ON public.vehicles TO anon;
+GRANT SELECT ON public.vehicle_features TO anon;
+GRANT SELECT ON public.vehicle_images TO anon;
+
 -- ============================================================
 -- STORAGE
 -- ============================================================

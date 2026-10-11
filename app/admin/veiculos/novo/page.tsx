@@ -149,6 +149,7 @@ export default function NovoVeiculo() {
         warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
         is_featured: form.is_featured === "true",
         status: form.status,
+        sold_at: form.status === "sold" ? new Date().toISOString() : null,
       }).select("id").single();
 
       if (error || !vehicle) {

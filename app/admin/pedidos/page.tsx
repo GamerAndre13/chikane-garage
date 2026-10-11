@@ -62,6 +62,15 @@ export default function PedidosPage() {
   const [activeTab, setActiveTab] = useState<"contactos" | "testdrives" | "reservas">("contactos");
   const [modal, setModal] = useState<ModalState>(null);
 
+  // Congela a página de fundo enquanto um popup está aberto (sem scroll);
+  // repõe o valor anterior ao fechar o popup.
+  useEffect(() => {
+    if (!modal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [modal]);
+
   const fetchData = useCallback(async () => {
     const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
       supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
