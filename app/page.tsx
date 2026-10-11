@@ -13,10 +13,10 @@ export const metadata = {
 
 const FALLBACK = {
   "hero.tagline": "Seleção rigorosa · Garantia garantida",
-  "hero.slogan": "Precision.\nPerfected.\nPassion Delivered.",
+  "hero.slogan": "Precision.\nPerfected.\nPassion.",
   "hero.intro": "Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.",
   "garage.title": "A Garagem",
-  "garage.text": "No catálogo encontras os dados e o equipamento registados para cada viatura. Contacta a equipa para confirmar disponibilidade e as condições aplicáveis à unidade.",
+  "garage.text": "Compramos cada viatura como se fosse para a nossa própria coleção: histórico verificado, mecânica e estética inspecionadas ao detalhe, sempre com a garantia Chikane. Fala connosco para confirmar a disponibilidade e as condições.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
   "newsletter.text": "Alguns clientes são informados antes de as viaturas serem anunciadas.",
 };
@@ -91,7 +91,7 @@ export default async function HomePage() {
   return (
     <div className="bg-background-alt">
       {/* ─── HERO ─── */}
-      <section className="relative flex min-h-[82vh] items-center overflow-hidden">
+      <section className="relative flex min-h-svh items-center overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{

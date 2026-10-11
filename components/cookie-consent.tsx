@@ -91,12 +91,11 @@ export function CookieConsent() {
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {!settingsOpen ? <>
-            <button type="button" onClick={() => save(false)} className="min-h-11 border border-white/25 px-4 py-2 text-xs font-semibold text-white transition-colors hover:border-white">Rejeitar opcionais</button>
-            <button type="button" onClick={() => setSettingsOpen(true)} className="min-h-11 border border-white/25 px-4 py-2 text-xs font-semibold text-white transition-colors hover:border-white">Configurar</button>
-            {ANALYTICS_ID && <button type="button" onClick={() => save(true)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-copper-light">Aceitar analytics</button>}
+            <button type="button" onClick={() => save(false)} className="min-h-11 border border-white/25 px-4 py-2 text-xs font-semibold text-white transition-colors hover:border-white">Rejeitar</button>
+            <button type="button" onClick={() => save(true)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black transition-colors hover:bg-copper-light">Aceitar</button>
           </> : <>
-            <button type="button" onClick={() => save(false)} className="min-h-11 border border-white/25 px-4 py-2 text-xs font-semibold text-white">Rejeitar opcionais</button>
-            <button type="button" onClick={() => save(analytics)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black">Aceito opcionais</button>
+            <button type="button" onClick={() => save(false)} className="min-h-11 border border-white/25 px-4 py-2 text-xs font-semibold text-white">Rejeitar</button>
+            <button type="button" onClick={() => save(analytics)} className="min-h-11 bg-copper px-4 py-2 text-xs font-semibold text-black">Aceitar</button>
           </>}
         </div>
       </div>

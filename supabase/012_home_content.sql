@@ -10,7 +10,7 @@
 
 INSERT INTO public.site_content (section_key, title, subtitle, body, link_url, link_text) VALUES
   ('hero.tagline', 'Frase de destaque (hero)', '', 'Seleção rigorosa · Garantia garantida', '', ''),
-  ('hero.slogan', 'Slogan (hero)', '', 'Precision. Perfected. Passion Delivered.', '', ''),
+  ('hero.slogan', 'Slogan (hero)', '', 'Precision. Perfected. Passion.', '', ''),
   ('hero.intro', 'Introdução do hero', '', 'Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.', '', '')
 ON CONFLICT (section_key) DO UPDATE SET
   title = EXCLUDED.title,

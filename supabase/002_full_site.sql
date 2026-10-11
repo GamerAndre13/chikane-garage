@@ -214,8 +214,8 @@ GRANT UPDATE ON public.test_drives TO authenticated;
 -- =====================
 INSERT INTO public.site_content (section_key, title, subtitle, body, link_url, link_text, sort_order) VALUES
 ('hero_tagline', 'Seleção Rigorosa · Garantia Chikane', '', '', '', '', 1),
-('hero_slogan', 'Precision. Imported. Passion Delivered.', '', 'Uma garagem privada especializada em BMWs diesel de performance. Cada viatura é selecionada a dedo, inspecionada detalhadamente e vendida com garantia Chikane.', '', '', 2),
-('garage_heading', 'A garagem', 'Compramos como se fosse para nós. Porque já foi.', 'Cada viatura é comprada como se fosse para a nossa própria coleção. Revisamos o histórico, o estado mecânico e estético, aplicamos uma inspecção de 140 pontos e atribuímos um número de série Chikane.', '/sobre', 'LER A HISTÓRIA COMPLETA →', 3),
+('hero_slogan', 'Precision. Perfected. Passion.', '', 'Uma garagem privada especializada em BMWs diesel de performance. Cada viatura é selecionada a dedo, inspecionada detalhadamente e vendida com garantia Chikane.', '', '', 2),
+('garage_heading', 'A garagem', 'Compramos como se fosse para nós. Porque já foi.', 'Compramos cada viatura como se fosse para a nossa própria coleção. Revisamos o histórico, o estado mecânico e estético, aplicamos uma inspecção de 140 pontos e atribuímos um número de série Chikane.', '/sobre', 'LER A HISTÓRIA COMPLETA →', 3),
 ('newsletter_heading', 'As viaturas saem antes de chegarem ao site', '', 'Recebe primeiro cada unidade que entra na garagem. Com fotografias e preço, 48 horas antes de ser publicada.', '', 'SUBSCREVER', 4);
 
 INSERT INTO public.site_settings (key, value) VALUES

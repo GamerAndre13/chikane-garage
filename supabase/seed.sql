@@ -149,9 +149,9 @@ FROM public.vehicles WHERE slug = 'bmw-320d-msport-2021';
 -- ============================================================
 INSERT INTO public.site_content (section_key, title, body) VALUES
   ('hero.tagline', 'Frase de destaque (hero)', 'Seleção rigorosa · Garantia garantida'),
-  ('hero.slogan', 'Slogan (hero)', 'Precision. Perfected. Passion Delivered.'),
+  ('hero.slogan', 'Slogan (hero)', 'Precision. Perfected. Passion.'),
   ('hero.intro', 'Introdução do hero', 'Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.'),
-  ('garage.title', 'A Garagem', 'Cada viatura passou por seleção rigorosa.'),
+  ('garage.title', 'A Garagem', 'Compramos cada viatura como se fosse para a nossa própria coleção: histórico verificado, mecânica e estética inspecionadas ao detalhe, sempre com a garantia Chikane. Fala connosco para confirmar a disponibilidade e as condições.'),
   ('newsletter.title', 'As viaturas saem antes de chegarem ao site', 'Regista-te para novidades.')
 ON CONFLICT (section_key) DO NOTHING;
 
