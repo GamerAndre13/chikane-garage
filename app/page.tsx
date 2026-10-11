@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
+import { FavoriteButton } from "@/components/ui/favorite-button";
 import NewsletterForm from "@/components/newsletter-form";
 import { Reveal } from "@/components/ui/reveal";
 import type { SiteSettings } from "@/lib/site-settings";
@@ -57,7 +58,7 @@ export default async function HomePage() {
       .select("*, vehicle_images(url, position, alt_text)")
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(3),
+      .limit(4),
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
@@ -70,6 +71,9 @@ export default async function HomePage() {
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
   // A viatura marcada como destaque da semana (fallback: a mais recente)
   const spotlight = ((spotlightRes.data?.[0] as Vehicle | undefined) ?? vehicles[0]) || null;
+  // A viatura do spotlight não pode repetir-se no "Em destaque": busca uma
+  // a mais (limit 4) e remove-a da grelha (fica 3 cartões).
+  const gridVehicles = vehicles.filter((v) => v.id !== spotlight?.id).slice(0, 3);
   const photos = settingsRes.data as Pick<SiteSettings, "photo_home_hero" | "photo_home_history"> | null;
 
   // Normaliza chaves (aceita "hero.tagline" e "hero_tagline") para o CMS
@@ -105,7 +109,7 @@ export default async function HomePage() {
             {t("hero.tagline")}
           </p>
           <h1 className="mt-7 max-w-5xl font-display text-[clamp(2.75rem,7.5vw,7.5rem)] font-bold uppercase leading-[0.94] tracking-tight text-white text-balance">
-            {t("hero.slogan").split("\n").map((line, i) => (
+            {t("hero.slogan").replace(/\. /g, ".\n").split("\n").map((line, i) => (
               <span key={i} className="block">{line}</span>
             ))}
           </h1>
@@ -200,12 +204,12 @@ export default async function HomePage() {
           <Link href="/catalogo" className="mb-1 hidden border-b border-copper pb-2 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:text-copper sm:inline">Ver garagem ↗</Link>
         </Reveal>
 
-        {vehicles.length === 0 ? (
+        {gridVehicles.length === 0 ? (
           <div className="border border-border bg-surface-mid p-12 text-center"><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
-        ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{vehicles.map((v, i) => {
+        ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{gridVehicles.map((v, i) => {
           const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
           return <Reveal key={v.id} className="h-full" delay={Math.min(i * 90, 360)}><article className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
-            <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`} />
+            <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id}/></div></VehicleCardGallery>
             <Link href={`/catalogo/${v.slug}`} className="flex flex-1 flex-col p-5">
               <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/60">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
               <h3 className="mt-2 min-h-[2.5rem] font-display text-2xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>

@@ -12,6 +12,7 @@ type Vehicle = {
   registration_year?: number | null; mileage_km?: number | null; power_hp?: number | null;
   fuel_type?: string | null; transmission?: string | null; exterior_color?: string | null;
   body_style?: string | null; price?: number | null; status?: string | null; cover_image_url?: string | null;
+  description?: string | null;
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
 };
 
@@ -33,9 +34,26 @@ function statusLabel(status?: string | null) {
 function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1 }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; unit?: string; step?: number }) {
   const domainMin = values.length ? Math.min(...values) : undefined;
   const domainMax = values.length ? Math.max(...values) : undefined;
-  const invalid = min !== all && max !== all && Number(min) > Number(max);
   const inputClass = `${control} min-w-0 px-3 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""}`;
-  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input className={inputClass} type="number" inputMode="numeric" placeholder="de" aria-label={`${label} de`} aria-invalid={invalid} value={min === all ? "" : min} min={domainMin} max={domainMax} step={step} onChange={(event) => onMin(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input className={inputClass} type="number" inputMode="numeric" placeholder="até" aria-label={`${label} até`} aria-invalid={invalid} value={max === all ? "" : max} min={domainMin} max={domainMax} step={step} onChange={(event) => onMax(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div>{invalid && <p role="alert" className="mt-1.5 text-xs text-red-300">O valor “de” tem de ser inferior ou igual a “até”.</p>}</fieldset>;
+  // Se "de" ultrapassar "até" (ou o contrário), os valores são invertidos
+  // automaticamente em vez de mostrar um erro.
+  const onMinChange = (next: string) => {
+    if (next !== all && max !== all && Number(next) > Number(max)) {
+      onMax(next);
+      onMin(max);
+    } else {
+      onMin(next);
+    }
+  };
+  const onMaxChange = (next: string) => {
+    if (next !== all && min !== all && Number(next) < Number(min)) {
+      onMin(next);
+      onMax(min);
+    } else {
+      onMax(next);
+    }
+  };
+  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input className={inputClass} type="number" inputMode="numeric" placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} min={domainMin} max={domainMax} step={step} onChange={(event) => onMinChange(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input className={inputClass} type="number" inputMode="numeric" placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} min={domainMin} max={domainMax} step={step} onChange={(event) => onMaxChange(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
@@ -98,10 +116,37 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("pt-PT");
+    // A pesquisa parte a string em palavras e cada palavra tem de existir em
+    // alguma parte da viatura — a ordem não interessa ("bmw 2017 gasóleo" é
+    // igual a "2017 bmw gasóleo"). Remove acentos para "gasóleo"≈"gasoleo".
+    const tokens = needle.split(/\s+/).filter(Boolean);
+    const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    // Termos alternativos para combustível e estado (gíria comum / variantes).
+    const fuelAliases = (v: Vehicle): string[] => {
+      const fuel = (v.fuel_type ?? "").toLocaleLowerCase("pt-PT");
+      if (fuel.includes("diesel") || fuel.includes("gasoleo") || fuel.includes("gasóleo")) return ["diesel", "disel", "gasoleo", "gasóleo"];
+      if (fuel.includes("gasolina") || fuel.includes("gasoline")) return ["gasolina", "gasoline", "petrol"];
+      if (fuel.includes("híbrido") || fuel.includes("hibrido") || fuel.includes("hybrid")) return ["híbrido", "hibrido", "hybrid"];
+      if (fuel.includes("elétrico") || fuel.includes("eletrico") || fuel.includes("electric")) return ["elétrico", "eletrico", "electric"];
+      return [];
+    };
     const numericMatch = (value: number | null | undefined, lower: string, upper: string) => lower === all && upper === all || value != null && (lower === all || value >= Number(lower)) && (upper === all || value <= Number(upper));
     return vehicles.filter((v) => {
-      const searchable = [v.brand, v.model, v.trim, v.registration_year, v.exterior_color, v.body_style].join(" ").toLocaleLowerCase("pt-PT");
-      return (!needle || searchable.includes(needle)) && (brand === all || v.brand === brand) && (model === all || v.model === model) && (fuel === all || v.fuel_type === fuel) && (color === all || v.exterior_color === color) && (bodyStyle === all || v.body_style === bodyStyle) && numericMatch(v.registration_year, minYear, maxYear) && numericMatch(v.price, minPrice, maxPrice) && numericMatch(v.mileage_km, minMileage, maxMileage) && numericMatch(v.power_hp, minPower, maxPower);
+      const partes = [
+        v.brand, v.model, v.trim, v.registration_year, v.mileage_km, v.power_hp,
+        v.fuel_type, ...fuelAliases(v), v.transmission, v.exterior_color, v.body_style,
+        v.status, statusLabel(v.status)?.label, v.price, v.description,
+      ];
+      if (v.status === "available") partes.push("disponíveis", "disponiveis", "em garagem", "disponível", "disponivel");
+      if (v.status === "reserved") partes.push("reservada", "reservadas");
+      if (v.status === "sold") partes.push("vendida", "vendido");
+      const flat = partes.filter((p): p is string | number => p !== null && p !== undefined && p !== "").map((p) => fold(String(p))).join(" ").toLocaleLowerCase("pt-PT");
+      const compact = flat.replace(/\s+/g, "");
+      const matchesQuery = tokens.every((token) => {
+        const tok = fold(token);
+        return flat.includes(tok) || compact.includes(tok.replace(/\s+/g, ""));
+      });
+      return matchesQuery && (brand === all || v.brand === brand) && (model === all || v.model === model) && (fuel === all || v.fuel_type === fuel) && (color === all || v.exterior_color === color) && (bodyStyle === all || v.body_style === bodyStyle) && numericMatch(v.registration_year, minYear, maxYear) && numericMatch(v.price, minPrice, maxPrice) && numericMatch(v.mileage_km, minMileage, maxMileage) && numericMatch(v.power_hp, minPower, maxPower);
     });
   }, [vehicles, query, brand, model, fuel, color, bodyStyle, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage, minPower, maxPower]);
 
@@ -125,11 +170,11 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
       <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-5">
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Marca</span><select className={control} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(all); }}><option value={all}>Todas as marcas</option>{brands.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Modelo</span><select className={control} value={model} disabled={!models.length} onChange={(e) => setModel(e.target.value)}><option value={all}>Todos os modelos</option>{models.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Combustível</span><select className={control} value={fuel} onChange={(e) => setFuel(e.target.value)}><option value={all}>Todos</option>{fuels.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Cor exterior</span><select className={control} value={color} onChange={(e) => setColor(e.target.value)}><option value={all}>Todas as cores</option>{colors.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Estilo</span><select className={control} value={bodyStyle} onChange={(e) => setBodyStyle(e.target.value)}><option value={all}>Todos os estilos</option>{bodyStyles.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select></label>
+          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Marca</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(all); }}><option value={all}>Todas as marcas</option>{brands.map((value) => <option key={value} value={value}>{value}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
+          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Modelo</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={model} disabled={!models.length} onChange={(e) => setModel(e.target.value)}><option value={all}>Todos os modelos</option>{models.map((value) => <option key={value} value={value}>{value}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
+          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Combustível</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={fuel} onChange={(e) => setFuel(e.target.value)}><option value={all}>Todos</option>{fuels.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
+          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Cor exterior</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={color} onChange={(e) => setColor(e.target.value)}><option value={all}>Todas as cores</option>{colors.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
+          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Estilo</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={bodyStyle} onChange={(e) => setBodyStyle(e.target.value)}><option value={all}>Todos os estilos</option>{bodyStyles.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
           <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
           <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
           <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} />
