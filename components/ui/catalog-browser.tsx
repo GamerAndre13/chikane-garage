@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/ui/favorite-button";
@@ -31,29 +31,73 @@ function statusLabel(status?: string | null) {
   return null;
 }
 
-function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1 }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; unit?: string; step?: number }) {
+function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, year = false }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; unit?: string; step?: number; year?: boolean }) {
   const domainMin = values.length ? Math.min(...values) : undefined;
   const domainMax = values.length ? Math.max(...values) : undefined;
-  const inputClass = `${control} min-w-0 px-3 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""}`;
+  const inputClass = `${control} min-w-0 px-3 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""} ${year ? "tabular-nums" : ""}`;
   // Se "de" ultrapassar "até" (ou o contrário), os valores são invertidos
-  // automaticamente em vez de mostrar um erro.
-  const onMinChange = (next: string) => {
-    if (next !== all && max !== all && Number(next) > Number(max)) {
-      onMax(next);
+  // automaticamente — mas só 1s depois de o user parar de escrever, para não
+  // trocar os campos a meio da digitação.
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const minRef = useRef(min);
+  const maxRef = useRef(max);
+  useEffect(() => { minRef.current = min; maxRef.current = max; }, [min, max]);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const swapIfInverted = () => {
+    const a = minRef.current;
+    const b = maxRef.current;
+    if (a !== all && b !== all && Number(a) > Number(b)) {
+      onMin(b);
+      onMax(a);
+    }
+  };
+  const scheduleSwap = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(swapIfInverted, 1000);
+  };
+
+  // Valores já invertidos vindos do URL (ex.: ?ano_a=2025&ano_b=2015) são
+  // normalizados logo na 1.ª renderização, sem esperar pelo debounce.
+  useEffect(() => {
+    if (min !== all && max !== all && Number(min) > Number(max)) {
       onMin(max);
-    } else {
-      onMin(next);
-    }
-  };
-  const onMaxChange = (next: string) => {
-    if (next !== all && min !== all && Number(next) < Number(min)) {
-      onMin(next);
       onMax(min);
-    } else {
-      onMax(next);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleChange = (kind: "min" | "max", raw: string) => {
+    if (year) {
+      // Ano: só dígitos, no máximo 4; a partir do 3.º dígito tem de começar
+      // por 20 (só viaturas deste século no catálogo).
+      const digits = raw.replace(/\D/g, "").slice(0, 4);
+      if (digits.length > 2 && !digits.startsWith("20")) return;
+      (kind === "min" ? onMin : onMax)(digits || all);
+    } else {
+      (kind === "min" ? onMin : onMax)(raw || all);
+    }
+    scheduleSwap();
   };
-  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input className={inputClass} type="number" inputMode="numeric" placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} min={domainMin} max={domainMax} step={step} onChange={(event) => onMinChange(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input className={inputClass} type="number" inputMode="numeric" placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} min={domainMin} max={domainMax} step={step} onChange={(event) => onMaxChange(event.target.value || all)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
+
+  const common = {
+    className: inputClass,
+    inputMode: "numeric" as const,
+    maxLength: year ? 4 : undefined,
+    min: year ? undefined : domainMin,
+    max: year ? undefined : domainMax,
+    step: year ? undefined : step,
+  };
+  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
+}
+
+// Select de filtro com chevron que roda apenas enquanto a lista está aberta.
+// Antes usava "group-focus-within", o que deixava a seta virada depois de
+// escolher a opção (o select mantém o foco) — agora abre no foco/clique e
+// volta ao normal ao fechar (onChange/onBlur).
+function SelectField({ label, value, onChange, disabled, placeholder, options }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder: string; options: { value: string; label: string }[] }) {
+  const [open, setOpen] = useState(false);
+  return <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={value} disabled={disabled} onFocus={() => setOpen(true)} onMouseDown={() => setOpen(true)} onBlur={() => setOpen(false)} onChange={(e) => { onChange(e.target.value); setOpen(false); }}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select><svg aria-hidden="true" className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>;
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
@@ -170,14 +214,14 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
       <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-5">
-          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Marca</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={brand} onChange={(e) => { setBrand(e.target.value); setModel(all); }}><option value={all}>Todas as marcas</option>{brands.map((value) => <option key={value} value={value}>{value}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
-          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Modelo</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={model} disabled={!models.length} onChange={(e) => setModel(e.target.value)}><option value={all}>Todos os modelos</option>{models.map((value) => <option key={value} value={value}>{value}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
-          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Combustível</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={fuel} onChange={(e) => setFuel(e.target.value)}><option value={all}>Todos</option>{fuels.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
-          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Cor exterior</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={color} onChange={(e) => setColor(e.target.value)}><option value={all}>Todas as cores</option>{colors.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
-          <label className="group block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">Estilo</span><span className="relative block"><select className={`${control} cursor-pointer pr-9`} value={bodyStyle} onChange={(e) => setBodyStyle(e.target.value)}><option value={all}>Todos os estilos</option>{bodyStyles.map((value) => <option key={value} value={value}>{optionLabel(value)}</option>)}</select><svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 group-focus-within:rotate-180" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></span></label>
+          <SelectField label="Marca" value={brand} onChange={(value) => { setBrand(value); setModel(all); }} placeholder="Todas as marcas" options={brands.map((value) => ({ value, label: value }))} />
+          <SelectField label="Modelo" value={model} onChange={setModel} placeholder="Todos os modelos" disabled={!models.length} options={models.map((value) => ({ value, label: value }))} />
+          <SelectField label="Combustível" value={fuel} onChange={setFuel} placeholder="Todos" options={fuels.map((value) => ({ value, label: optionLabel(value) }))} />
+          <SelectField label="Cor exterior" value={color} onChange={setColor} placeholder="Todas as cores" options={colors.map((value) => ({ value, label: optionLabel(value) }))} />
+          <SelectField label="Estilo" value={bodyStyle} onChange={setBodyStyle} placeholder="Todos os estilos" options={bodyStyles.map((value) => ({ value, label: optionLabel(value) }))} />
           <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
           <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
-          <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} />
+          <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} year />
           <RangeFilter label="Quilometragem" values={mileages} min={minMileage} max={maxMileage} onMin={setMinMileage} onMax={setMaxMileage} step={1000} unit="km" />
         </div>
       </aside>

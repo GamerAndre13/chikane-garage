@@ -59,6 +59,16 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
       { key: "avatar_pool", label: "Avatares (lista)", hint: "Um URL por linha. Os uploads são adicionados à lista.", full: true },
     ],
   },
+  {
+    title: "Test drives",
+    description:
+      "Define a duração de cada test-drive, os horários e os dias da semana disponíveis. No formulário do site, os horários coincidentes com test-drives confirmados ficam automaticamente indisponíveis.",
+    fields: [
+      { key: "td_duration_minutes", label: "Duração de cada test-drive (minutos)", hint: "60 (1 hora) ou 120 (2 horas)." },
+      { key: "td_slots", label: "Horários disponíveis", hint: "Separa com vírgulas. Ex.: 10:00,10:30,11:00,11:30,14:00,14:30,15:00,15:30,16:00", full: true },
+      { key: "td_days", label: "Dias da semana disponíveis", hint: "Nomes em português separados por vírgulas (ex.: segunda,terça,quarta,quinta,sexta). Vazio = todos os dias.", full: true },
+    ],
+  },
 ];
 
 export default function DefinicoesPage() {
@@ -92,6 +102,9 @@ export default function DefinicoesPage() {
           photo_about_hero: row.photo_about_hero ?? "",
           photo_about_garage: row.photo_about_garage ?? "",
           avatar_pool: row.avatar_pool ?? "",
+          td_duration_minutes: String(row.td_duration_minutes ?? 60),
+          td_slots: row.td_slots ?? "",
+          td_days: row.td_days ?? "",
         });
       }
       setLoading(false);
@@ -121,7 +134,14 @@ export default function DefinicoesPage() {
     setSaved(false);
     setError(null);
 
-    const payload = { ...form, updated_at: new Date().toISOString() };
+    const payloadRaw: Record<string, unknown> = { ...form, updated_at: new Date().toISOString() };
+    // td_duration_minutes é INT na BD — converte a string do formulário.
+    const rawDuration = payloadRaw.td_duration_minutes;
+    const payload = {
+      ...payloadRaw,
+      td_duration_minutes:
+        typeof rawDuration === "string" && rawDuration.trim() === "" ? 60 : Number(rawDuration ?? 60),
+    };
     let saveError: PostgrestError | null = null;
 
     if (rowId) {
@@ -139,7 +159,7 @@ export default function DefinicoesPage() {
       const faltaMigration = /does not exist|row-level security/i.test(saveError.message);
       setError(
         faltaMigration
-          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql e supabase/005_backoffice_site.sql no SQL Editor do Supabase e volta a tentar."
+          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql, supabase/005_backoffice_site.sql e supabase/016_reservas_testdrives.sql no SQL Editor do Supabase e volta a tentar."
           : `Erro ao guardar: ${saveError.message}`
       );
       return;

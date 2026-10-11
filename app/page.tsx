@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import NewsletterForm from "@/components/newsletter-form";
+import { expireReservations } from "@/lib/expire-reservations";
 import { Reveal } from "@/components/ui/reveal";
 import type { SiteSettings } from "@/lib/site-settings";
 
@@ -52,6 +53,8 @@ type SiteContent = { section_key: string; body: string | null };
 export default async function HomePage() {
   const supabase = await createClient();
 
+  // Reservas vencidas (máx. 7 dias) voltam a "available" antes da leitura.
+  await expireReservations();
   const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
     supabase
       .from("vehicles")

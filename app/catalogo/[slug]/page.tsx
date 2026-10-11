@@ -7,6 +7,8 @@ import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { VehicleSpecifications } from "@/components/ui/vehicle-specifications";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
+import { VehicleReservationForm } from "@/components/ui/vehicle-reservation-form";
+import { expireReservations } from "@/lib/expire-reservations";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -128,6 +130,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
   let vehicle: Vehicle | null = null;
   try {
+    // Reservas vencidas (máx. 7 dias) voltam a "available" antes da leitura.
+    await expireReservations();
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")
@@ -215,7 +219,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           <p className="mt-1 text-xs text-muted">Preço final. Fala connosco para confirmar todos os detalhes.</p>
 
           <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
+            <a href="#reserva" className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</a>
             <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Pedir informações</Link>
             <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Marcar test-drive</Link>
           </div>
@@ -230,9 +234,17 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
+      <section id="reserva" className="mt-8 border-t border-border pt-6" aria-labelledby="reserva-titulo">
+        <h2 id="reserva-titulo" className="font-display text-xs uppercase tracking-[0.24em] text-copper">Reserva</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-silver">
+          Reserva esta viatura. Quando o pedido de reserva for aceite, a viatura fica reservada por 7 dias — e entra em contacto contigo por email.
+        </p>
+        <VehicleReservationForm vehicleId={vehicle.id} vehicle={`${vehicle.brand} ${vehicle.model}`} available={vehicle.status === "available"} reserved={vehicle.status === "reserved"} />
+      </section>
+
       {(vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history) && <section className="mt-8 grid gap-3 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">{vehicle.financing_available ? <p className="text-sm text-silver">Financiamento disponível</p> : null}{vehicle.trade_in_accepted ? <p className="text-sm text-silver">Retoma aceite</p> : null}{vehicle.accident_history ? <p className="text-sm text-silver">Histórico de acidente declarado</p> : null}</section>}
 
-      <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}>{car.status === "reserved" && <span className="absolute bottom-3 left-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span>}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
+      <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={car.id}/></div>{car.status === "reserved" && <span className="absolute bottom-3 left-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span>}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
     </div>
   );
 }

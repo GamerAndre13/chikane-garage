@@ -17,4 +17,8 @@ export type SiteSettings = {
   photo_about_hero?: string | null;
   photo_about_garage?: string | null;
   avatar_pool?: string | null;
+  // Configuração dos test-drives (supabase/016_reservas_testdrives.sql)
+  td_duration_minutes?: number | null;
+  td_slots?: string | null;
+  td_days?: string | null;
 };

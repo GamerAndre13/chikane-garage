@@ -25,11 +25,35 @@ function friendlyError(msg?: string): string {
   return msg && msg.length > 0 ? msg : "Ocorreu um erro ao enviar. Tenta novamente.";
 }
 
-// Slots de hora permitidos: 10h–12h e 14h–17h, sempre :00 ou :30
+// Slots de hora permitidos por omissão: 10h–12h e 14h–17h, sempre :00 ou :30
+// (podem ser substituídos pela configuração em /admin/definicoes → Test drives)
 const ALLOWED_TIMES = [
   "10:00", "10:30", "11:00", "11:30", "12:00",
   "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00",
 ];
+
+// Rótulos por dia da semana (getDay(): 0 = Domingo … 6 = Sábado)
+const DAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+// Converte "segunda,terça,..." (sem acentos também) numa lista de dias 0–6
+function parseDays(raw: string): number[] {
+  const names = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[- ]/g, "");
+  const days: number[] = [];
+  for (const token of raw.split(",").map((t) => norm(t.trim())).filter(Boolean)) {
+    const idx = names.findIndex((name) => {
+      const n = norm(name);
+      return n === token || n.startsWith(token) || token.startsWith(n.slice(0, 3));
+    });
+    if (idx !== -1 && !days.includes(idx)) days.push(idx);
+  }
+  return days;
+}
+
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
 
 // Prazo máximo para marcar: 30 dias a partir de hoje
 const FORMAT_DATE = (d: Date) => {
@@ -73,6 +97,46 @@ function ContactoContent() {
   const [vehicleLoading, setVehicleLoading] = useState(!!testdriveSlug || !!vehicleSlug);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  // Configuração dos test-drives (duração/horários/dias) vinda do back office.
+  // Se a migração 016 ainda não tiver sido corrida, usa os valores por omissão.
+  const [tdConfig, setTdConfig] = useState<{ duration: number; slots: string[]; days: number[] } | null>(null);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [occupied, setOccupied] = useState<string[]>([]);
+  const [occupiedDate, setOccupiedDate] = useState("");
+
+  useEffect(() => {
+    if (!isTestDrive) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("site_settings").select("td_duration_minutes, td_slots, td_days").limit(1).maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setTdConfig({
+          duration: Number(data.td_duration_minutes) || 60,
+          slots: String(data.td_slots || "").split(",").map((s) => s.trim()).filter(Boolean),
+          days: parseDays(String(data.td_days || "")),
+        });
+      } else {
+        setTdConfig({ duration: 60, slots: [], days: [] });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isTestDrive]);
+
+  // Horários já confirmados para a data escolhida (RPC da migração 016).
+  useEffect(() => {
+    if (!isTestDrive || !selectedDate) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.rpc("get_occupied_test_drive_slots", { p_date: selectedDate });
+      if (!cancelled) {
+        setOccupied((data as string[]) || []);
+        setOccupiedDate(selectedDate);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isTestDrive, selectedDate]);
+
   // Ao chegar via ?vehicle=… / ?testdrive=…, leva o utilizador ao formulário
   // e foca o primeiro campo (o formulário está abaixo do cartão de contactos).
   useEffect(() => {
@@ -113,24 +177,29 @@ function ContactoContent() {
   maxDateD.setDate(maxDateD.getDate() + 30);
   const maxDate = FORMAT_DATE(maxDateD);
 
-  // Insere o pedido e, caso a coluna user_id ainda não exista na BD,
-  // repete o insert sem ela para o formulário não falhar em produção.
+  // Insere o pedido e confirma que a BD gravou (select de "id"). Caso a coluna
+  // user_id ainda não exista na BD, repete o insert sem ela. Só é "sucesso"
+  // quando a BD devolve a linha gravada — nunca mostra sucesso sem gravar.
   async function insertResilient(
     table: "contact_requests" | "test_drives",
     payload: Record<string, unknown>
-  ) {
-    const { error } = await supabase.from(table).insert(payload);
-    if (!error) return null;
-    const msg = `${error.message} ${error.details ?? ""}`.toLowerCase();
-    const missingUserId =
-      payload.user_id !== undefined && (msg.includes("user_id") || error.code === "PGRST204");
-    if (missingUserId) {
-      const rest: Record<string, unknown> = { ...payload };
-      delete rest.user_id;
-      const retry = await supabase.from(table).insert(rest);
-      return retry.error;
+  ): Promise<{ message: string } | null> {
+    const res = await supabase.from(table).insert(payload).select("id");
+    if (res.data && res.data.length > 0) return null;
+    if (res.error) {
+      const msg = `${res.error.message} ${res.error.details ?? ""}`.toLowerCase();
+      const missingUserId =
+        payload.user_id !== undefined && (msg.includes("user_id") || res.error.code === "PGRST204");
+      if (missingUserId) {
+        const rest: Record<string, unknown> = { ...payload };
+        delete rest.user_id;
+        const retry = await supabase.from(table).insert(rest).select("id");
+        if (retry.data && retry.data.length > 0) return null;
+        return { message: retry.error?.message || "Não foi possível gravar o pedido. Tenta novamente." };
+      }
+      return { message: res.error.message };
     }
-    return error;
+    return { message: "Não foi possível gravar o pedido. Tenta novamente." };
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -139,9 +208,9 @@ function ContactoContent() {
     setError(null);
     const fd = new FormData(e.currentTarget);
 
-    // Honeypot para filtrar submissões automatizadas sem recolher mais dados.
+    // Honeypot para filtrar submissões automatizadas. Não grava na BD e
+    // também não mostra sucesso — resposta neutra para não enganar o user.
     if (String(fd.get("website") || "").trim()) {
-      setSuccess(true);
       setLoading(false);
       return;
     }
@@ -179,7 +248,8 @@ function ContactoContent() {
     };
 
     if (isTestDrive) {
-      // Data e hora são obrigatórias e dentro das regras (hoje → +30 dias, slots 10-12 / 14-17)
+      // Data e hora são obrigatórias e dentro das regras (hoje → +30 dias,
+      // dias/horários disponíveis + horários já confirmados).
       const preferred_date = fd.get("preferred_date") as string;
       const preferred_time = fd.get("preferred_time") as string;
       const notes = String(fd.get("notes") || "").trim();
@@ -193,13 +263,30 @@ function ContactoContent() {
         setLoading(false);
         return;
       }
-      if (!ALLOWED_TIMES.includes(preferred_time)) {
-        setError("Escolhe uma hora disponível (10h–12h ou 14h–17h, de :00 ou :30).");
+      const weekday = new Date(`${preferred_date}T12:00:00`).getDay();
+      if (tdConfig && tdConfig.days.length && !tdConfig.days.includes(weekday)) {
+        setError("Escolhe um dia da semana disponível para test drives.");
         setLoading(false);
         return;
       }
-      if (notes.length < 2 || notes.length > 2000) {
-        setError("Preenche o campo de notas/dúvidas (mínimo 2 caracteres).");
+      const baseSlots = tdConfig && tdConfig.slots.length ? tdConfig.slots : ALLOWED_TIMES;
+      if (!baseSlots.includes(preferred_time)) {
+        setError("Escolhe uma hora disponível para o test drive.");
+        setLoading(false);
+        return;
+      }
+      // Slot já marcado (ou a decorrer) para essa data, dado o espaço de 1h/2h.
+      const busy = selectedDate === preferred_date && bookedSlots.some((b) => {
+        const start = toMinutes(preferred_time);
+        return start >= toMinutes(b) && start < toMinutes(b) + (tdConfig?.duration || 60);
+      });
+      if (busy) {
+        setError("Essa hora já está marcada. Escolhe outra disponível.");
+        setLoading(false);
+        return;
+      }
+      if (notes.length > 2000) {
+        setError("As notas/dúvidas não podem ultrapassar os 2000 caracteres.");
         setLoading(false);
         return;
       }
@@ -209,7 +296,7 @@ function ContactoContent() {
         return;
       }
       try {
-        const error = await insertResilient("test_drives", {
+        const err = await insertResilient("test_drives", {
           ...common,
           vehicle_id: vehicle.id,
           preferred_date,
@@ -217,9 +304,9 @@ function ContactoContent() {
           notes,
           status: "pending",
         });
-        if (error) {
-          console.error("Erro test_drives:", error);
-          setError(friendlyError(error.message));
+        if (err) {
+          console.error("Erro test_drives:", err);
+          setError(friendlyError(err.message));
         } else {
           setSuccess(true);
           setError(null);
@@ -231,14 +318,14 @@ function ContactoContent() {
       }
     } else {
       try {
-        const error = await insertResilient("contact_requests", {
+        const err = await insertResilient("contact_requests", {
           ...common,
           vehicle_id: vehicle?.id || null,
           message,
         });
-        if (error) {
-          console.error("Erro contact_requests:", error);
-          setError(friendlyError(error.message));
+        if (err) {
+          console.error("Erro contact_requests:", err);
+          setError(friendlyError(err.message));
         } else {
           setSuccess(true);
           setError(null);
@@ -268,6 +355,24 @@ function ContactoContent() {
         s.social_tiktok ? { label: "TikTok", href: tiktokUrl(s.social_tiktok) } : null,
       ].filter((l): l is { label: string; href: string } => Boolean(l && l.href))
     : [];
+
+  // Horários/dias efetivamente disponíveis (config do back office + ocupação)
+  const baseSlots = tdConfig && tdConfig.slots.length ? tdConfig.slots : ALLOWED_TIMES;
+  const tdDuration = tdConfig?.duration || 60;
+  const selectedWeekday = selectedDate ? new Date(`${selectedDate}T12:00:00`).getDay() : -1;
+  const dayNotAllowed = !!tdConfig && tdConfig.days.length > 0 && selectedWeekday !== -1 && !tdConfig.days.includes(selectedWeekday);
+  // Horários ocupados apenas valem para a data selecionada (evita setState síncrono)
+  const bookedSlots: string[] = !isTestDrive || !selectedDate || occupiedDate !== selectedDate ? [] : occupied;
+  const isBusy = (slot: string) =>
+    bookedSlots.some((b) => {
+      const start = toMinutes(slot);
+      return start >= toMinutes(b) && start < toMinutes(b) + tdDuration;
+    });
+  const visibleSlots = baseSlots.filter((t) => !isBusy(t));
+  const morningSlots = visibleSlots.filter((t) => toMinutes(t) < 12 * 60);
+  const afternoonSlots = visibleSlots.filter((t) => toMinutes(t) >= 12 * 60);
+  const dayNamesText = tdConfig && tdConfig.days.length ? tdConfig.days.map((d) => DAY_NAMES[d]).join(", ") : "";
+  const someBusyToday = bookedSlots.length > 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 bg-background-alt">
@@ -381,28 +486,64 @@ function ContactoContent() {
             <>
               <div>
                 <label htmlFor="contact-date" className={labelCls}>Data preferida (calendário) *</label>
-                <input id="contact-date" name="preferred_date" type="date" min={today} max={maxDate} required style={inputStyle} />
+                <input
+                  id="contact-date"
+                  name="preferred_date"
+                  type="date"
+                  min={today}
+                  max={maxDate}
+                  required
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  style={inputStyle}
+                />
                 <p className="mt-1 text-xs text-muted">Entre hoje e {maxDate} (máx. 30 dias).</p>
+                {selectedDate && dayNotAllowed && (
+                  <p role="alert" className="mt-1 text-xs text-amber-400">
+                    Os test drives só estão disponíveis às {dayNamesText}. Escolhe outro dia.
+                  </p>
+                )}
+                {selectedDate && !dayNotAllowed && someBusyToday && (
+                  <p className="mt-1 text-xs text-muted">As horas já marcadas para este dia ficam indisponíveis.</p>
+                )}
               </div>
               <div>
                 <label htmlFor="contact-time" className={labelCls}>Hora preferida *</label>
-                <select id="contact-time" name="preferred_time" required defaultValue="" style={{ ...inputStyle, cursor: "pointer" }}>
+                <select
+                  id="contact-time"
+                  name="preferred_time"
+                  required
+                  defaultValue=""
+                  disabled={dayNotAllowed}
+                  style={{ ...inputStyle, cursor: dayNotAllowed ? "not-allowed" : "pointer" }}
+                >
                   <option value="" disabled>Escolhe uma hora…</option>
-                  <optgroup label="Manhã (10h–12h)">
-                    {ALLOWED_TIMES.slice(0, 5).map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Tarde (14h–17h)">
-                    {ALLOWED_TIMES.slice(5).map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </optgroup>
+                  {morningSlots.length > 0 && (
+                    <optgroup label="Manhã">
+                      {morningSlots.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {afternoonSlots.length > 0 && (
+                    <optgroup label="Tarde">
+                      {afternoonSlots.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {visibleSlots.length === 0 && (
+                    <option value="" disabled>Sem horas disponíveis para esta data</option>
+                  )}
                 </select>
+                {visibleSlots.length < baseSlots.length && (
+                  <p className="mt-1 text-xs text-muted">
+                    {baseSlots.length - visibleSlots.length} hora(s) já marcada(s) — cada test drive ocupa {tdDuration} min.
+                  </p>
+                )}
               </div>
               <div>
-                <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas *</label>
-                <textarea id="contact-notes" name="notes" rows={3} minLength={2} maxLength={2000} required style={{ ...inputStyle, resize: "vertical" as const }} />
+                <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas (opcional)</label>
+                <textarea id="contact-notes" name="notes" rows={3} maxLength={2000} style={{ ...inputStyle, resize: "vertical" as const }} />
               </div>
             </>
           )}
