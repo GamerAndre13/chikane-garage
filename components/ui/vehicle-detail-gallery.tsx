@@ -96,7 +96,7 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
         <div className="fixed inset-0 z-[60] flex flex-col bg-black/95 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Fotografias de ${title}`}>
           <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <p className="font-display text-xs uppercase tracking-[0.2em] text-white/70">{active + 1} / {total}</p>
-            <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="grid h-10 w-10 place-items-center border border-white/20 text-lg text-white transition-colors hover:border-copper hover:text-copper focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">✕</button>
+            <button ref={closeRef} type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="p-2 text-2xl leading-none text-white/80 transition-colors hover:text-copper focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper">✕</button>
           </div>
 
           <div className="relative flex-1 overflow-hidden" onClick={() => setOpen(false)}>
@@ -104,8 +104,8 @@ export function VehicleDetailGallery({ photos, title }: { photos: Photo[]; title
               <Image key={current.url} src={current.url} alt={current.alt || title} fill sizes="100vw" className="object-contain" priority />
             </div>
             {total > 1 && <>
-              <button type="button" onClick={(event) => { event.stopPropagation(); move(-1); }} aria-label="Fotografia anterior" className="absolute left-2 top-1/2 z-10 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/60 text-3xl text-white backdrop-blur hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:left-6">‹</button>
-              <button type="button" onClick={(event) => { event.stopPropagation(); move(1); }} aria-label="Fotografia seguinte" className="absolute right-2 top-1/2 z-10 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/60 text-3xl text-white backdrop-blur hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:right-6">›</button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); move(-1); }} aria-label="Fotografia anterior" className="absolute left-1 top-1/2 z-10 -translate-y-1/2 p-3 text-4xl font-light leading-none text-white/75 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] transition-colors hover:text-copper focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:left-5">‹</button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); move(1); }} aria-label="Fotografia seguinte" className="absolute right-1 top-1/2 z-10 -translate-y-1/2 p-3 text-4xl font-light leading-none text-white/75 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] transition-colors hover:text-copper focus-visible:outline focus-visible:outline-2 focus-visible:outline-copper sm:right-5">›</button>
             </>}
           </div>
 
