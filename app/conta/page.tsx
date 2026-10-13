@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, setRememberPreference } from "@/lib/supabase/client";
 import { Suspense } from "react";
+import { clearAttempts, formatRemaining, getLockRemaining, registerFailedAttempt } from "@/lib/login-attempts";
 
 // Valida o email antes de criar conta / entrar. Devolve mensagem de erro ou null.
 function validateEmail(value: string): string | null {
@@ -62,6 +63,17 @@ function ContaPageContent() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bloqueio temporário após várias tentativas falhadas (ms restantes)
+  const [lockRemaining, setLockRemaining] = useState(0);
+
+  // Contagem decrescente do bloqueio (atualiza a cada segundo).
+  useEffect(() => {
+    if (lockRemaining <= 0) return;
+    const id = window.setInterval(() => {
+      setLockRemaining((prev) => Math.max(0, prev - 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [lockRemaining]);
 
   // Se já estiver logado, vai para o perfil
   useEffect(() => {
@@ -105,8 +117,28 @@ function ContaPageContent() {
 
     try {
       if (mode === "login") {
+        // Bloqueio local após várias tentativas falhadas.
+        const remaining = getLockRemaining(email);
+        if (remaining > 0) {
+          setLockRemaining(remaining);
+          setError(`Demasiadas tentativas falhadas. Tenta novamente dentro de ${formatRemaining(remaining)}.`);
+          setLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          const { locked, remainingMs } = registerFailedAttempt(email);
+          if (locked) {
+            setLockRemaining(remainingMs);
+            setError(`Demasiadas tentativas falhadas. Por segurança, o início de sessão fica bloqueado durante ${formatRemaining(remainingMs)}.`);
+            setLoading(false);
+            return;
+          }
+          throw error;
+        }
+        clearAttempts(email);
+        setLockRemaining(0);
         setRememberPreference(remember);
         router.push(redirect);
         router.refresh();
@@ -191,9 +223,20 @@ function ContaPageContent() {
           <input type="checkbox" id="remember_me" name="remember_me" className="w-4 h-4" />
           <label htmlFor="remember_me" className="text-xs text-muted">Manter sessão iniciada</label>
         </div>
-        <button type="submit" disabled={loading} className="w-full bg-copper px-6 py-3 font-display text-sm uppercase tracking-widest text-background disabled:opacity-50">
-          {loading ? "A processar…" : mode === "login" ? "Entrar" : "Criar Conta"}
+        <button type="submit" disabled={loading || (mode === "login" && lockRemaining > 0)} className="w-full bg-copper px-6 py-3 font-display text-sm uppercase tracking-widest text-background disabled:opacity-50">
+          {loading
+            ? "A processar…"
+            : mode === "login" && lockRemaining > 0
+              ? `Bloqueado (${formatRemaining(lockRemaining)})`
+              : mode === "login"
+                ? "Entrar"
+                : "Criar Conta"}
         </button>
+        {mode === "login" && lockRemaining > 0 && (
+          <p role="alert" className="text-xs text-amber-400">
+            Demasiadas tentativas falhadas. Por segurança, tenta novamente dentro de {formatRemaining(lockRemaining)}.
+          </p>
+        )}
       </form>
 
       <div className="mt-6 flex items-center gap-4">

@@ -7,7 +7,6 @@ import { validarTelemovelPT } from "@/lib/validacao";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { MyRequests } from "@/components/ui/my-requests";
 import { pickFromPool } from "@/lib/avatar-pool";
-import { uploadAvatar } from "@/app/actions/upload";
 
 // Mensagem clara quando a base de dados ainda não tem a coluna/ativação necessária.
 function friendlyDbError(msg: string): string {
@@ -45,6 +44,9 @@ export default function PerfilPage() {
   const [requestingDelete, setRequestingDelete] = useState(false);
   const [deletionRequested, setDeletionRequested] = useState(false);
   const [cancellingDelete, setCancellingDelete] = useState(false);
+  // Mensagens do formulário de alteração de password (mostradas junto ao botão)
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState<string | null>(null);
 
   const loadProfileInternal = async (user: { id: string; email?: string | null }) => {
     setLoading(true);
@@ -203,74 +205,42 @@ export default function PerfilPage() {
     setSaving(true);
     setError(null);
     setSuccess(null);
+    setPwError(null);
+    setPwSuccess(null);
 
     const formData = new FormData(e.currentTarget);
+    const currentPassword = (formData.get("current_password") as string) || "";
     const newPassword = formData.get("new_password") as string;
     const confirmPassword = formData.get("confirm_password") as string;
 
-    if (newPassword !== confirmPassword) { setError("As passwords não coincidem"); setSaving(false); return; }
-    if (newPassword.length < 6) { setError("Minimo 6 caracteres"); setSaving(false); return; }
+    if (!currentPassword) { setPwError("Introduz a tua password atual."); setSaving(false); return; }
+    if (newPassword !== confirmPassword) { setPwError("As passwords não coincidem."); setSaving(false); return; }
+    if (newPassword.length < 6) { setPwError("A nova password tem de ter pelo menos 6 caracteres."); setSaving(false); return; }
+    if (newPassword === currentPassword) { setPwError("A nova password tem de ser diferente da atual."); setSaving(false); return; }
 
     try {
+      // O Supabase não verifica a password antiga por si: confirmamos primeiro
+      // com um início de sessão. Se falhar, a password atual está errada.
+      const email = user?.email || profile.email;
+      if (!email) { setPwError("Não foi possível identificar a tua conta. Volta a entrar."); setSaving(false); return; }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+      if (signInError) {
+        setPwError("Password atual incorreta.");
+        setSaving(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      setSuccess("Password alterada com sucesso!");
+      setPwSuccess("Password alterada com sucesso!");
       (e.target as HTMLFormElement).reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao alterar password");
+      setPwError(err instanceof Error ? err.message : "Erro ao alterar password.");
     } finally {
       setSaving(false);
     }
   }
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSaving(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const result = await uploadAvatar(formData);
-
-      if (result.error) throw new Error(result.error);
-      if (result.url) {
-        const newUrl = result.url;
-        // Forçar avatar sempre aleatório: guardamos a URL subida mas o UI renderiza aleatório? Espere —
-        // Utilizador escolheu "sempre aleatória da lista": então não persistimos URL personalizada na UI por defeito.
-        // Mas uploadAvatar atualiza BD com a URL. Vamos anular: ao carregar nova foto, mantemos a escolha (subida) mas UI mostrará aleatória? Contraditório.
-        // Decisão: se sempre aleatória da lista, ignoramos avatar_url guardado e mostramos pool; upload de foto própria fica desativado ou apenas gerido pela pool?
-        // Pedido: "sempre aleatória da lista (Recomendado)" — foto própria não aparece. Então:
-        // - Ao fazer uploadAvatar, NÃO atualizamos avatar_url para URL personalizada? Ou limpamos para vazio após? Melhor: não chamar uploadAvatar como avatar de perfil; mas permitir upload para pool (admin) — aqui user não precisa de upload próprio.
-        // - No entanto o botão "câmara" existe. Opção: ocultar botão quando modo aleatório? Ou ao upload, limpar avatar_url (forçar aleatório).
-        // Implementação: definir avatar_url = '' após upload com sucesso (forçar pool).
-        await supabase.from("profiles").update({ avatar_url: "" }).eq("id", (await supabase.auth.getUser()).data.user?.id);
-        setProfile(prev => ({ ...prev, avatar_url: "" }));
-        setSuccess("Foto adicionada. Com o modo «sempre aleatória da lista», o teu avatar passa a ser escolhido da lista de carros.");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar foto");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  
-
-  
 
   if (loading) {
     return (
@@ -313,18 +283,10 @@ export default function PerfilPage() {
                       {profile.full_name?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase() || "U"}
                     </span>
                   </div>
-                  <label className="absolute bottom-0 right-0 bg-copper p-2 rounded-full cursor-pointer hover:bg-copper/80 transition-colors">
-                    <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={saving} className="sr-only" />
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                  </label>
                 </div>
                 <div className="flex-1">
                   <p className="text-xs uppercase tracking-wide text-muted mb-2">Foto de Perfil</p>
-                  <p className="text-sm text-muted">Clica na câmara para alterar.</p>
+                  <p className="text-sm text-muted">O teu avatar é atribuído automaticamente pela Chikane Garage.</p>
                 </div>
               </div>
               <hr className="border-border" />
@@ -350,16 +312,30 @@ export default function PerfilPage() {
             <h2 className="font-display text-lg uppercase tracking-wide text-copper mb-6">Alterar Password</h2>
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div>
+                <label className="block text-xs uppercase tracking-wide text-muted mb-2">Password Atual *</label>
+                <input name="current_password" type="password" required autoComplete="current-password" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+              </div>
+              <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Nova Password *</label>
-                <input name="new_password" type="password" required minLength={6} className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input name="new_password" type="password" required minLength={6} autoComplete="new-password" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Confirmar Password *</label>
-                <input name="confirm_password" type="password" required minLength={6} className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input name="confirm_password" type="password" required minLength={6} autoComplete="new-password" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
               </div>
               <button type="submit" disabled={saving} className="border border-border px-8 py-3 font-display text-sm uppercase tracking-widest text-muted hover:border-copper hover:text-foreground disabled:opacity-50">
                 {saving ? "A alterar..." : "Alterar Password"}
               </button>
+              {pwError && (
+                <p role="alert" className="border-l-4 border-red-500 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                  {pwError}
+                </p>
+              )}
+              {pwSuccess && (
+                <p role="status" className="border-l-4 border-green-500 bg-green-500/10 px-3 py-2 text-sm text-green-400">
+                  {pwSuccess}
+                </p>
+              )}
             </form>
           </section>
 
