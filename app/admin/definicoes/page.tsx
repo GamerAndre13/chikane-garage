@@ -20,6 +20,7 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
       { key: "email", label: "Email", hint: "Ex.: garage@chikanegarage.blog" },
       { key: "location", label: "Localização", hint: "Ex.: Porto · Portugal" },
       { key: "address", label: "Morada", hint: "Opcional — alternativa à localização" },
+      { key: "location_url", label: "Link da localização (Google Maps)", hint: "Opcional. Ex.: https://maps.app.goo.gl/… — se vazio, abre a pesquisa pela morada/localização.", full: true },
     ],
   },
   {
@@ -91,6 +92,7 @@ export default function DefinicoesPage() {
           email: row.email ?? "",
           address: row.address ?? "",
           location: row.location ?? "",
+          location_url: row.location_url ?? "",
           social_instagram: row.social_instagram ?? "",
           social_facebook: row.social_facebook ?? "",
           social_whatsapp: row.social_whatsapp ?? "",
@@ -159,7 +161,7 @@ export default function DefinicoesPage() {
       const faltaMigration = /does not exist|row-level security/i.test(saveError.message);
       setError(
         faltaMigration
-          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql, supabase/005_backoffice_site.sql e supabase/016_reservas_testdrives.sql no SQL Editor do Supabase e volta a tentar."
+          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql, supabase/005_backoffice_site.sql, supabase/016_reservas_testdrives.sql e supabase/019_autoria_pedidos_e_geo.sql no SQL Editor do Supabase e volta a tentar."
           : `Erro ao guardar: ${saveError.message}`
       );
       return;

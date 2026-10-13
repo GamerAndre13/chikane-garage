@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CookieSettingsButton } from "@/components/layout/cookie-settings-button";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
+import { mapsUrl } from "@/lib/maps";
 
 const NAV_LINKS = [
   { label: "Catálogo", href: "/catalogo" },
@@ -23,6 +24,7 @@ export async function Footer() {
   const phone = settings.phone || null;
   const email = settings.email || null;
   const location = settings.location || settings.address || null;
+  const locationHref = mapsUrl(settings.location_url, settings.address, settings.location);
   const instagram = settings.social_instagram ? instagramUrl(settings.social_instagram) : null;
   const facebook = settings.social_facebook ? facebookUrl(settings.social_facebook) : null;
   const whatsapp = settings.social_whatsapp ? whatsappUrl(settings.social_whatsapp) : null;
@@ -81,7 +83,22 @@ export async function Footer() {
                   {email}
                 </a>
               </li>}
-              {location && <li>{location}</li>}
+              {location && (
+                <li>
+                  {locationHref ? (
+                    <a
+                      href={locationHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="transition-colors hover:text-foreground"
+                    >
+                      {location}
+                    </a>
+                  ) : (
+                    location
+                  )}
+                </li>
+              )}
               {!phone && !email && !location && <li><Link href="/contacto" className="hover:text-foreground">Usa o formulário de contacto</Link></li>}
             </ul>
           </div>

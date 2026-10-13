@@ -5,6 +5,8 @@ export type SiteSettings = {
   email?: string | null;
   address?: string | null;
   location?: string | null;
+  // Link do Google Maps (opcional) — usado no rodapé/contactos.
+  location_url?: string | null;
   social_instagram?: string | null;
   social_facebook?: string | null;
   social_whatsapp?: string | null;

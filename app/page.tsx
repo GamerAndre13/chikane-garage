@@ -1,11 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import NewsletterForm from "@/components/newsletter-form";
 import { expireReservations } from "@/lib/expire-reservations";
 import { Reveal } from "@/components/ui/reveal";
+import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import type { SiteSettings } from "@/lib/site-settings";
 
 export const metadata = {
@@ -16,7 +16,7 @@ export const metadata = {
 const FALLBACK = {
   "hero.tagline": "Seleção rigorosa · Garantia garantida",
   "hero.slogan": "Precision.\nPerfected.\nPassion.",
-  "hero.intro": "Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.",
+  "hero.intro": "Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane para quem vive a estrada com paixão.",
   "garage.title": "A Garagem",
   "garage.text": "Compramos cada viatura como se fosse para a nossa própria coleção: histórico verificado, mecânica e estética inspecionadas ao detalhe, sempre com a garantia Chikane. Fala connosco para confirmar a disponibilidade e as condições.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
@@ -46,9 +46,27 @@ type Vehicle = {
   cover_image_url?: string | null;
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
   description?: string | null;
+  sold_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
 };
 
 type SiteContent = { section_key: string; body: string | null };
+
+const TRANSMISSION_LABEL: Record<string, string> = { automatic: "Automática", manual: "Manual" };
+const FUEL_LABEL: Record<string, string> = {
+  diesel: "Diesel",
+  gasoline: "Gasolina",
+  hybrid: "Híbrido",
+  electric: "Elétrico",
+};
+const transmissionLabel = (value?: string | null) =>
+  value ? TRANSMISSION_LABEL[value.toLowerCase()] ?? value : "—";
+const fuelLabel = (value?: string | null) => (value ? FUEL_LABEL[value.toLowerCase()] ?? value : "—");
+const priceLabel = (value?: number | null) =>
+  value != null ? `${value.toLocaleString("pt-PT")} €` : "Sob consulta";
+const mileageLabel = (value?: number | null) =>
+  value != null ? `${value.toLocaleString("pt-PT")} km` : "—";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -72,8 +90,11 @@ export default async function HomePage() {
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
-  // A viatura marcada como destaque da semana (fallback: a mais recente)
-  const spotlight = ((spotlightRes.data?.[0] as Vehicle | undefined) ?? vehicles[0]) || null;
+  // A viatura marcada como destaque da semana (fallback: a mais recente).
+  // Respeita a regra dos 7 dias: uma viatura vendida deixa de ser destaque
+  // quando já não está publicamente visível.
+  const spotlightRow = (spotlightRes.data?.[0] as Vehicle | undefined) ?? null;
+  const spotlight = spotlightRow && isVehiclePubliclyVisible(spotlightRow) ? spotlightRow : vehicles[0] || null;
   // A viatura do spotlight não pode repetir-se no "Em destaque": busca uma
   // a mais (limit 4) e remove-a da grelha (fica 3 cartões).
   const gridVehicles = vehicles.filter((v) => v.id !== spotlight?.id).slice(0, 3);
@@ -130,104 +151,174 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─── SPOTLIGHT DA SEMANA ─── */}
+      {/* ─── EM DESTAQUE / SPOTLIGHT ─── */}
       {spotlight && (
-        <section className="border-y border-copper/15 bg-surface-oxide">
-          <div className="mx-auto grid max-w-[1440px] items-stretch lg:grid-cols-2">
-            <Reveal className="relative min-h-[340px] overflow-hidden bg-surface-mid lg:min-h-[560px]">
-              {spotlight.cover_image_url ? (
-                <Image
-                  src={spotlight.cover_image_url}
-                  alt={`${spotlight.brand ?? ""} ${spotlight.model ?? ""}`}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-surface-mid via-surface to-surface-oxide px-8">
-                  <p className="text-center font-display text-2xl font-bold uppercase tracking-wide text-white/60">
-                    {spotlight.brand} {spotlight.model}
-                  </p>
-                </div>
-              )}
-              <span className="absolute left-4 top-4 z-10 border border-copper bg-black/75 px-3 py-1.5 font-display text-[10px] font-semibold uppercase tracking-[0.2em] text-copper">
-                ★ Spotlight da semana
-              </span>
-            </Reveal>
-            <div className="flex flex-col justify-center bg-surface-mid p-8 sm:p-12 lg:p-16">
-              <Reveal delay={120}>
-                <p className="font-display text-[10px] uppercase tracking-[0.3em] text-copper">Spotlight da semana</p>
-                <h2 className="mt-4 font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white sm:text-6xl">
-                  {spotlight.brand} {spotlight.model}
+        <section className="relative overflow-hidden border-t border-border px-6 py-28">
+          <div className="grid-lines pointer-events-none absolute inset-0 opacity-30" aria-hidden="true" />
+          <div className="relative mx-auto max-w-[1400px]">
+            <Reveal className="flex items-end justify-between gap-6">
+              <div>
+                <p className="kicker">Currently in the garage</p>
+                <h2 className="mt-4 font-display text-[clamp(2rem,5vw,3.8rem)] font-bold uppercase leading-[0.9] tracking-tight text-foreground">
+                  Em destaque<br />esta semana
                 </h2>
-                {spotlight.trim && (
-                  <p className="mt-3 font-display text-xs uppercase tracking-[0.18em] text-copper">{spotlight.trim}</p>
+              </div>
+              <Link href="/catalogo" className="nav-link hidden transition-colors hover:text-copper sm:block">
+                Ver tudo
+              </Link>
+            </Reveal>
+
+            {/* Destaque da semana (spotlight) */}
+            <Reveal className="mt-16 grid gap-0 lg:grid-cols-[1.5fr_1fr]">
+              <Link href={`/catalogo/${spotlight.slug}`} className="group relative block aspect-[16/10] overflow-hidden">
+                {spotlight.cover_image_url ? (
+                  <Image
+                    src={spotlight.cover_image_url}
+                    alt={`${spotlight.brand ?? ""} ${spotlight.model ?? ""}`}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 60vw"
+                    className="object-cover transition-transform duration-[900ms] group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-surface-mid">
+                    <p className="text-center font-display text-2xl font-bold uppercase tracking-wide text-muted">
+                      {spotlight.brand} {spotlight.model}
+                    </p>
+                  </div>
                 )}
-                <p className="mt-5 max-w-lg text-sm leading-relaxed text-white/55">
+                <span className="absolute left-0 top-6 bg-copper px-4 py-1.5 font-display text-[0.62rem] tracking-[0.3em] text-black">
+                  SPOTLIGHT
+                </span>
+              </Link>
+
+              <div className="clip-chicane relative z-10 -mt-10 border border-copper/40 bg-surface p-10 lg:-ml-16 lg:mt-16">
+                <p className="kicker">
+                  {spotlight.brand} · {spotlight.registration_year ?? "—"}
+                </p>
+                <h3 className="mt-3 font-display text-4xl uppercase leading-none text-foreground">
+                  {spotlight.model}
+                </h3>
+                {spotlight.trim && (
+                  <p className="mt-2 font-display text-sm uppercase tracking-[0.16em] text-muted">
+                    {spotlight.trim}
+                  </p>
+                )}
+                <p className="mt-6 text-sm leading-relaxed text-muted">
                   {spotlight.description || "Viatura selecionada e inspecionada ao detalhe pela Chikane Garage."}
                 </p>
-                <div className="mt-6 grid max-w-md grid-cols-3 gap-3 border-y border-white/10 py-4">
+                <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-border pt-6">
                   <div>
-                    <span className="block font-display text-[10px] uppercase tracking-[0.13em] text-white/60">Ano</span>
-                    <span className="mt-1 block text-sm text-white">{spotlight.registration_year ?? "—"}</span>
+                    <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">KM</dt>
+                    <dd className="mt-1 font-display text-silver">{mileageLabel(spotlight.mileage_km)}</dd>
                   </div>
                   <div>
-                    <span className="block font-display text-[10px] uppercase tracking-[0.13em] text-white/60">Quilómetros</span>
-                    <span className="mt-1 block text-sm text-white">{spotlight.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span>
+                    <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">POTÊNCIA</dt>
+                    <dd className="mt-1 font-display text-silver">{spotlight.power_hp ?? "—"} cv</dd>
                   </div>
                   <div>
-                    <span className="block font-display text-[10px] uppercase tracking-[0.13em] text-white/60">Potência</span>
-                    <span className="mt-1 block text-sm text-white">{spotlight.power_hp ?? "—"} cv</span>
+                    <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">CAIXA</dt>
+                    <dd className="mt-1 font-display text-silver">{transmissionLabel(spotlight.transmission)}</dd>
                   </div>
-                </div>
-                <div className="mt-7 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                  <Link
-                    href={`/catalogo/${spotlight.slug}`}
-                    className="inline-flex items-center justify-center bg-copper px-8 py-3.5 font-display text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light"
-                  >
-                    Ver viatura
-                  </Link>
-                  <span className="font-display text-2xl font-semibold tabular-nums text-white">
-                    {spotlight.price != null ? `${spotlight.price.toLocaleString("pt-PT")} €` : "Sob consulta"}
-                  </span>
-                </div>
-              </Reveal>
-            </div>
+                </dl>
+                <p className="mt-8 font-display text-3xl text-copper">{priceLabel(spotlight.price)}</p>
+                <Link
+                  href={`/catalogo/${spotlight.slug}`}
+                  className="mt-8 inline-flex border border-copper px-8 py-3.5 font-display text-[0.68rem] tracking-[0.28em] text-copper transition-all duration-300 hover:bg-copper hover:text-black"
+                >
+                  VER VIATURA
+                </Link>
+              </div>
+            </Reveal>
+
+            {/* Restantes viaturas em destaque */}
+            {gridVehicles.length > 0 && (
+              <div className="mt-24 grid gap-10 md:grid-cols-3">
+                {gridVehicles.map((v, i) => {
+                  const cardPhotos = [
+                    ...(v.cover_image_url ? [{ url: v.cover_image_url, alt: `${v.brand ?? ""} ${v.model ?? ""}` }] : []),
+                    ...((v.vehicle_images || [])
+                      .filter((image) => image.url)
+                      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                      .map((image) => ({ url: image.url!, alt: image.alt_text || "" }))),
+                  ].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
+                  return (
+                    <Reveal key={v.id} delay={Math.min(i * 90, 360)}>
+                      <Link
+                        href={`/catalogo/${v.slug}`}
+                        className="group relative block border border-border bg-surface transition-all duration-500 hover:border-copper/70 hover:shadow-[0_0_40px_-16px_var(--glow)]"
+                      >
+                        <div className="relative aspect-[16/10] overflow-hidden">
+                          {cardPhotos[0] ? (
+                            <Image
+                              src={cardPhotos[0].url}
+                              alt={cardPhotos[0].alt}
+                              fill
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                              className="object-cover transition-all duration-700 group-hover:scale-[1.06] group-hover:opacity-0"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-surface-mid">
+                              <p className="px-6 text-center font-display text-lg font-bold uppercase tracking-wide text-muted">
+                                {v.brand} {v.model}
+                              </p>
+                            </div>
+                          )}
+                          {cardPhotos[1] && (
+                            <Image
+                              src={cardPhotos[1].url}
+                              alt=""
+                              aria-hidden
+                              fill
+                              sizes="(max-width: 768px) 100vw, 33vw"
+                              className="scale-[1.06] object-cover opacity-0 transition-all duration-700 group-hover:opacity-100"
+                            />
+                          )}
+                          {v.status === "reserved" && (
+                            <span className="absolute left-0 top-4 bg-red px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-white">
+                              RESERVADO
+                            </span>
+                          )}
+                          <div className="absolute right-3 top-3 z-20">
+                            <FavoriteButton vehicleId={v.id} />
+                          </div>
+                        </div>
+                        <div className="clip-notch relative bg-surface p-6">
+                          <p className="kicker">{v.brand || "BMW"}</p>
+                          <h3 className="mt-2 font-display text-2xl uppercase leading-none text-foreground">
+                            {v.model}
+                            {v.trim && <span className="text-muted"> {v.trim}</span>}
+                          </h3>
+                          <dl className="mt-5 grid grid-cols-4 gap-3 border-t border-border pt-4 text-[0.7rem] tracking-widest text-muted">
+                            <div>
+                              <dt className="sr-only">Ano</dt>
+                              <dd className="font-display text-silver">{v.registration_year ?? "—"}</dd>
+                            </div>
+                            <div>
+                              <dt className="sr-only">Quilometragem</dt>
+                              <dd className="font-display text-silver">{mileageLabel(v.mileage_km)}</dd>
+                            </div>
+                            <div>
+                              <dt className="sr-only">Potência</dt>
+                              <dd className="font-display text-silver">{v.power_hp ?? "—"} cv</dd>
+                            </div>
+                            <div>
+                              <dt className="sr-only">Combustível</dt>
+                              <dd className="font-display text-silver">{fuelLabel(v.fuel_type)}</dd>
+                            </div>
+                          </dl>
+                          <p className="mt-5 font-display text-xl text-copper transition-colors duration-300 group-hover:text-copper-light">
+                            {priceLabel(v.price)}
+                          </p>
+                        </div>
+                      </Link>
+                    </Reveal>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       )}
-
-      {/* ─── DESTAQUE ─── */}
-      <section className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 sm:py-28 lg:px-12">
-        <Reveal className="mb-9 flex items-end justify-between sm:mb-12">
-          <div>
-            <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Atualmente na garagem</p>
-            <h2 className="mt-4 max-w-3xl font-display text-5xl font-bold uppercase leading-[0.95] tracking-tight text-white text-balance sm:text-7xl lg:text-8xl">Em destaque<br className="hidden sm:block"/> esta semana</h2>
-          </div>
-          <Link href="/catalogo" className="mb-1 hidden border-b border-copper pb-2 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:text-copper sm:inline">Ver garagem ↗</Link>
-        </Reveal>
-
-        {gridVehicles.length === 0 ? (
-          <div className="border border-border bg-surface-mid p-12 text-center"><p className="text-sm text-muted">Nenhuma viatura disponível de momento.</p></div>
-        ) : <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">{gridVehicles.map((v, i) => {
-          const photos = [...(v.cover_image_url ? [{ url: v.cover_image_url }] : []), ...((v.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, all) => all.findIndex((candidate) => candidate.url === photo.url) === index).slice(0, 2);
-          return <Reveal key={v.id} className="h-full" delay={Math.min(i * 90, 360)}><article className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_28px_rgba(244,119,36,0.14)]">
-            <VehicleCardGallery photos={photos} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id}/></div></VehicleCardGallery>
-            <Link href={`/catalogo/${v.slug}`} className="flex flex-1 flex-col p-5">
-              <p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/60">{v.brand || "BMW"} <span className="text-copper">·</span> {v.registration_year}</p>
-              <h3 className="mt-2 min-h-[2.5rem] font-display text-2xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>
-              <p className="mt-1 min-h-4 truncate font-display text-[10px] uppercase tracking-[0.15em] text-copper">{v.trim || " "}</p>
-              <p className="mt-2 min-h-10 line-clamp-2 text-xs leading-5 text-white/60">{v.description || "Viatura selecionada e inspecionada pela Chikane Garage."}</p>
-              <div className="mt-4 grid grid-cols-3 gap-2 border-y border-white/10 py-3">
-                <div><span className="block font-display text-[10px] uppercase tracking-[0.13em] text-white/60">Quilómetros</span><span className="mt-1 block text-xs tabular-nums text-white">{v.mileage_km?.toLocaleString("pt-PT") ?? "—"} km</span></div>
-                <div><span className="block font-display text-[10px] uppercase tracking-[0.13em] text-white/60">Potência</span><span className="mt-1 block text-xs tabular-nums text-white">{v.power_hp ?? "—"} cv</span></div>
-                <div><span className="block font-display text-[10px] uppercase tracking-[0.13em] text-white/60">Caixa</span><span className="mt-1 block text-xs text-white">{v.transmission === "automatic" ? "Automática" : v.transmission ? "Manual" : "—"}</span></div>
-              </div>
-              <div className="mt-auto flex items-center justify-between pt-4"><span className="font-display text-xl font-semibold tabular-nums text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div>
-            </Link>
-          </article></Reveal>;
-        })}</div>}
-      </section>
 
       {/* ─── A GARAGEM ─── */}
       <section className="bg-surface-oxide">

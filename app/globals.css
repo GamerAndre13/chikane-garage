@@ -87,6 +87,51 @@ html {
   );
 }
 
+/* ── Utilitários da secção "Em destaque / Spotlight" ── */
+/* Etiqueta pequena em maiúsculas (eyebrow) acima dos títulos. */
+.kicker {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--copper);
+}
+
+/* Link de navegação secundário (ex.: "Ver tudo"). */
+.nav-link {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+
+/* Grelha técnica de fundo (linhas verticais + horizontais). */
+.grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(200, 200, 200, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(200, 200, 200, 0.06) 1px, transparent 1px);
+  background-size: 96px 96px;
+}
+
+/* Cantos cortados em "chicane" (cartão do destaque da semana). */
+.clip-chicane {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 26px) 0,
+    100% 26px,
+    100% 100%,
+    26px 100%,
+    0 calc(100% - 26px)
+  );
+}
+
+/* Canto inferior direito cortado (cartões da grelha). */
+.clip-notch {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+}
+
 /* ── Faixa "racing strip" com gradiente de cobre ── */
 .racing-strip {
   background-image: linear-gradient(
