@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { validarTelemovelPT } from "@/lib/validacao";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
+import { mapsUrl } from "@/lib/maps";
 
 type VehicleRef = { id: string; brand: string; model: string; slug: string; status?: string | null };
 
@@ -21,6 +22,15 @@ function friendlyError(msg?: string): string {
     low.includes("network")
   ) {
     return "Não foi possível completar o pedido. Tenta novamente em instantes.";
+  }
+  // Nunca mostrar erros técnicos da base de dados (ex.: RLS) ao visitante.
+  if (
+    low.includes("row-level security") ||
+    low.includes("violates") ||
+    low.includes("permission denied") ||
+    low.includes("pgrst")
+  ) {
+    return "Não foi possível enviar o pedido. Tenta novamente em instantes.";
   }
   return msg && msg.length > 0 ? msg : "Ocorreu um erro ao enviar. Tenta novamente.";
 }
@@ -53,6 +63,19 @@ function parseDays(raw: string): number[] {
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + (m || 0);
+}
+
+// Minutos desde a meia-noite, na hora de Lisboa. Serve para esconder as horas
+// já passadas quando a data escolhida é hoje (o site é para Portugal).
+function nowMinutesLisbon(): number {
+  const parts = new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  return get("hour") * 60 + get("minute");
 }
 
 // Prazo máximo para marcar: 30 dias a partir de hoje
@@ -107,6 +130,18 @@ function ContactoContent() {
   const [selectedDate, setSelectedDate] = useState("");
   const [occupied, setOccupied] = useState<string[]>([]);
   const [occupiedDate, setOccupiedDate] = useState("");
+
+  // Minutos atuais (hora de Lisboa), atualizados a cada minuto. Só no cliente
+  // (evita divergência de hidratação) e usado para esconder as horas de hoje
+  // que já passaram.
+  const [nowMins, setNowMins] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isTestDrive) return;
+    const update = () => setNowMins(nowMinutesLisbon());
+    update();
+    const id = window.setInterval(update, 60_000);
+    return () => window.clearInterval(id);
+  }, [isTestDrive]);
 
   useEffect(() => {
     if (!isTestDrive) return;
@@ -284,6 +319,12 @@ function ContactoContent() {
         setLoading(false);
         return;
       }
+      // A hora já passou (só relevante se for hoje).
+      if (preferred_date === today && toMinutes(preferred_time) <= nowMinutesLisbon()) {
+        setError("Essa hora já passou. Escolhe outra disponível.");
+        setLoading(false);
+        return;
+      }
       // Slot já marcado (ou a decorrer) para essa data, dado o espaço de 1h/2h.
       const busy = selectedDate === preferred_date && bookedSlots.some((b) => {
         const start = toMinutes(preferred_time);
@@ -305,21 +346,48 @@ function ContactoContent() {
         return;
       }
       try {
-        const err = await insertResilient("test_drives", {
-          ...common,
-          vehicle_id: vehicle.id,
-          preferred_date,
-          preferred_time,
-          notes,
-          status: "pending",
+        // RPC SECURITY DEFINER (migração 019): funciona para visitantes anónimos
+        // e nunca expõe erros de RLS. Se ainda não existir na BD, recai no
+        // insert direto para o formulário não parar.
+        const { data: rpcData, error: rpcError } = await supabase.rpc("submit_test_drive", {
+          p_name: name,
+          p_email: email,
+          p_phone: phone || null,
+          p_vehicle_id: vehicle.id,
+          p_preferred_date: preferred_date,
+          p_preferred_time: preferred_time || null,
+          p_notes: notes,
+          p_user_id: uid,
         });
-        if (err) {
-          console.error("Erro test_drives:", err);
-          setError(friendlyError(err.message));
-        } else {
+        const result = rpcData as { ok?: boolean; reason?: string } | null;
+
+        if (!rpcError && result?.ok) {
           setSuccess(true);
           setError(null);
           (e.target as HTMLFormElement).reset();
+        } else if (!rpcError) {
+          setError(
+            result?.reason === "invalid_date"
+              ? "Escolhe uma data válida para o test drive."
+              : "Não foi possível enviar o pedido. Confirma os dados e tenta novamente."
+          );
+        } else {
+          const err = await insertResilient("test_drives", {
+            ...common,
+            vehicle_id: vehicle.id,
+            preferred_date,
+            preferred_time,
+            notes,
+            status: "pending",
+          });
+          if (err) {
+            console.error("Erro test_drives:", err);
+            setError(friendlyError(err.message));
+          } else {
+            setSuccess(true);
+            setError(null);
+            (e.target as HTMLFormElement).reset();
+          }
         }
       } catch (err) {
         console.error(err);
@@ -333,23 +401,44 @@ function ContactoContent() {
       }
       const extension = fd.get("extension") === "on";
       try {
-        // Só mostra sucesso se a BD devolver a linha gravada (nunca falso sucesso).
-        const res = await supabase.from("reservations").insert({
-          vehicle_id: vehicle.id,
-          user_id: uid,
-          name,
-          email,
-          phone: phone || null,
-          message,
-          extension_requested: extension,
-          status: "pending",
-        }).select("id");
-        if (!res.data || res.data.length === 0) {
-          setError("Não foi possível enviar o pedido de reserva. Tenta novamente em instantes.");
-        } else {
+        // RPC SECURITY DEFINER (migração 019) — envia sem login e sem erros de
+        // RLS. Sem a RPC, recai no insert direto.
+        const { data: rpcData, error: rpcError } = await supabase.rpc("submit_reservation", {
+          p_name: name,
+          p_email: email,
+          p_phone: phone || null,
+          p_message: message,
+          p_vehicle_id: vehicle.id,
+          p_extension: extension,
+          p_user_id: uid,
+        });
+        const result = rpcData as { ok?: boolean } | null;
+
+        if (!rpcError && result?.ok) {
           setSuccess(true);
           setError(null);
           (e.target as HTMLFormElement).reset();
+        } else if (!rpcError) {
+          setError("Não foi possível enviar o pedido de reserva. Confirma os dados e tenta novamente.");
+        } else {
+          // Só mostra sucesso se a BD devolver a linha gravada (nunca falso sucesso).
+          const res = await supabase.from("reservations").insert({
+            vehicle_id: vehicle.id,
+            user_id: uid,
+            name,
+            email,
+            phone: phone || null,
+            message,
+            extension_requested: extension,
+            status: "pending",
+          }).select("id");
+          if (!res.data || res.data.length === 0) {
+            setError("Não foi possível enviar o pedido de reserva. Tenta novamente em instantes.");
+          } else {
+            setSuccess(true);
+            setError(null);
+            (e.target as HTMLFormElement).reset();
+          }
         }
       } catch (err) {
         console.error("Erro ao criar reserva:", err);
@@ -431,7 +520,13 @@ function ContactoContent() {
       const start = toMinutes(slot);
       return start >= toMinutes(b) && start < toMinutes(b) + tdDuration;
     });
-  const visibleSlots = baseSlots.filter((t) => !isBusy(t));
+  // No dia de hoje, esconder as horas que já passaram (ex.: às 12:00 não faz
+  // sentido mostrar as 10:00). `nowMins` só existe no cliente.
+  const pastToday = selectedDate === today && nowMins != null ? nowMins : null;
+  const isPast = (slot: string) => pastToday != null && toMinutes(slot) <= pastToday;
+  const busyCount = baseSlots.filter((t) => isBusy(t)).length;
+  const pastCount = pastToday != null ? baseSlots.filter((t) => isPast(t)).length : 0;
+  const visibleSlots = baseSlots.filter((t) => !isBusy(t) && !isPast(t));
   const morningSlots = visibleSlots.filter((t) => toMinutes(t) < 12 * 60);
   const afternoonSlots = visibleSlots.filter((t) => toMinutes(t) >= 12 * 60);
   const dayNamesText = tdConfig && tdConfig.days.length ? tdConfig.days.map((d) => DAY_NAMES[d]).join(", ") : "";
@@ -523,7 +618,26 @@ function ContactoContent() {
                   </a>
                 </li>
               )}
-              {(s?.location || s?.address) && <li>{s?.location || s?.address}</li>}
+              {(s?.location || s?.address) && (
+                <li>
+                  {(() => {
+                    const href = mapsUrl(s?.location_url, s?.address, s?.location);
+                    const label = s?.location || s?.address;
+                    return href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="transition-colors hover:text-foreground"
+                      >
+                        {label} ↗
+                      </a>
+                    ) : (
+                      <span>{label}</span>
+                    );
+                  })()}
+                </li>
+              )}
             </ul>
             {redes.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
@@ -621,10 +735,13 @@ function ContactoContent() {
                     <option value="" disabled>Sem horas disponíveis para esta data</option>
                   )}
                 </select>
-                {visibleSlots.length < baseSlots.length && (
+                {busyCount > 0 && (
                   <p className="mt-1 text-xs text-muted">
-                    {baseSlots.length - visibleSlots.length} hora(s) já marcada(s) — cada test drive ocupa {tdDuration} min.
+                    {busyCount} hora(s) já marcada(s) — cada test drive ocupa {tdDuration} min.
                   </p>
+                )}
+                {pastCount > 0 && (
+                  <p className="mt-1 text-xs text-muted">As horas de hoje que já passaram não aparecem.</p>
                 )}
               </div>
               <div>
