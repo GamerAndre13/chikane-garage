@@ -356,19 +356,41 @@ function ContactoContent() {
         setError(friendlyError(err instanceof Error ? err.message : undefined));
       }
     } else {
+      // Limite anti-spam: no máximo 2 pedidos de informação por email a cada
+      // 30 minutos (RPC SECURITY DEFINER da migração 018). Se a função ainda
+      // não existir na BD, recai no insert direto para o formulário não parar.
       try {
-        const err = await insertResilient("contact_requests", {
-          ...common,
-          vehicle_id: vehicle?.id || null,
-          message,
+        const { data, error: rpcError } = await supabase.rpc("submit_contact_request", {
+          p_name: name,
+          p_email: email,
+          p_phone: phone || null,
+          p_message: message,
+          p_vehicle_id: vehicle?.id || null,
+          p_user_id: uid,
         });
-        if (err) {
-          console.error("Erro contact_requests:", err);
-          setError(friendlyError(err.message));
-        } else {
+        const result = data as { ok?: boolean; reason?: string } | null;
+        if (rpcError) {
+          const err = await insertResilient("contact_requests", {
+            ...common,
+            vehicle_id: vehicle?.id || null,
+            message,
+          });
+          if (err) {
+            console.error("Erro contact_requests:", err);
+            setError(friendlyError(err.message));
+          } else {
+            setSuccess(true);
+            setError(null);
+            (e.target as HTMLFormElement).reset();
+          }
+        } else if (result?.ok) {
           setSuccess(true);
           setError(null);
           (e.target as HTMLFormElement).reset();
+        } else if (result?.reason === "rate_limited") {
+          setError("Já recebemos 2 pedidos de informação com este email nos últimos 30 minutos. Tenta novamente mais tarde.");
+        } else {
+          setError("Não foi possível enviar a mensagem. Confirma os dados e tenta novamente.");
         }
       } catch (err) {
         console.error(err);

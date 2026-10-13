@@ -10,6 +10,7 @@ interface ContactRequest {
   phone: string;
   message: string;
   vehicle_id: string | null;
+  vehicle?: { id: string; brand: string; model: string } | null;
   status: string;
   created_at: string;
 }
@@ -73,7 +74,7 @@ export default function PedidosPage() {
 
   const fetchData = useCallback(async () => {
     const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
-      supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
       supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
       supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
     ]);
@@ -89,7 +90,7 @@ export default function PedidosPage() {
     let cancelled = false;
     (async () => {
       const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
-        supabase.from("contact_requests").select("*").order("created_at", { ascending: false }),
+        supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
         supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
         supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
       ]);
@@ -452,6 +453,7 @@ export default function PedidosPage() {
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Nome</th>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Email</th>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Telefone</th>
+                <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Carro</th>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Mensagem</th>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Status</th>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Data</th>
@@ -464,9 +466,14 @@ export default function PedidosPage() {
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.name}</td>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.email}</td>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.phone || "-"}</td>
+                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{c.vehicle_id ? formatVehicle(c) : "-"}</td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => setModal({ title: "Mensagem", body: c.message || "—" })}
+                      onClick={() => setModal({
+                        title: "Mensagem",
+                        rows: c.vehicle_id ? [{ label: "Viatura", value: formatVehicle(c) }] : undefined,
+                        body: c.message || "—",
+                      })}
                       style={linkButton("var(--foreground)")}
                     >
                       mensagem
@@ -498,7 +505,7 @@ export default function PedidosPage() {
               ))}
               {contacts.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
+                  <td colSpan={8} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
                     Nenhum contacto encontrado
                   </td>
                 </tr>
