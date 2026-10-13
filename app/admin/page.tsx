@@ -90,13 +90,13 @@ export default async function AdminDashboard() {
           </p>
         </Link>
         <Link
-          href="/admin/conteudo"
+          href="/admin/pedidos"
           className="block border p-4 rounded text-center transition-colors hover:border-[#f59e0b]"
           style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
         >
-          <span className="text-2xl">✏️</span>
+          <span className="text-2xl">📬</span>
           <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#f59e0b" }}>
-            Editar Conteúdo
+            Ver Pedidos
           </p>
         </Link>
       </div>

@@ -24,7 +24,7 @@ Single Next.js 16 App Router app (React 19, Tailwind v4, strict TS) — no monor
 - `npm run dev` — `next.config.ts` calls `initOpenNextCloudflareForDev()`, so `next dev` runs with the OpenNext/Cloudflare shim.
 - Verify changes: `npx tsc --noEmit` (currently clean) → `npm run lint` → `npm run build` (reads `.env.local`, all routes are dynamic per the build output). **There is no test runner** — none exists, don't add one or look for a test script.
 - Lint is **not green today** and that's expected:
-  - A handful of pre-existing errors in project code (react-hooks rules in `app/admin/conteudo`, `app/admin/pedidos`, `components/ui/favorites-list`, `components/cookie-consent`, `components/ui/vehicle-photo-picker`). Only ensure you add none — scope a change with `npx eslint <paths>`.
+  - A handful of pre-existing errors in project code (react-hooks rules in `app/admin/pedidos`, `components/ui/favorites-list`, `components/cookie-consent`, `components/ui/vehicle-photo-picker`). Only ensure you add none — scope a change with `npx eslint <paths>`.
   - `.open-next/` (gitignored build output) is missing from the ignores in `eslint.config.mjs`, so after `npm run preview`/`deploy` a full `npm run lint` fails with thousands of generated-file errors.
 - Cloudflare: `npm run preview` / `npm run deploy` (OpenNext build → `.open-next/` → wrangler per `wrangler.toml`). After changing wrangler bindings, run `npm run cf-typegen` to regenerate `cloudflare-env.d.ts` (gitignored).
 
