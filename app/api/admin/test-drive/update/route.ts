@@ -12,7 +12,7 @@ function getResend() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, name, vehicle, confirmedDate } = body;
+    const { email, name, vehicle, vehicleSlug, confirmedDate } = body;
 
     if (!email || !confirmedDate) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+    // Link direto para o anúncio da viatura (se o slug vier do back office).
+    const vehicleUrl = vehicleSlug
+      ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}`
+      : null;
     // Date-only ("2026-10-11") é tratada a partir das 10:00 (hora de Lisboa);
     // datas completas são interpretadas como UTC.
     const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(confirmedDate);
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
             </p>
 
             ${vehicle ? `<p style="margin:0 0 16px;color:#ccc;font-size:14px;line-height:1.7">Viatura: <strong style="color:#fff">${vehicle}</strong></p>` : ""}
+            ${vehicleUrl ? `<p style="margin:0 0 16px"><a href="${vehicleUrl}" style="color:#f47724;font-size:14px;text-decoration:underline">Ver o anúncio da viatura →</a></p>` : ""}
 
             <div style="margin:20px 0;padding:16px;background:#1a1a1a;border:1px solid #222;border-radius:8px">
               <p style="margin:0;color:#ccc;font-size:14px;line-height:1.7">Nova data e hora confirmadas:</p>

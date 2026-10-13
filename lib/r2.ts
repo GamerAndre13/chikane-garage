@@ -14,7 +14,11 @@ async function getR2Binding(): Promise<R2Bucket | undefined> {
   }
 }
 
-// Cliente R2 (S3-compatível)
+// Cliente R2 (S3-compatível).
+// Memorizado por módulo: criar um S3Client por ficheiro custa tempo (a
+// construção do cliente e o handshake) — em uploads de várias fotos isso nota-se.
+let cachedR2Client: S3Client | null = null;
+
 function getR2Client() {
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -25,16 +29,18 @@ function getR2Client() {
     throw new Error("Missing R2 environment variables (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)");
   }
 
-  const client = new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-  });
+  if (!cachedR2Client) {
+    cachedR2Client = new S3Client({
+      region: "auto",
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+  }
 
-  return { client, bucket };
+  return { client: cachedR2Client, bucket };
 }
 
 // Upload de ficheiro para R2

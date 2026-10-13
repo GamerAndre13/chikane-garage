@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Server Actions: por omissão o corpo do pedido está limitado a 1MB, o que
+  // fazia falhar o envio de várias fotografias de viatura numa só submissão
+  // (as fotos são convertidas no cliente para WebP ~200-500KB cada).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
+  },
   // Imagens: permitir domínios externos (Unsplash, R2 public URL).
   // unoptimized: o OpenNext/Cloudflare não serve o optimizer de imagens do
   // Next sem um binding/loader próprio — manter as URLs originais evita

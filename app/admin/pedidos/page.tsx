@@ -21,7 +21,7 @@ interface TestDrive {
   email: string;
   phone: string;
   vehicle_id: string | null;
-  vehicle?: { id: string; brand: string; model: string } | null;
+  vehicle?: { id: string; brand: string; model: string; slug?: string } | null;
   preferred_date: string;
   preferred_time?: string | null;
   confirmed_date?: string | null;
@@ -75,7 +75,7 @@ export default function PedidosPage() {
   const fetchData = useCallback(async () => {
     const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
       supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
-      supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
+      supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model, slug)").order("created_at", { ascending: false }),
       supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
     ]);
     setContacts(contactsRes.data || []);
@@ -91,7 +91,7 @@ export default function PedidosPage() {
     (async () => {
       const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
         supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
-        supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
+        supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model, slug)").order("created_at", { ascending: false }),
         supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
       ]);
       if (cancelled) return;
@@ -130,6 +130,7 @@ export default function PedidosPage() {
           email: td.email,
           name: td.name,
           vehicle: vehicleName !== "-" ? vehicleName : undefined,
+          vehicleSlug: td.vehicle?.slug || undefined,
           confirmedDate,
         }),
       });

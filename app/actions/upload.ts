@@ -44,6 +44,26 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
   }
 }
 
+// Executa `fn` sobre cada item com um limite de paralelismo. Mantém a ordem
+// dos resultados e evita lançar todos os uploads R2 ao mesmo tempo.
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 // Upload de imagens de viatura para R2
 export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: string[]; error?: string }> {
   const supabase = await createClient();
@@ -64,26 +84,27 @@ export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: 
   const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
   const maxSize = 10 * 1024 * 1024; // 10MB por imagem
 
-  const urls: string[] = [];
-  let uploadError: string | null = null;
+  const validFiles = files.filter((file) => allowedTypes.includes(file.type) && file.size <= maxSize);
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (!allowedTypes.includes(file.type)) continue;
-    if (file.size > maxSize) continue;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
+  // Uploads em paralelo (limitado): antes eram sequenciais e cada PUT esperava
+  // pelo anterior — com muitas fotos somava vários segundos.
+  const outcomes = await mapWithConcurrency(validFiles, 6, async (file, i) => {
+    const buffer = Buffer.from(await file.arrayBuffer());
     const ext = file.name.split(".").pop() || "jpg";
     const key = `vehicles/${vehicleId}/${Date.now()}-${i}.${ext}`;
-
     try {
       const url = await uploadToR2(key, buffer, file.type);
-      urls.push(url);
+      return { url, error: null as string | null };
     } catch (err) {
-      uploadError = err instanceof Error ? err.message : "Erro ao enviar imagem para o R2";
+      return { url: null as string | null, error: err instanceof Error ? err.message : "Erro ao enviar imagem para o R2" };
     }
+  });
+
+  const urls: string[] = [];
+  let uploadError: string | null = null;
+  for (const outcome of outcomes) {
+    if (outcome.url) urls.push(outcome.url);
+    else if (outcome.error) uploadError = outcome.error;
   }
 
   if (!urls.length) return { error: uploadError || "Nenhuma imagem válida para upload" };
@@ -99,14 +120,25 @@ export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: 
   const { error } = await supabase.from("vehicle_images").insert(imagesToInsert);
   if (error) return { error: error.message };
 
-  // Se for a primeira imagem e não há cover_image_url, atualizar
-  const { data: vehicle } = await supabase.from("vehicles").select("cover_image_url").eq("id", vehicleId).single();
-  if (vehicle && !vehicle.cover_image_url) {
-    await supabase.from("vehicles").update({ cover_image_url: urls[0] }).eq("id", vehicleId);
+  // Capa: se o cliente indicou que foto é a capa (índice), define-a já aqui —
+  // evita uma segunda Server Action (setCoverImage) e uma leitura extra à BD.
+  const coverIndexRaw = formData.get("coverIndex");
+  const coverIndex =
+    coverIndexRaw != null && String(coverIndexRaw) !== "" ? Number(coverIndexRaw) : null;
+
+  if (coverIndex != null && Number.isInteger(coverIndex) && coverIndex >= 0 && coverIndex < urls.length) {
+    await supabase.from("vehicles").update({ cover_image_url: urls[coverIndex] }).eq("id", vehicleId);
+  } else {
+    // Sem índice: só define a primeira imagem como capa se ainda não houver.
+    const { data: vehicle } = await supabase.from("vehicles").select("cover_image_url").eq("id", vehicleId).single();
+    if (vehicle && !vehicle.cover_image_url) {
+      await supabase.from("vehicles").update({ cover_image_url: urls[0] }).eq("id", vehicleId);
+    }
   }
 
   revalidatePath(`/admin/veiculos/editar/${vehicleId}`);
-  revalidatePath(`/catalogo/${vehicleId}`);
+  revalidatePath("/admin/veiculos");
+  revalidatePath("/catalogo");
 
   return { urls };
 }
@@ -129,7 +161,7 @@ export async function setCoverImage(vehicleId: string, imageUrl: string): Promis
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/veiculos/editar/${vehicleId}`);
-  revalidatePath(`/catalogo/${vehicleId}`);
+  revalidatePath("/catalogo");
   return {};
 }
 

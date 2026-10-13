@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehiclePhotoPicker } from "@/components/ui/vehicle-photo-picker";
-import { setCoverImage, uploadVehicleImages } from "@/app/actions/upload";
+import { uploadVehicleImages } from "@/app/actions/upload";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -170,17 +170,13 @@ export default function NovoVeiculo() {
       if (photos.length) {
         const formData = new FormData();
         formData.append("vehicleId", vehicle.id);
+        // A capa passa a ser definida pela própria action (evita uma segunda
+        // Server Action + leitura à BD depois do upload).
+        formData.append("coverIndex", String(coverPhotoIndex));
         photos.forEach((photo) => formData.append("files", photo));
         const upload = await uploadVehicleImages(formData);
         if (upload.error || !upload.urls?.length) {
           alert(`A viatura foi criada, mas as fotografias não foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
-          router.push(`/admin/veiculos/editar/${vehicle.id}`);
-          return;
-        }
-        const coverUrl = upload.urls[Math.min(coverPhotoIndex, upload.urls.length - 1)];
-        const coverResult = await setCoverImage(vehicle.id, coverUrl);
-        if (coverResult.error) {
-          alert(`A viatura e as fotografias foram guardadas, mas não foi possível definir a imagem principal: ${coverResult.error}`);
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
