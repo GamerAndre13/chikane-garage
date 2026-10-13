@@ -248,13 +248,42 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Descrição</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
 
+          {(vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history) && (
+            <section className="mt-7 border-t border-border pt-6">
+              <h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Condições</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {vehicle.financing_available && (
+                  <div className="rounded border border-copper/30 bg-copper/5 p-4">
+                    <div className="flex items-center gap-2.5 text-copper">
+                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2.5" y="6" width="19" height="13" rx="1.5"/><circle cx="12" cy="12.5" r="2.2"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg>
+                      <p className="font-display text-[10px] uppercase tracking-[0.18em]">Financiamento</p>
+                    </div>
+                    <p className="mt-2.5 text-sm leading-5 text-silver">Disponível — pede-nos uma simulação à tua medida.</p>
+                  </div>
+                )}
+                {vehicle.trade_in_accepted && (
+                  <div className="rounded border border-copper/30 bg-copper/5 p-4">
+                    <div className="flex items-center gap-2.5 text-copper">
+                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M7.5 4 3 8.5l4.5 4.5"/><path d="M3 8.5h18"/><path d="m16.5 20 4.5-4.5-4.5-4.5"/><path d="M21 15.5H3"/></svg>
+                      <p className="font-display text-[10px] uppercase tracking-[0.18em]">Retoma aceite</p>
+                    </div>
+                    <p className="mt-2.5 text-sm leading-5 text-silver">Aceitamos a tua viatura em troca desta.</p>
+                  </div>
+                )}
+              </div>
+              {vehicle.accident_history && (
+                <p className="mt-3 border-l-2 border-amber-400/70 bg-amber-400/5 px-4 py-3 text-xs leading-5 text-silver">
+                  Histórico de acidente declarado — pede-nos mais detalhes sobre esta viatura.
+                </p>
+              )}
+            </section>
+          )}
+
           {features.length > 0 && <section className="mt-7 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Equipamento & extras</h2><div className="mt-3 flex flex-wrap gap-2">{features.map((f) => <span key={f.id} className="border border-border px-3 py-2 text-xs text-silver">{f.label}</span>)}</div></section>}
 
           <p className="mt-7 border-l-2 border-copper bg-surface px-4 py-3 text-xs leading-5 text-muted">Contacta a equipa para confirmar disponibilidade, características e condições desta viatura.</p>
         </div>
       </div>
-
-      {vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history ? <section className="mt-8 grid gap-3 border-t border-border pt-6 sm:grid-cols-2 lg:grid-cols-3">{vehicle.financing_available ? <p className="text-sm text-silver">Financiamento disponível</p> : null}{vehicle.trade_in_accepted ? <p className="text-sm text-silver">Retoma aceite</p> : null}{vehicle.accident_history ? <p className="text-sm text-silver">Histórico de acidente declarado</p> : null}</section> : null}
 
       <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={car.id}/></div>{car.status === "reserved" && <span className="absolute bottom-3 left-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span>}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
     </div>
