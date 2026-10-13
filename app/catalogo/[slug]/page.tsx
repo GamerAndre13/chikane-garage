@@ -248,36 +248,30 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Descrição</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
 
-          {(vehicle.financing_available || vehicle.trade_in_accepted || vehicle.accident_history) && (
-            <section className="mt-7 border-t border-border pt-6">
-              <h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Condições</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {vehicle.financing_available && (
-                  <div className="rounded border border-copper/30 bg-copper/5 p-4">
-                    <div className="flex items-center gap-2.5 text-copper">
-                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2.5" y="6" width="19" height="13" rx="1.5"/><circle cx="12" cy="12.5" r="2.2"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg>
-                      <p className="font-display text-[10px] uppercase tracking-[0.18em]">Financiamento</p>
-                    </div>
-                    <p className="mt-2.5 text-sm leading-5 text-silver">Disponível — pede-nos uma simulação à tua medida.</p>
-                  </div>
-                )}
-                {vehicle.trade_in_accepted && (
-                  <div className="rounded border border-copper/30 bg-copper/5 p-4">
-                    <div className="flex items-center gap-2.5 text-copper">
-                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M7.5 4 3 8.5l4.5 4.5"/><path d="M3 8.5h18"/><path d="m16.5 20 4.5-4.5-4.5-4.5"/><path d="M21 15.5H3"/></svg>
-                      <p className="font-display text-[10px] uppercase tracking-[0.18em]">Retoma aceite</p>
-                    </div>
-                    <p className="mt-2.5 text-sm leading-5 text-silver">Aceitamos a tua viatura em troca desta.</p>
-                  </div>
-                )}
+          <section className="mt-7 border-t border-border pt-6">
+            <h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Condições</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="rounded border border-copper/30 bg-copper/5 p-4">
+                <div className="flex items-center gap-2.5 text-copper">
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2.5" y="6" width="19" height="13" rx="1.5"/><circle cx="12" cy="12.5" r="2.2"/><path d="M6.5 9.5h.01M17.5 15.5h.01"/></svg>
+                  <p className="font-display text-[10px] uppercase tracking-[0.18em]">Financiamento</p>
+                </div>
+                <p className="mt-2.5 text-sm leading-5 text-silver">Disponível — pede-nos uma simulação à tua medida.</p>
               </div>
-              {vehicle.accident_history && (
-                <p className="mt-3 border-l-2 border-amber-400/70 bg-amber-400/5 px-4 py-3 text-xs leading-5 text-silver">
-                  Histórico de acidente declarado — pede-nos mais detalhes sobre esta viatura.
-                </p>
-              )}
-            </section>
-          )}
+              <div className="rounded border border-copper/30 bg-copper/5 p-4">
+                <div className="flex items-center gap-2.5 text-copper">
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M7.5 4 3 8.5l4.5 4.5"/><path d="M3 8.5h18"/><path d="m16.5 20 4.5-4.5-4.5-4.5"/><path d="M21 15.5H3"/></svg>
+                  <p className="font-display text-[10px] uppercase tracking-[0.18em]">Retoma aceite</p>
+                </div>
+                <p className="mt-2.5 text-sm leading-5 text-silver">Aceitamos a tua viatura em troca desta.</p>
+              </div>
+            </div>
+            {vehicle.accident_history && (
+              <p className="mt-3 border-l-2 border-amber-400/70 bg-amber-400/5 px-4 py-3 text-xs leading-5 text-silver">
+                Histórico de acidente declarado — pede-nos mais detalhes sobre esta viatura.
+              </p>
+            )}
+          </section>
 
           {features.length > 0 && <section className="mt-7 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Equipamento & extras</h2><div className="mt-3 flex flex-wrap gap-2">{features.map((f) => <span key={f.id} className="border border-border px-3 py-2 text-xs text-silver">{f.label}</span>)}</div></section>}
 
