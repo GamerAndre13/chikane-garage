@@ -13,13 +13,13 @@ export type SiteSettings = {
   social_youtube?: string | null;
   social_tiktok?: string | null;
   footer_tagline?: string | null;
-  // Fotos das páginas (supabase/005_site_settings_fotos.sql)
+  // Fotos das páginas (colunas em site_settings — supabase/setup.sql)
   photo_home_hero?: string | null;
   photo_home_history?: string | null;
   photo_about_hero?: string | null;
   photo_about_garage?: string | null;
   avatar_pool?: string | null;
-  // Configuração dos test-drives (supabase/016_reservas_testdrives.sql)
+  // Configuração dos test-drives (supabase/setup.sql)
   td_duration_minutes?: number | null;
   td_slots?: string | null;
   td_days?: string | null;

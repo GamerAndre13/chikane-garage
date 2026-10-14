@@ -44,3 +44,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# pacote de entrega gerado localmente (npm run ... / scripts)
+/*.zip

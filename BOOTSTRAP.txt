@@ -1,3 +1,20 @@
+################################################################################
+#  AVISO — DOCUMENTO DESATUALIZADO (2026-10-14)
+################################################################################
+# Esta checklist de setup local ja NAO esta atualizada. Refere ficheiros e
+# ferramentas que ja nao existem neste projeto: "middleware.ts" (hoje e
+# "proxy.ts"), "pnpm" (o projeto usa npm) e a pasta "/hooks".
+# Mantem-se apenas como historico.
+#
+# Documentacao ATUAL (pasta do projeto):
+#   README.md                    -> porta de entrada do pacote
+#   docs/COLOCAR_NO_AR.md        -> por o site no ar, passo a passo
+#   docs/VARIAVEIS_AMBIENTE.md   -> todas as chaves e onde ficam
+#   docs/GUIA_LAYOUTS.md         -> onde esta cada ecra
+#   docs/REGRAS_PARA_IA.md       -> regras obrigatorias (nao mexer na logica)
+################################################################################
+
+
 ================================================================================
 CHIKANE GARAGE — BOOTSTRAP PARA NOVO AMBIENTE
 ================================================================================

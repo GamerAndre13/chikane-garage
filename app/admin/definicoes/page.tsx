@@ -161,7 +161,7 @@ export default function DefinicoesPage() {
       const faltaMigration = /does not exist|row-level security/i.test(saveError.message);
       setError(
         faltaMigration
-          ? "Não foi possível guardar. Corre os ficheiros supabase/004_site_settings_backoffice.sql, supabase/005_backoffice_site.sql, supabase/016_reservas_testdrives.sql e supabase/019_autoria_pedidos_e_geo.sql no SQL Editor do Supabase e volta a tentar."
+          ? "Não foi possível guardar. Corre o ficheiro supabase/setup.sql no SQL Editor do Supabase e volta a tentar."
           : `Erro ao guardar: ${saveError.message}`
       );
       return;

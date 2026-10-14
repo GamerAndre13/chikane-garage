@@ -1,3 +1,20 @@
+################################################################################
+#  AVISO — DOCUMENTO DESATUALIZADO (2026-10-14)
+################################################################################
+# Este documento ja NAO e a fonte de verdade. Tem partes desatualizadas:
+# fala de uma "loja" que ja nao existe e do deploy via Cloudflare Pages,
+# quando hoje a producao e um Worker Cloudflare (OpenNext / chikane-garage1).
+# Mantem-se apenas como historico.
+#
+# Documentacao ATUAL (pasta do projeto):
+#   README.md                    -> porta de entrada do pacote
+#   docs/COLOCAR_NO_AR.md        -> por o site no ar, passo a passo
+#   docs/VARIAVEIS_AMBIENTE.md   -> todas as chaves e onde ficam
+#   docs/GUIA_LAYOUTS.md         -> onde esta cada ecra
+#   docs/REGRAS_PARA_IA.md       -> regras obrigatorias (nao mexer na logica)
+################################################################################
+
+
 ================================================================================
 CHIKANE GARAGE — DOCUMENTO COMPLETO DO PROJETO
 ================================================================================
