@@ -206,7 +206,7 @@ export default async function HomePage() {
             </Reveal>
 
             {/* Destaque da semana (spotlight) */}
-            <Reveal className="mt-16 grid gap-0 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+            <Reveal className="mt-16 grid gap-0 lg:grid-cols-[1.5fr_1fr]">
               <Link href={`/catalogo/${spotlight.slug}`} className="group relative block aspect-[16/10] overflow-hidden">
                 {spotlight.cover_image_url ? (
                   <Image
@@ -228,7 +228,7 @@ export default async function HomePage() {
                 </span>
               </Link>
 
-              <div className="clip-chicane relative z-10 border border-copper/40 bg-surface p-5 lg:-ml-16">
+              <div className="clip-chicane relative z-10 border border-copper/40 bg-surface p-5 lg:-ml-16 lg:mt-10 lg:p-6">
                 <p className="kicker">
                   {spotlight.brand} · {spotlight.registration_year ?? "—"}
                 </p>
@@ -240,10 +240,10 @@ export default async function HomePage() {
                     {spotlight.trim}
                   </p>
                 )}
-                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted">
+                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted lg:line-clamp-none">
                   {spotlight.description || "Viatura selecionada e inspecionada ao detalhe pela Chikane Garage."}
                 </p>
-                <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-2">
+                <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-2 lg:mt-4 lg:pt-3">
                   <div>
                     <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">KM</dt>
                     <dd className="mt-1 font-display text-silver">{mileageLabel(spotlight.mileage_km)}</dd>
@@ -257,10 +257,10 @@ export default async function HomePage() {
                     <dd className="mt-1 font-display text-silver">{transmissionLabel(spotlight.transmission)}</dd>
                   </div>
                 </dl>
-                <p className="mt-3 font-display text-xl text-copper">{priceLabel(spotlight.price)}</p>
+                <p className="mt-3 font-display text-xl text-copper lg:mt-4">{priceLabel(spotlight.price)}</p>
                 <Link
                   href={`/catalogo/${spotlight.slug}`}
-                  className="mt-3 inline-flex border border-copper px-5 py-2 font-display text-[0.62rem] tracking-[0.24em] text-copper transition-all duration-300 hover:bg-copper hover:text-black"
+                  className="mt-3 inline-flex border border-copper px-5 py-2 font-display text-[0.62rem] tracking-[0.24em] text-copper transition-all duration-300 hover:bg-copper hover:text-black lg:mt-4 lg:py-2.5"
                 >
                   VER VIATURA
                 </Link>
