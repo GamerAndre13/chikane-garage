@@ -121,7 +121,7 @@ function ContaPageContent() {
         const remaining = getLockRemaining(email);
         if (remaining > 0) {
           setLockRemaining(remaining);
-          setError(`Demasiadas tentativas falhadas. Tenta novamente dentro de ${formatRemaining(remaining)}.`);
+          setError(`Muitas tentativas. Tenta mais tarde (dentro de ${formatRemaining(remaining)}).`);
           setLoading(false);
           return;
         }
@@ -131,7 +131,7 @@ function ContaPageContent() {
           const { locked, remainingMs } = registerFailedAttempt(email);
           if (locked) {
             setLockRemaining(remainingMs);
-            setError(`Demasiadas tentativas falhadas. Por segurança, o início de sessão fica bloqueado durante ${formatRemaining(remainingMs)}.`);
+            setError(`Muitas tentativas. Tenta mais tarde (dentro de ${formatRemaining(remainingMs)}).`);
             setLoading(false);
             return;
           }
@@ -234,7 +234,7 @@ function ContaPageContent() {
         </button>
         {mode === "login" && lockRemaining > 0 && (
           <p role="alert" className="text-xs text-amber-400">
-            Demasiadas tentativas falhadas. Por segurança, tenta novamente dentro de {formatRemaining(lockRemaining)}.
+            Muitas tentativas. Tenta mais tarde (dentro de {formatRemaining(lockRemaining)}).
           </p>
         )}
       </form>
