@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { expireReservations } from "@/lib/expire-reservations";
+import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { CatalogBrowser } from "@/components/ui/catalog-browser";
 
 export const metadata = {
@@ -22,10 +23,18 @@ type Vehicle = {
 export default async function CatalogoPage() {
   let vehicles: Vehicle[] = [];
   try {
-    // Reservas vencidas (máx. 7 dias) voltam a "available" antes da leitura.
+    // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com
+    // mais de 7 dias são arquivadas antes da leitura.
     await expireReservations();
+    await archiveSoldVehicles();
     const supabase = await createClient();
-    const { data } = await supabase.from("vehicles").select("*, vehicle_images(url, position, alt_text)").order("created_at", { ascending: false });
+    // O catálogo mostra apenas disponíveis, reservadas e vendidas (nunca
+    // arquivadas).
+    const { data } = await supabase
+      .from("vehicles")
+      .select("*, vehicle_images(url, position, alt_text)")
+      .in("status", ["available", "reserved", "sold"])
+      .order("created_at", { ascending: false });
     vehicles = ((data || []) as Vehicle[]).filter(isVehiclePubliclyVisible);
   } catch { vehicles = []; }
 

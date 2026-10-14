@@ -14,6 +14,7 @@ const STATUS_OPTIONS = [
   { value: "available", label: "Disponível" },
   { value: "reserved", label: "Reservada" },
   { value: "sold", label: "Vendida" },
+  { value: "archived", label: "Arquivada" },
 ] as const;
 
 const FUEL_OPTIONS = [

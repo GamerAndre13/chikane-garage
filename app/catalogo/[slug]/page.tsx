@@ -8,6 +8,7 @@ import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { VehicleSpecifications } from "@/components/ui/vehicle-specifications";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import { expireReservations } from "@/lib/expire-reservations";
+import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -182,8 +183,10 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
   let vehicle: Vehicle | null = null;
   try {
-    // Reservas vencidas (máx. 7 dias) voltam a "available" antes da leitura.
+    // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com
+    // mais de 7 dias são arquivadas antes da leitura.
     await expireReservations();
+    await archiveSoldVehicles();
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")

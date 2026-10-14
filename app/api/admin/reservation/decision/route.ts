@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { vehicleEmailBlock } from "@/lib/email-vehicle-block";
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -12,7 +13,7 @@ function getResend() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, name, vehicle, status, reservedUntil, extension } = body;
+    const { email, name, vehicle, vehicleSlug, vehicleImage, status, reservedUntil, extension } = body;
     const isApproved = status === "approved";
 
     if (!email || !name || (status !== "approved" && status !== "rejected")) {
@@ -25,6 +26,8 @@ export async function POST(request: NextRequest) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+    // Bloco com a fotografia da viatura, clicável para o anúncio.
+    const vehicleUrl = vehicleSlug ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}` : null;
 
     const reservedUntilText = reservedUntil
       ? new Date(reservedUntil).toLocaleString("pt-PT", {
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest) {
             }
 
             ${vehicle ? `<p style="margin:0 0 16px;color:#ccc;font-size:14px;line-height:1.7">Viatura: <strong style="color:#fff">${vehicle}</strong></p>` : ""}
+            ${vehicleEmailBlock({ url: vehicleUrl, imageUrl: vehicleImage, name: vehicle })}
 
             ${
               isApproved

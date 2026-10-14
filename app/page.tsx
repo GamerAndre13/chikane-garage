@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import NewsletterForm from "@/components/newsletter-form";
 import { expireReservations } from "@/lib/expire-reservations";
+import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { Reveal } from "@/components/ui/reveal";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
+import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import type { SiteSettings } from "@/lib/site-settings";
 
 export const metadata = {
@@ -71,8 +73,10 @@ const mileageLabel = (value?: number | null) =>
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // Reservas vencidas (máx. 7 dias) voltam a "available" antes da leitura.
+  // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com mais
+  // de 7 dias são arquivadas antes da leitura.
   await expireReservations();
+  await archiveSoldVehicles();
   const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
     supabase
       .from("vehicles")
@@ -86,7 +90,7 @@ export default async function HomePage() {
       .eq("spotlight", true)
       .limit(1),
     supabase.from("site_content").select("section_key, body"),
-    supabase.from("site_settings").select("photo_home_hero, photo_home_history").limit(1).maybeSingle(),
+    supabase.from("site_settings").select("photo_home_hero, photo_home_history, phone, email, address, location, location_url, social_instagram, social_facebook, social_youtube, social_tiktok").limit(1).maybeSingle(),
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
@@ -99,6 +103,35 @@ export default async function HomePage() {
   // a mais (limit 4) e remove-a da grelha (fica 3 cartões).
   const gridVehicles = vehicles.filter((v) => v.id !== spotlight?.id).slice(0, 3);
   const photos = settingsRes.data as Pick<SiteSettings, "photo_home_hero" | "photo_home_history"> | null;
+  const contact = settingsRes.data as Pick<
+    SiteSettings,
+    "phone" | "email" | "address" | "location" | "location_url" | "social_instagram" | "social_facebook" | "social_youtube" | "social_tiktok"
+  > | null;
+
+  // ─── Dados estruturados (SEO) ───────────────────────────────
+  // Ajuda o Google a associar "chikane garage" a um concessionário real
+  // (nome, contactos, redes sociais e catálogo).
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "AutoDealer",
+    name: "Chikane Garage",
+    url: process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || undefined,
+    image: process.env.NEXT_PUBLIC_SITE_URL
+      ? `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/opengraph-image`
+      : undefined,
+    description: "Garagem privada de viaturas de performance — catálogo selecionado, garantia e acompanhamento personalizado.",
+    telephone: contact?.phone || undefined,
+    email: contact?.email || undefined,
+    address: contact?.address
+      ? { "@type": "PostalAddress", streetAddress: contact.address, addressCountry: "PT" }
+      : undefined,
+    sameAs: [
+      contact?.social_instagram ? instagramUrl(contact.social_instagram) : null,
+      contact?.social_facebook ? facebookUrl(contact.social_facebook) : null,
+      contact?.social_youtube ? youtubeUrl(contact.social_youtube) : null,
+      contact?.social_tiktok ? tiktokUrl(contact.social_tiktok) : null,
+    ].filter(Boolean),
+  };
 
   // Normaliza chaves (aceita "hero.tagline" e "hero_tagline") para o CMS
   // funcionar independentemente da convenção usada na base de dados.
@@ -118,6 +151,10 @@ export default async function HomePage() {
 
   return (
     <div className="bg-background-alt">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       {/* ─── HERO ─── */}
       <section className="relative flex min-h-svh items-center overflow-hidden">
         <div

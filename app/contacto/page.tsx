@@ -124,6 +124,36 @@ function ContactoContent() {
   const [vehicleLoading, setVehicleLoading] = useState(!!testdriveSlug || !!vehicleSlug || !!reservaSlug);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  // Pré-preenchimento dos contactos quando há sessão iniciada (nome/email/
+  // telefone do perfil). O utilizador pode sempre alterar antes de enviar.
+  const [prefill, setPrefill] = useState({ name: "", email: "", phone: "" });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      let next = {
+        name: (user.user_metadata?.full_name as string) || "",
+        email: user.email || "",
+        phone: "",
+      };
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (profile) {
+        next = {
+          name: profile.full_name || next.name,
+          email: profile.email || next.email,
+          phone: profile.phone || "",
+        };
+      }
+      if (!cancelled) setPrefill(next);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Configuração dos test-drives (duração/horários/dias) vinda do back office.
   // Se a migração 016 ainda não tiver sido corrida, usa os valores por omissão.
   const [tdConfig, setTdConfig] = useState<{ duration: number; slots: string[]; days: number[] } | null>(null);
@@ -671,15 +701,15 @@ function ContactoContent() {
           <div className="hidden" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" tabIndex={-1} autoComplete="off" /></div>
           <div>
             <label htmlFor="contact-name" className={labelCls}>Nome *</label>
-            <input id="contact-name" name="name" autoComplete="name" minLength={2} maxLength={120} required ref={nameRef} style={inputStyle} />
+            <input id="contact-name" name="name" autoComplete="name" minLength={2} maxLength={120} required ref={nameRef} value={prefill.name} onChange={(e) => setPrefill((p) => ({ ...p, name: e.target.value }))} style={inputStyle} />
           </div>
           <div>
             <label htmlFor="contact-email" className={labelCls}>Email *</label>
-            <input id="contact-email" name="email" type="email" autoComplete="email" maxLength={254} required style={inputStyle} />
+            <input id="contact-email" name="email" type="email" autoComplete="email" maxLength={254} required value={prefill.email} onChange={(e) => setPrefill((p) => ({ ...p, email: e.target.value }))} style={inputStyle} />
           </div>
           <div>
             <label htmlFor="contact-phone" className={labelCls}>Telefone *</label>
-            <input id="contact-phone" name="phone" type="tel" autoComplete="tel" maxLength={30} required style={inputStyle} />
+            <input id="contact-phone" name="phone" type="tel" autoComplete="tel" maxLength={30} required value={prefill.phone} onChange={(e) => setPrefill((p) => ({ ...p, phone: e.target.value }))} style={inputStyle} />
           </div>
 
           {isTestDrive && (

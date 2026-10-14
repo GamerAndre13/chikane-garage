@@ -19,6 +19,7 @@ const STATUS_OPTIONS = [
   { value: "available", label: "Disponível", color: "#22c55e" },
   { value: "reserved", label: "Reservada", color: "#f59e0b" },
   { value: "sold", label: "Vendida", color: "#ef4444" },
+  { value: "archived", label: "Arquivada", color: "#6b7280" },
 ] as const;
 
 export default function VeiculosList() {
@@ -167,6 +168,7 @@ export default function VeiculosList() {
           <option value="available">Disponível</option>
           <option value="reserved">Reservada</option>
           <option value="sold">Vendida</option>
+          <option value="archived">Arquivada</option>
         </select>
         {(search || statusFilter !== "all") && (
           <button onClick={clearFilters} className="px-3 py-2 text-xs border rounded" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>

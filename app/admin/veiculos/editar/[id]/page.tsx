@@ -13,6 +13,7 @@ const STATUS_OPTIONS = [
   { value: "available", label: "Disponível" },
   { value: "reserved", label: "Reservada" },
   { value: "sold", label: "Vendida" },
+  { value: "archived", label: "Arquivada" },
 ] as const;
 
 const FUEL_OPTIONS = [
@@ -148,7 +149,7 @@ export default function EditarVeiculo() {
           description: data.description || "",
           is_featured: data.is_featured ? "true" : "false",
           status: data.status || "available",
-          sold_at: data.status === "sold" && data.sold_at ? toLocalInput(data.sold_at) : "",
+          sold_at: (data.status === "sold" || data.status === "archived") && data.sold_at ? toLocalInput(data.sold_at) : "",
         });
       }
       setLoading(false);
@@ -182,6 +183,9 @@ export default function EditarVeiculo() {
     if (status === "sold") {
       // Ao marcar como vendida, preenche a data de venda se ainda não existir.
       setMultiple({ status, sold_at: form.sold_at || toLocalInput(new Date().toISOString()) });
+    } else if (status === "archived") {
+      // Arquivada preserva a data de venda (útil para histórico).
+      setMultiple({ status, sold_at: form.sold_at || toLocalInput(new Date().toISOString()) });
     } else {
       setMultiple({ status, sold_at: "" });
     }
@@ -212,7 +216,8 @@ export default function EditarVeiculo() {
       is_featured: form.is_featured === "true",
       status: form.status,
       // Data de venda: usa a escolhida no formulário; se faltar, assume "agora".
-      sold_at: form.status === "sold"
+      // Em "arquivada" mantém-se a data da venda (histórico).
+      sold_at: form.status === "sold" || form.status === "archived"
         ? (form.sold_at ? new Date(form.sold_at).toISOString() : new Date().toISOString())
         : null,
     }).eq("id", id);
@@ -299,7 +304,7 @@ export default function EditarVeiculo() {
           <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          {form.status === "sold" && (
+          {(form.status === "sold" || form.status === "archived") && (
             <Field label="Data de venda">
               <input type="datetime-local" style={inputStyle} value={form.sold_at} onChange={handleChange("sold_at")} />
             </Field>

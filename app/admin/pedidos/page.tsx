@@ -10,7 +10,7 @@ interface ContactRequest {
   phone: string;
   message: string;
   vehicle_id: string | null;
-  vehicle?: { id: string; brand: string; model: string } | null;
+  vehicle?: { id: string; brand: string; model: string; slug?: string; cover_image_url?: string | null } | null;
   status: string;
   created_at: string;
 }
@@ -21,7 +21,7 @@ interface TestDrive {
   email: string;
   phone: string;
   vehicle_id: string | null;
-  vehicle?: { id: string; brand: string; model: string; slug?: string } | null;
+  vehicle?: { id: string; brand: string; model: string; slug?: string; cover_image_url?: string | null } | null;
   preferred_date: string;
   preferred_time?: string | null;
   confirmed_date?: string | null;
@@ -44,13 +44,26 @@ interface Reservation {
   reserved_until?: string | null;
   decided_at?: string | null;
   created_at: string;
-  vehicle?: { id: string; brand: string; model: string } | null;
+  vehicle?: { id: string; brand: string; model: string; slug?: string; cover_image_url?: string | null } | null;
 }
 
 type ModalState = null | {
   title: string;
   rows?: { label: string; value: string }[];
   body?: string;
+};
+
+type ReplyState = null | {
+  to: string;
+  name: string;
+  vehicle?: string | null;
+  vehicleSlug?: string | null;
+  vehicleImage?: string | null;
+  subject: string;
+  message: string;
+  contactId?: string;
+  sending?: boolean;
+  error?: string | null;
 };
 
 const RESERVATION_DAYS = 7;
@@ -62,21 +75,22 @@ export default function PedidosPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"contactos" | "testdrives" | "reservas">("contactos");
   const [modal, setModal] = useState<ModalState>(null);
+  const [reply, setReply] = useState<ReplyState>(null);
 
   // Congela a página de fundo enquanto um popup está aberto (sem scroll);
   // repõe o valor anterior ao fechar o popup.
   useEffect(() => {
-    if (!modal) return;
+    if (!modal && !reply) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
-  }, [modal]);
+  }, [modal, reply]);
 
   const fetchData = useCallback(async () => {
     const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
-      supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
-      supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model, slug)").order("created_at", { ascending: false }),
-      supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
+      supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model, slug, cover_image_url)").order("created_at", { ascending: false }),
+      supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model, slug, cover_image_url)").order("created_at", { ascending: false }),
+      supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model, slug, cover_image_url)").order("created_at", { ascending: false }),
     ]);
     setContacts(contactsRes.data || []);
     setTestDrives(drivesRes.data || []);
@@ -90,9 +104,9 @@ export default function PedidosPage() {
     let cancelled = false;
     (async () => {
       const [contactsRes, drivesRes, reservationsRes] = await Promise.all([
-        supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
-        supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model, slug)").order("created_at", { ascending: false }),
-        supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model)").order("created_at", { ascending: false }),
+        supabase.from("contact_requests").select("*, vehicle:vehicles(id, brand, model, slug, cover_image_url)").order("created_at", { ascending: false }),
+        supabase.from("test_drives").select("*, vehicle:vehicles(id, brand, model, slug, cover_image_url)").order("created_at", { ascending: false }),
+        supabase.from("reservations").select("*, vehicle:vehicles(id, brand, model, slug, cover_image_url)").order("created_at", { ascending: false }),
       ]);
       if (cancelled) return;
       setContacts(contactsRes.data || []);
@@ -113,6 +127,63 @@ export default function PedidosPage() {
     fetchData();
   };
 
+  // ── Responder por email (a partir do no-reply) ──────────────
+  const openReply = (params: {
+    to: string;
+    name: string;
+    vehicle?: string | null;
+    vehicleSlug?: string | null;
+    vehicleImage?: string | null;
+    contactId?: string;
+  }) => {
+    const vehicleName = params.vehicle && params.vehicle !== "-" ? params.vehicle : null;
+    setReply({
+      to: params.to,
+      name: params.name,
+      vehicle: vehicleName,
+      vehicleSlug: params.vehicleSlug || null,
+      vehicleImage: params.vehicleImage || null,
+      contactId: params.contactId,
+      subject: vehicleName ? `Chikane Garage — ${vehicleName}` : "Chikane Garage — Resposta ao teu pedido",
+      message: "",
+      sending: false,
+      error: null,
+    });
+  };
+
+  const sendReply = async () => {
+    if (!reply) return;
+    setReply({ ...reply, sending: true, error: null });
+    try {
+      const res = await fetch("/api/admin/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: reply.to,
+          name: reply.name,
+          subject: reply.subject,
+          message: reply.message,
+          vehicle: reply.vehicle || undefined,
+          vehicleSlug: reply.vehicleSlug || undefined,
+          vehicleImage: reply.vehicleImage || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReply((prev) => (prev ? { ...prev, sending: false, error: data?.error || "Não foi possível enviar o email." } : prev));
+        return;
+      }
+      // Pedido de informação respondido → passa a "replied".
+      if (reply.contactId) {
+        await supabase.from("contact_requests").update({ status: "replied" }).eq("id", reply.contactId);
+      }
+      setReply(null);
+      fetchData();
+    } catch (e) {
+      setReply((prev) => (prev ? { ...prev, sending: false, error: e instanceof Error ? e.message : "Erro ao enviar." } : prev));
+    }
+  };
+
   const formatVehicle = (item: { vehicle?: { brand: string; model: string } | null }): string => {
     if (item.vehicle?.brand && item.vehicle?.model) {
       return `${item.vehicle.brand} ${item.vehicle.model}`;
@@ -131,6 +202,7 @@ export default function PedidosPage() {
           name: td.name,
           vehicle: vehicleName !== "-" ? vehicleName : undefined,
           vehicleSlug: td.vehicle?.slug || undefined,
+          vehicleImage: td.vehicle?.cover_image_url || undefined,
           confirmedDate,
         }),
       });
@@ -215,6 +287,8 @@ export default function PedidosPage() {
           email: reservation.email,
           name: reservation.name,
           vehicle: vehicleName !== "-" ? vehicleName : undefined,
+          vehicleSlug: reservation.vehicle?.slug || undefined,
+          vehicleImage: reservation.vehicle?.cover_image_url || undefined,
           status,
           reservedUntil,
           extension: reservation.extension_requested || false,
@@ -318,11 +392,26 @@ export default function PedidosPage() {
     new: "#ec4899",
     read: "#3b82f6",
     confirmed: "#22c55e",
+    replied: "#22c55e",
+    archived: "#9a9a94",
     pending: "#f59e0b",
     approved: "#22c55e",
     completed: "#22c55e",
     cancelled: "#ef4444",
     rejected: "#ef4444",
+  };
+
+  const statusLabels: Record<string, string> = {
+    new: "Novo",
+    read: "Lido",
+    confirmed: "Respondido",
+    replied: "Respondido",
+    archived: "Arquivado",
+    pending: "Pendente",
+    approved: "Aprovada",
+    completed: "Concluído",
+    cancelled: "Cancelado",
+    rejected: "Rejeitado",
   };
 
   if (loading) {
@@ -345,7 +434,7 @@ export default function PedidosPage() {
         color: statusColors[status] || "var(--muted)",
       }}
     >
-      {status}
+      {statusLabels[status] || status}
     </span>
   );
 
@@ -445,6 +534,100 @@ export default function PedidosPage() {
         </div>
       )}
 
+      {/* Popup de resposta (email a partir do no-reply) */}
+      {reply && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setReply(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Responder ao pedido"
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6"
+            style={{ backgroundColor: "var(--surface-mid)", borderColor: "var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h3 style={{ color: "var(--foreground)", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "0.9rem" }}>
+                Responder ao pedido
+              </h3>
+              <button
+                onClick={() => setReply(null)}
+                aria-label="Fechar"
+                className="text-xl leading-none hover:opacity-70 cursor-pointer"
+                style={{ color: "var(--muted)", background: "none", border: "none", padding: 0 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs leading-5" style={{ color: "var(--muted)" }}>
+              De: <span style={{ color: "var(--silver)" }}>Chikane Garage &lt;no-reply@chikanegarage.blog&gt;</span>
+              <br />
+              Para: <span style={{ color: "var(--silver)" }}>{reply.name} &lt;{reply.to}&gt;</span>
+              {reply.vehicle && (
+                <>
+                  <br />
+                  Viatura: <span style={{ color: "var(--silver)" }}>{reply.vehicle}</span>
+                </>
+              )}
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label htmlFor="reply-subject" style={{ color: "var(--muted)", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Assunto</label>
+                <input
+                  id="reply-subject"
+                  value={reply.subject}
+                  onChange={(e) => setReply((prev) => (prev ? { ...prev, subject: e.target.value } : prev))}
+                  maxLength={180}
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  style={{ borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
+                />
+              </div>
+              <div>
+                <label htmlFor="reply-message" style={{ color: "var(--muted)", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Mensagem</label>
+                <textarea
+                  id="reply-message"
+                  value={reply.message}
+                  onChange={(e) => setReply((prev) => (prev ? { ...prev, message: e.target.value } : prev))}
+                  rows={8}
+                  maxLength={5000}
+                  placeholder="Escreve a resposta ao cliente…"
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  style={{ borderColor: "var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)", resize: "vertical" }}
+                />
+              </div>
+
+              {reply.error && (
+                <p role="alert" className="text-sm" style={{ color: "#ef4444" }}>{reply.error}</p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setReply(null)}
+                  className="border px-4 py-2 text-xs uppercase tracking-widest"
+                  style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={sendReply}
+                  disabled={reply.sending || reply.message.trim().length < 2}
+                  className="px-4 py-2 text-xs font-semibold uppercase tracking-widest disabled:opacity-50"
+                  style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
+                >
+                  {reply.sending ? "A enviar…" : "Enviar email"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contact Requests Table */}
       {activeTab === "contactos" && (
         <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
@@ -483,6 +666,20 @@ export default function PedidosPage() {
                   <td className="px-4 py-3">{statusBadge(c.status)}</td>
                   <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(c.created_at)}</td>
                   <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => openReply({
+                        to: c.email,
+                        name: c.name,
+                        vehicle: c.vehicle_id ? formatVehicle(c) : null,
+                        vehicleSlug: c.vehicle?.slug,
+                        vehicleImage: c.vehicle?.cover_image_url,
+                        contactId: c.id,
+                      })}
+                      className="text-xs mr-2 hover:opacity-80 cursor-pointer"
+                      style={{ color: "var(--copper-deep)" }}
+                    >
+                      Responder
+                    </button>
                     {c.status === "new" && (
                       <button
                         onClick={() => updateContactStatus(c.id, "read")}
@@ -578,6 +775,19 @@ export default function PedidosPage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => openReply({
+                            to: d.email,
+                            name: d.name,
+                            vehicle: d.vehicle_id ? formatVehicle(d) : null,
+                            vehicleSlug: d.vehicle?.slug,
+                            vehicleImage: d.vehicle?.cover_image_url,
+                          })}
+                          className="text-xs hover:opacity-80 cursor-pointer"
+                          style={{ color: "var(--copper-deep)" }}
+                        >
+                          Responder
+                        </button>
                         {d.status !== "completed" && (
                           <>
                             <button onClick={() => confirmTestDrive(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#22c55e" }}>
@@ -718,6 +928,19 @@ export default function PedidosPage() {
                   <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(r.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1.5 items-start">
+                      <button
+                        onClick={() => openReply({
+                          to: r.email,
+                          name: r.name,
+                          vehicle: r.vehicle_id ? formatVehicle(r) : null,
+                          vehicleSlug: r.vehicle?.slug,
+                          vehicleImage: r.vehicle?.cover_image_url,
+                        })}
+                        className="text-xs hover:opacity-80 cursor-pointer"
+                        style={{ color: "var(--copper-deep)" }}
+                      >
+                        Responder
+                      </button>
                       {r.status === "pending" && (
                         <div className="flex gap-2.5 flex-wrap">
                           <button onClick={() => approveReservation(r)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#22c55e" }}>

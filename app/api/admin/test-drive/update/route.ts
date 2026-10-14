@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { vehicleEmailBlock } from "@/lib/email-vehicle-block";
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -12,7 +13,7 @@ function getResend() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, name, vehicle, vehicleSlug, confirmedDate } = body;
+    const { email, name, vehicle, vehicleSlug, vehicleImage, confirmedDate } = body;
 
     if (!email || !confirmedDate) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
             </p>
 
             ${vehicle ? `<p style="margin:0 0 16px;color:#ccc;font-size:14px;line-height:1.7">Viatura: <strong style="color:#fff">${vehicle}</strong></p>` : ""}
-            ${vehicleUrl ? `<p style="margin:0 0 16px"><a href="${vehicleUrl}" style="color:#f47724;font-size:14px;text-decoration:underline">Ver o anúncio da viatura →</a></p>` : ""}
+            ${vehicleEmailBlock({ url: vehicleUrl, imageUrl: vehicleImage, name: vehicle })}
 
             <div style="margin:20px 0;padding:16px;background:#1a1a1a;border:1px solid #222;border-radius:8px">
               <p style="margin:0;color:#ccc;font-size:14px;line-height:1.7">Nova data e hora confirmadas:</p>
