@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { pickFromPool } from "@/lib/avatar-pool";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const router = useRouter();
@@ -35,18 +37,41 @@ export function Header() {
 
   // O link "Backoffice" só aparece a utilizadores com role admin.
   // (O /admin já é bloqueado pelo proxy — isto é só para não mostrar a entrada.)
+  // Aproveita para carregar a imagem de perfil (avatar próprio ou do pool).
   useEffect(() => {
     const id = user?.id;
-    if (!id) return;
-    supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", id)
-      .maybeSingle()
-      .then(
-        ({ data }) => setIsAdmin(data?.role === "admin"),
-        () => setIsAdmin(false)
-      );
+    let cancelled = false;
+
+    (async () => {
+      if (!id) {
+        if (!cancelled) {
+          setIsAdmin(false);
+          setAvatarUrl(null);
+        }
+        return;
+      }
+      try {
+        const [profileRes, settingsRes] = await Promise.all([
+          supabase.from("profiles").select("role, avatar_url").eq("id", id).maybeSingle(),
+          supabase.from("site_settings").select("avatar_pool").limit(1).maybeSingle(),
+        ]);
+        if (cancelled) return;
+        setIsAdmin(profileRes.data?.role === "admin");
+        const avatar =
+          profileRes.data?.avatar_url ||
+          pickFromPool(id, (settingsRes.data as { avatar_pool?: string | null } | null)?.avatar_pool);
+        setAvatarUrl(avatar || null);
+      } catch {
+        if (!cancelled) {
+          setIsAdmin(false);
+          setAvatarUrl(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   // Fecha o menu móvel com a tecla Escape ou ao clicar fora do header
@@ -112,14 +137,21 @@ export function Header() {
               )}
               <Link
                 href="/conta/perfil"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-silver hover:border-copper hover:text-copper transition-colors"
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded border border-border text-silver hover:border-copper hover:text-copper transition-colors"
                 title="Meu perfil"
                 aria-label="Abrir o meu perfil"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+                {avatarUrl ? (
+                  // Avatar do utilizador (próprio ou do pool) — <img> simples
+                  // porque a imagem vem de um domínio R2 configurável.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                )}
               </Link>
               <button
                 onClick={handleLogout}
@@ -131,16 +163,14 @@ export function Header() {
           ) : (
             <Link
               href="/conta"
-              className="group relative overflow-hidden rounded bg-copper px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-black transition-all hover:bg-copper-light hover:shadow-[0_0_20px_rgba(244,119,36,0.35)]"
+              className="flex items-center gap-2 border border-border px-4 py-2 text-xs font-medium uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper"
             >
-              <span className="relative z-10 flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
-                Entrar
-              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              Entrar
             </Link>
           )}
 
