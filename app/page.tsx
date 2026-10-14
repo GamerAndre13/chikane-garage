@@ -156,7 +156,7 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       {/* ─── HERO ─── */}
-      <section className="relative flex min-h-svh items-start overflow-hidden pt-10 sm:items-center sm:pt-0">
+      <section className="relative flex min-h-svh overflow-hidden pt-10 pb-12 sm:items-center sm:pt-0 sm:pb-0">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
@@ -165,7 +165,7 @@ export default async function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
-        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-5 text-left sm:px-8 lg:px-12">
+        <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-col px-5 text-left sm:block sm:px-8 lg:px-12">
           <p className="font-display text-[11px] uppercase tracking-[0.32em] text-copper">
             {t("hero.tagline")}
           </p>
@@ -177,7 +177,7 @@ export default async function HomePage() {
           <p className="mt-6 max-w-xl text-sm leading-relaxed text-gray-300 sm:text-base">
             {t("hero.intro")}
           </p>
-          <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row">
+          <div className="mt-auto flex flex-col items-start gap-3 pt-9 sm:mt-9 sm:flex-row sm:pt-0">
             <Link href="/catalogo" className="inline-flex items-center justify-center bg-copper px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
               Ver Catálogo
             </Link>
