@@ -228,22 +228,22 @@ export default async function HomePage() {
                 </span>
               </Link>
 
-              <div className="clip-chicane relative z-10 border border-copper/40 bg-surface p-5 sm:-mt-8 sm:p-6 lg:-ml-16 lg:mt-10">
+              <div className="clip-chicane relative z-10 border border-copper/40 bg-surface p-5 sm:-mt-10 sm:p-10 lg:-ml-16 lg:mt-16">
                 <p className="kicker">
                   {spotlight.brand} · {spotlight.registration_year ?? "—"}
                 </p>
-                <h3 className="mt-2 font-display text-2xl uppercase leading-none text-foreground">
+                <h3 className="mt-2 font-display text-2xl uppercase leading-none text-foreground sm:mt-3 sm:text-4xl">
                   {spotlight.model}
                 </h3>
                 {spotlight.trim && (
-                  <p className="mt-1.5 font-display text-xs uppercase tracking-[0.16em] text-muted">
+                  <p className="mt-1.5 font-display text-xs uppercase tracking-[0.16em] text-muted sm:mt-2 sm:text-sm">
                     {spotlight.trim}
                   </p>
                 )}
-                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted sm:line-clamp-none">
+                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted sm:mt-6 sm:line-clamp-none">
                   {spotlight.description || "Viatura selecionada e inspecionada ao detalhe pela Chikane Garage."}
                 </p>
-                <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-2 sm:mt-4 sm:pt-3">
+                <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-2 sm:mt-8 sm:gap-4 sm:pt-6">
                   <div>
                     <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">KM</dt>
                     <dd className="mt-1 font-display text-silver">{mileageLabel(spotlight.mileage_km)}</dd>
@@ -257,10 +257,10 @@ export default async function HomePage() {
                     <dd className="mt-1 font-display text-silver">{transmissionLabel(spotlight.transmission)}</dd>
                   </div>
                 </dl>
-                <p className="mt-3 font-display text-xl text-copper sm:mt-4">{priceLabel(spotlight.price)}</p>
+                <p className="mt-3 font-display text-xl text-copper sm:mt-8 sm:text-3xl">{priceLabel(spotlight.price)}</p>
                 <Link
                   href={`/catalogo/${spotlight.slug}`}
-                  className="mt-3 inline-flex border border-copper px-5 py-2 font-display text-[0.62rem] tracking-[0.24em] text-copper transition-all duration-300 hover:bg-copper hover:text-black sm:mt-4 sm:py-2.5"
+                  className="mt-3 inline-flex border border-copper px-5 py-2 font-display text-[0.62rem] tracking-[0.24em] text-copper transition-all duration-300 hover:bg-copper hover:text-black sm:mt-8 sm:px-8 sm:py-3.5 sm:text-[0.68rem] sm:tracking-[0.28em]"
                 >
                   VER VIATURA
                 </Link>
