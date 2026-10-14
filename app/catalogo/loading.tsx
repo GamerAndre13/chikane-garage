@@ -12,7 +12,7 @@ export default function CatalogoLoading() {
 
       <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
         <aside className="shimmer hidden h-96 lg:block" />
-        <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="overflow-hidden border border-white/10 bg-surface">
               <div className="shimmer aspect-[4/3]" />
