@@ -315,7 +315,7 @@ export default async function HomePage() {
                               RESERVADO
                             </span>
                           )}
-                          <div className="absolute right-3 top-3 z-20">
+                          <div className="absolute right-1.5 top-1.5 z-20">
                             <FavoriteButton vehicleId={v.id} />
                           </div>
                         </div>
