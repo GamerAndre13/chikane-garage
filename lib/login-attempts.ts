@@ -50,10 +50,20 @@ export function registerFailedAttempt(email: string): { locked: boolean; remaini
 
   const store = read();
   const previous = store[key];
-  const count = (previous?.lockedUntil && previous.lockedUntil > Date.now() ? previous.count : 0) + 1;
-  const locked = count >= MAX_ATTEMPTS;
-  const lockedUntil = locked ? Date.now() + LOCK_MS : 0;
+  const now = Date.now();
 
+  // Já está bloqueado: mantém o bloqueio e não reinicia o contador.
+  if (previous?.lockedUntil && previous.lockedUntil > now) {
+    return { locked: true, remainingMs: previous.lockedUntil - now };
+  }
+
+  // Bloqueio anterior expirado → começa do zero; caso contrário acumula.
+  const expired = previous?.lockedUntil ? previous.lockedUntil <= now : false;
+  const count = (expired ? 0 : previous?.count ?? 0) + 1;
+  const locked = count >= MAX_ATTEMPTS;
+  const lockedUntil = locked ? now + LOCK_MS : 0;
+
+  // Depois de bloquear guarda o contador a zero (o bloqueio é que manda).
   store[key] = { count: locked ? 0 : count, lockedUntil };
   write(store);
 

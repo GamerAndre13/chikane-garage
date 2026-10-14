@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 
 type FavoriteVehicle = {
   id: string;
@@ -17,6 +18,9 @@ type FavoriteVehicle = {
     cover_image_url: string | null;
     slug: string;
     status: string | null;
+    sold_at?: string | null;
+    updated_at?: string | null;
+    created_at?: string | null;
   } | null;
 };
 
@@ -48,15 +52,20 @@ export function FavoritesList() {
 
       const { data } = await supabase
         .from("favorites")
-        .select("id, vehicle_id, created_at, vehicles(brand, model, trim, price, cover_image_url, slug, status)")
+        .select("id, vehicle_id, created_at, vehicles(brand, model, trim, price, cover_image_url, slug, status, sold_at, updated_at, created_at)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
 
-      const normalized = (data || []).map((fav: RawFavorite) => ({
-        ...fav,
-        vehicles: Array.isArray(fav.vehicles) ? fav.vehicles[0] ?? null : fav.vehicles,
-      }));
+      const normalized = (data || [])
+        .map((fav: RawFavorite) => ({
+          ...fav,
+          vehicles: Array.isArray(fav.vehicles) ? fav.vehicles[0] ?? null : fav.vehicles,
+        }))
+        // Viaturas arquivadas (ou vendidas há mais de 7 dias) saem dos
+        // favoritos — a mesma regra do catálogo: só disponíveis, reservadas
+        // e vendidas (dentro dos 7 dias).
+        .filter((fav) => fav.vehicles && isVehiclePubliclyVisible(fav.vehicles));
       setFavorites(normalized);
       setLoading(false);
     })();
