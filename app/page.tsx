@@ -156,7 +156,7 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       {/* ─── HERO ─── */}
-      <section className="relative flex min-h-svh overflow-hidden pt-10 pb-12 sm:items-center sm:pt-0 sm:pb-0">
+      <section className="relative flex min-h-[calc(100svh-77px)] overflow-hidden pt-10 pb-12 sm:min-h-svh sm:items-center sm:pt-0 sm:pb-0">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
