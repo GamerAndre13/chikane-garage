@@ -94,6 +94,7 @@ export function Header() {
   }, [mobileOpen]);
 
   async function handleLogout() {
+    setMobileOpen(false);
     await supabase.auth.signOut();
     setUser(null);
     router.push("/");
@@ -194,6 +195,9 @@ export function Header() {
       {mobileOpen && (
         <div className="border-t border-border bg-background px-4 py-4 md:hidden">
           <nav className="flex flex-col gap-3">
+            <Link href="/" className={`${navClass("/")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Início
+            </Link>
             <Link href="/catalogo" className={`${navClass("/catalogo")} w-fit`} onClick={() => setMobileOpen(false)}>
               Catálogo
             </Link>
@@ -204,6 +208,29 @@ export function Header() {
               Contacto
             </Link>
           </nav>
+
+          {/* Em ecrãs pequenos o "Backoffice" e o "Sair" do cabeçalho ficam
+              escondidos — repõe-se aqui o acesso, senão não havia como
+              terminar sessão no telemóvel. */}
+          {user && (
+            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+              <Link href="/conta/perfil" className={`${navClass("/conta")} w-fit`} onClick={() => setMobileOpen(false)}>
+                Meu Perfil
+              </Link>
+              {isAdmin && (
+                <Link href="/admin" className={`${navClass("/admin")} w-fit`} onClick={() => setMobileOpen(false)}>
+                  Backoffice
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-fit py-2 text-left font-display text-xs font-medium uppercase tracking-[0.2em] text-red-light transition-colors hover:text-red"
+              >
+                Terminar sessão
+              </button>
+            </div>
+          )}
         </div>
       )}
     </header>
