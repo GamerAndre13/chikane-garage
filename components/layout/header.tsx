@@ -105,8 +105,12 @@ export function Header() {
     <header ref={headerRef} className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex h-[76px] max-w-[1440px] items-center px-5 sm:px-8 lg:px-12">
         <Link href="/" className="flex items-center gap-2">
-          <span className="font-display text-lg font-bold uppercase tracking-[0.18em] text-foreground">
-            Chikane <span className="text-copper">Garage</span>
+          {/* Em ecrãs pequenos o wordmark parte em 2 linhas (Chikane /
+              Garage); a partir de md volta a uma só linha. */}
+          <span className="font-display text-lg font-bold uppercase leading-tight tracking-[0.18em] text-foreground">
+            Chikane{" "}
+            <br className="md:hidden" aria-hidden="true" />
+            <span className="text-copper">Garage</span>
           </span>
         </Link>
 
@@ -125,7 +129,10 @@ export function Header() {
           </Link>
         </nav>
 
-        <div className="ml-6 flex items-center gap-3">
+        {/* ml-auto empurra os controlos para a direita no telemóvel (onde a nav
+            está escondida); a partir de md a nav já tem ml-auto e o espaçamento
+            volta a ser o ml-6. */}
+        <div className="ml-auto flex items-center gap-3 md:ml-6">
           {user ? (
             <>
               {isAdmin && (
