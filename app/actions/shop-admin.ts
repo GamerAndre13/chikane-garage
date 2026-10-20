@@ -60,6 +60,20 @@ export async function saveShopProduct(form: FormData) {
     if (error) throw new Error("O artigo foi guardado, mas não foi possível guardar as variantes.");
   }
 
+  const compatibilityRows = text(form, "compatibility", 8000).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
+    const [brand = "", model = "", yearFrom = "", yearTo = "", notes = ""] = line.split(";").map((part) => part.trim());
+    const from = yearFrom ? Number(yearFrom) : null;
+    const to = yearTo ? Number(yearTo) : null;
+    if (brand.length < 2 || model.length < 1 || (from !== null && (!Number.isInteger(from) || from < 1900 || from > 2100)) || (to !== null && (!Number.isInteger(to) || to < 1900 || to > 2100)) || (from !== null && to !== null && from > to)) throw new Error("Revê as linhas de compatibilidade: marca, modelo e anos têm de ser válidos.");
+    return { product_id: productId, brand: brand.slice(0, 80), model: model.slice(0, 100), year_from: from, year_to: to, notes: notes.slice(0, 240) };
+  });
+  const { error: compatibilityDeleteError } = await supabase.from("product_compatibility").delete().eq("product_id", productId);
+  if (compatibilityDeleteError) throw new Error("O artigo foi guardado, mas não foi possível atualizar a compatibilidade.");
+  if (compatibilityRows.length) {
+    const { error: compatibilityInsertError } = await supabase.from("product_compatibility").insert(compatibilityRows);
+    if (compatibilityInsertError) throw new Error("O artigo foi guardado, mas não foi possível guardar a compatibilidade.");
+  }
+
   const image = form.get("image");
   if (image instanceof File && image.size > 0) {
     if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(image.type) || image.size > 10 * 1024 * 1024) throw new Error("Escolhe uma imagem JPG, PNG ou WEBP até 10 MB.");

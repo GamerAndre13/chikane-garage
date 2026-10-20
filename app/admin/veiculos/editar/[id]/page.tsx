@@ -36,6 +36,11 @@ const ORIGIN_OPTIONS = [
 ] as const;
 
 const initialForm = {
+  condition: "used",
+  sale_type: "stock",
+  brand_warranty_months: "",
+  delivery_estimate_days: "",
+  config_summary: "",
   brand: "",
   model: "",
   trim: "",
@@ -122,6 +127,11 @@ export default function EditarVeiculo() {
         const { data: featureRows } = await supabase.from("vehicle_features").select("label").eq("vehicle_id", id).order("label");
         setMultiple({
           brand: data.brand || "BMW",
+          condition: data.condition || "used",
+          sale_type: data.sale_type || "stock",
+          brand_warranty_months: data.brand_warranty_months?.toString() || "",
+          delivery_estimate_days: data.delivery_estimate_days?.toString() || "",
+          config_summary: data.config_summary || "",
           model: data.model || "",
           trim: data.trim || "",
           registration_year: data.registration_year?.toString() || "",
@@ -209,10 +219,15 @@ export default function EditarVeiculo() {
       torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
       combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
       co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
-      mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
-      previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
+      mileage_km: form.condition === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
+      previous_owners: form.condition === "new" ? null : form.previous_owners ? parseInt(form.previous_owners) : null,
+      service_book: form.condition === "new" ? null : form.service_book,
       price: form.price ? parseFloat(form.price) : null,
-      warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
+      warranty_months: form.condition === "used" && form.warranty_months ? parseInt(form.warranty_months) : null,
+      condition: form.condition,
+      sale_type: form.sale_type,
+      brand_warranty_months: form.brand_warranty_months ? parseInt(form.brand_warranty_months) : null,
+      delivery_estimate_days: form.delivery_estimate_days ? parseInt(form.delivery_estimate_days) : null,
       is_featured: form.is_featured === "true",
       status: form.status,
       // Data de venda: usa a escolhida no formulário; se faltar, assume "agora".
@@ -255,6 +270,8 @@ export default function EditarVeiculo() {
       <form onSubmit={handleSubmit} style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <Field label="Condição"><select style={selectStyle} value={form.condition} onChange={handleChange("condition")}><option value="used">Usado</option><option value="new">Novo</option></select></Field>
+          <Field label="Disponibilidade"><select style={selectStyle} value={form.sale_type} onChange={handleChange("sale_type")}><option value="stock">Em stock</option><option value="on_order">Por encomenda</option></select></Field>
           <Field label="Marca *">
             <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -285,12 +302,11 @@ export default function EditarVeiculo() {
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
+          {form.condition !== "new" && <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>}
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
-          <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
-          <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          {form.condition !== "new" && <><Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field><Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field></>}
         </div>
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
@@ -302,7 +318,10 @@ export default function EditarVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
-          <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
+          {form.condition === "used" ? <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field> : <>
+            <Field label="Garantia da marca (meses)"><input type="number" min="0" style={inputStyle} value={form.brand_warranty_months} onChange={handleChange("brand_warranty_months")} /></Field>
+            {form.sale_type === "on_order" && <Field label="Prazo estimado (dias)"><input type="number" min="1" style={inputStyle} value={form.delivery_estimate_days} onChange={handleChange("delivery_estimate_days")} /></Field>}
+          </>}
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           {(form.status === "sold" || form.status === "archived") && (
             <Field label="Data de venda">
@@ -310,6 +329,7 @@ export default function EditarVeiculo() {
             </Field>
           )}
         </div>
+        {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
 
         {/* Galeria de imagens (R2) */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>

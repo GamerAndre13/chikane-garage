@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { saveShopProduct } from "@/app/actions/shop-admin";
 
-type FormData = { id?: string; name?: string; slug?: string; category_id?: string; brand_id?: string; price?: number; compare_at_price?: number | null; short_description?: string; description?: string; sku?: string; weight_grams?: number; stock_mode?: string; status?: string; vat_rate?: number; is_featured?: boolean; is_new?: boolean };
+type FormData = { id?: string; name?: string; slug?: string; category_id?: string; brand_id?: string; price?: number; compare_at_price?: number | null; short_description?: string; description?: string; sku?: string; weight_grams?: number; stock_mode?: string; status?: string; vat_rate?: number; is_featured?: boolean; is_new?: boolean; product_compatibility?: { brand: string; model: string; year_from?: number | null; year_to?: number | null; notes?: string | null }[] };
 const input = "mt-2 block w-full border border-border bg-background px-3 py-3 text-sm text-foreground";
 
 export function ProductForm({ categories, brands, initial = {} }: { categories: { id: string; name: string }[]; brands: { id: string; name: string }[]; initial?: FormData }) {
@@ -17,6 +17,7 @@ export function ProductForm({ categories, brands, initial = {} }: { categories: 
         <label className="block text-xs uppercase tracking-widest text-muted sm:col-span-2">Resumo<textarea name="short_description" defaultValue={initial.short_description ?? ""} rows={2} className={input}/></label>
         <label className="block text-xs uppercase tracking-widest text-muted sm:col-span-2">Descrição completa<textarea name="description" defaultValue={initial.description ?? ""} rows={7} className={input}/></label>
       </div></section>
+      <section className="border border-border bg-surface p-5 sm:p-7"><h2 className="font-display text-lg uppercase">Compatibilidade com viaturas</h2><p className="mt-2 text-xs leading-relaxed text-muted">Uma viatura por linha: Marca; modelo; ano inicial; ano final; notas. Exemplo: BMW; M3 Touring; 2025; 2026; Confirmar geração antes da montagem.</p><textarea name="compatibility" defaultValue={(initial.product_compatibility ?? []).map((item) => [item.brand, item.model, item.year_from ?? "", item.year_to ?? "", item.notes ?? ""].join("; ")).join("\n")} rows={5} className={`${input} font-mono text-xs`} placeholder="BMW; M3 Touring; 2025; 2026; Confirmar versão"/></section>
       {!initial.id && <section className="border border-border bg-surface p-5 sm:p-7"><h2 className="font-display text-lg uppercase">Variantes e stock</h2><p className="mt-2 text-xs leading-relaxed text-muted">Uma variante por linha no formato: Nome; referência; stock; ajuste de preço. Exemplo: Preto / M; CG-TS-M; 5; 0</p><textarea name="variants" defaultValue="Único;;;0" rows={4} className={`${input} font-mono text-xs`}/></section>}
     </div>
     <aside className="h-fit border border-border bg-surface p-5 sm:p-6"><h2 className="font-display text-lg uppercase">Publicação e fotografia</h2><label className="mt-5 block text-xs uppercase tracking-widest text-muted">Estado<select name="status" defaultValue={initial.status ?? "active"} className={input}><option value="active">Ativo</option><option value="draft">Rascunho</option></select></label>

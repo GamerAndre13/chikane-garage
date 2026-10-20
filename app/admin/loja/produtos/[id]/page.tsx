@@ -7,7 +7,7 @@ export default async function EditarProdutoPage({ params }: PageProps<"/admin/lo
   const { id } = await params;
   const supabase = await createClient();
   const [{ data: product }, { data: categories }, { data: brands }] = await Promise.all([
-    supabase.from("products").select("id,slug,name,category_id,brand_id,price,compare_at_price,short_description,description,sku,weight_grams,stock_mode,status,vat_rate,is_featured,is_new,low_stock_threshold").eq("id", id).maybeSingle(),
+    supabase.from("products").select("id,slug,name,category_id,brand_id,price,compare_at_price,short_description,description,sku,weight_grams,stock_mode,status,vat_rate,is_featured,is_new,low_stock_threshold,product_compatibility(brand,model,year_from,year_to,notes)").eq("id", id).maybeSingle(),
     supabase.from("product_categories").select("id,name").eq("is_active", true).order("position"),
     supabase.from("brands").select("id,name").eq("is_active", true).order("position"),
   ]);

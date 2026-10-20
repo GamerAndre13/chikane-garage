@@ -10,3 +10,10 @@ sem stock. Os preços são ilustrativos; stock zero impede a compra.
 Quando os produtos reais estiverem prontos, arquivar ou substituir os exemplos,
 atualizar os preços, descrições, referências e fotografias e registar o stock
 real no backoffice.
+
+O ficheiro `supabase/veiculos_acessorios_demo.sql` acrescenta duas viaturas novas
+e dois acessórios de demonstração ligados aos respetivos modelos. Executa-o no
+SQL Editor depois de `supabase/setup.sql`. As viaturas estão identificadas como
+demonstração e sem preço; os acessórios têm stock zero e não podem ser comprados.
+O formulário de produto permite editar a compatibilidade no formato
+`Marca; modelo; ano inicial; ano final; notas`.

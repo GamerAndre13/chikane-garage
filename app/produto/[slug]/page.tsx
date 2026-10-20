@@ -28,6 +28,7 @@ export default async function ProdutoPage({ params }: PageProps<"/produto/[slug]
         <p className="mt-5 font-display text-2xl text-copper">{euro(Number(product.price))}</p>
         {product.short_description && <p className="mt-5 text-sm leading-relaxed text-silver">{product.short_description}</p>}
         <div className="mt-8 border-y border-border py-6"><AddToCart product={product} /></div>
+        {!!product.product_compatibility?.length && <section className="mt-7 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.2em] text-copper">Compatibilidade</h2><ul className="mt-3 space-y-3">{product.product_compatibility.map((item, index) => <li key={`${item.brand}-${item.model}-${index}`} className="border border-border bg-surface p-4"><p className="font-display text-sm uppercase text-foreground">{item.brand} {item.model}{item.year_from || item.year_to ? ` · ${item.year_from ?? "…"}–${item.year_to ?? "…"}` : ""}</p>{item.notes && <p className="mt-1 text-xs leading-relaxed text-muted">{item.notes}</p>}</li>)}</ul></section>}
         {product.description && <div className="prose prose-invert mt-8 max-w-none whitespace-pre-line text-sm leading-relaxed text-muted">{product.description}</div>}
         <p className="mt-8 border-t border-border pt-5 text-xs leading-relaxed text-muted">Preços com IVA incluído. Portes calculados no checkout segundo o destino e peso da encomenda.</p>
       </section>

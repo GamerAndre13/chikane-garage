@@ -71,6 +71,11 @@ type Vehicle = {
   registration_year?: number | null;
   registration_month?: number | null;
   status?: string | null;
+  condition?: string | null;
+  sale_type?: string | null;
+  brand_warranty_months?: number | null;
+  delivery_estimate_days?: number | null;
+  config_summary?: string | null;
   engine?: string | null;
   power_hp?: number | null;
   torque_nm?: number | null;
@@ -209,15 +214,16 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   const features = (vehicle.vehicle_features || []) as VehicleFeature[];
   const badge = statusBadge(vehicle.status);
   const soldInfo = soldInfoFor(vehicle);
+  const isNewOnOrder = vehicle.condition === "new" && vehicle.sale_type === "on_order";
 
   const primarySpecs: { label: string; value: string }[] = [
-    { label: "Quilometragem", value: vehicle.mileage_km != null ? `${vehicle.mileage_km.toLocaleString("pt-PT")} km` : "—" },
+    { label: "Quilometragem", value: vehicle.condition === "new" ? "0 km" : vehicle.mileage_km != null ? `${vehicle.mileage_km.toLocaleString("pt-PT")} km` : "—" },
     { label: "Ano", value: vehicle.registration_year ? String(vehicle.registration_year) : "—" },
     { label: "Potência", value: vehicle.power_hp != null ? `${vehicle.power_hp} cv` : "—" },
     { label: "Combustível", value: vehicle.fuel_type || "—" },
     { label: "Caixa", value: vehicle.transmission ? (vehicle.transmission === "automatic" ? "Automática" : "Manual") : "—" },
     { label: "Origem", value: vehicle.origin ? (vehicle.origin === "imported" ? "Importação" : "Nacional") : "—" },
-    { label: "Donos Anteriores", value: vehicle.previous_owners != null ? String(vehicle.previous_owners) : "—" },
+    ...(vehicle.condition === "new" ? [] : [{ label: "Donos Anteriores", value: vehicle.previous_owners != null ? String(vehicle.previous_owners) : "—" }]),
     { label: "Cor", value: vehicle.exterior_color || "—" },
   ];
 
@@ -228,13 +234,16 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   if (vehicle.body_style) additionalSpecs.push({ label: "Estilo", value: vehicle.body_style });
   if (vehicle.registration_month) additionalSpecs.push({ label: "Mês Registo", value: String(vehicle.registration_month) });
   if (vehicle.interior_color) additionalSpecs.push({ label: "Cor Interior", value: vehicle.interior_color });
-  if (vehicle.service_book) additionalSpecs.push({ label: "Caderneta", value: serviceBookLabel(vehicle.service_book) });
+  if (vehicle.condition !== "new" && vehicle.service_book) additionalSpecs.push({ label: "Caderneta", value: serviceBookLabel(vehicle.service_book) });
   if (vehicle.origin_country) additionalSpecs.push({ label: "País Origem", value: vehicle.origin_country });
   if (vehicle.coc_confirmed) additionalSpecs.push({ label: "COC", value: "Confirmado ✓" });
   if (vehicle.isv_paid) additionalSpecs.push({ label: "ISV", value: "Pago ✓" });
   if (vehicle.combined_consumption != null) additionalSpecs.push({ label: "Consumo", value: `${vehicle.combined_consumption} l/100km` });
   if (vehicle.co2_emissions != null) additionalSpecs.push({ label: "CO₂", value: `${vehicle.co2_emissions} g/km` });
-  if (vehicle.warranty_months) additionalSpecs.push({ label: "Garantia", value: `${vehicle.warranty_months} meses` });
+  if (vehicle.condition !== "new" && vehicle.warranty_months) additionalSpecs.push({ label: "Garantia", value: `${vehicle.warranty_months} meses` });
+  if (vehicle.condition === "new" && vehicle.brand_warranty_months != null) additionalSpecs.push({ label: "Garantia da marca", value: `${vehicle.brand_warranty_months} meses` });
+  if (vehicle.condition === "new") additionalSpecs.push({ label: "Disponibilidade", value: vehicle.sale_type === "on_order" ? "Por encomenda" : "Em stock" });
+  if (vehicle.condition === "new" && vehicle.sale_type === "on_order" && vehicle.delivery_estimate_days != null) additionalSpecs.push({ label: "Entrega estimada", value: `${vehicle.delivery_estimate_days} dias` });
 
   let similarVehicles: Vehicle[] = [];
   try {
@@ -274,6 +283,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           <p className="font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">{vehicle.reference_code ? `Chikane selection · ${vehicle.reference_code}` : "Detalhes da viatura"}</p>
           <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-[0.98] tracking-tight text-foreground sm:text-6xl">{vehicle.brand} {vehicle.model}</h1>
           {vehicle.trim && <p className="mt-2 font-display text-sm uppercase tracking-[0.2em] text-silver">{vehicle.trim}</p>}
+          {vehicle.condition === "new" && <p className="mt-4 inline-flex border border-copper/50 px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.18em] text-copper">Viatura nova · {vehicle.sale_type === "on_order" ? "Por encomenda" : "Em stock"}</p>}
           <p className="mt-7 font-display text-4xl font-medium text-copper sm:text-5xl">{vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
           <p className="mt-1 text-xs text-muted">Preço final. Fala connosco para confirmar todos os detalhes.</p>
 
@@ -284,18 +294,18 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           )}
 
           {vehicle.status !== "sold" && (
-            <div className={`mt-7 grid grid-cols-1 gap-3 ${vehicle.status === "available" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-              {vehicle.status === "available" && (
+            <div className={`mt-7 grid grid-cols-1 gap-3 ${vehicle.status === "available" && !isNewOnOrder ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {vehicle.status === "available" && !isNewOnOrder && (
                 <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
               )}
-              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Pedir informações</Link>
+              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">{isNewOnOrder ? "Pedir proposta" : "Pedir informações"}</Link>
               <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Marcar test-drive</Link>
             </div>
           )}
 
           <VehicleSpecifications primary={primarySpecs} additional={additionalSpecs} />
 
-          {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Descrição</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
+          {(vehicle.config_summary || vehicle.description) && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">{vehicle.condition === "new" ? "Configuração e descrição" : "Descrição"}</h2>{vehicle.config_summary && <p className="mt-3 text-sm leading-7 text-silver">{vehicle.config_summary}</p>}{vehicle.description && <p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p>}</section>}
 
           <div className="mt-7 lg:hidden">
             <VehicleEquipmentAndConditions accidentHistory={vehicle.accident_history} features={features} />

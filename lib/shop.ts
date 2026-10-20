@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 export { euro } from "@/lib/shop-format";
 
 export type ShopImage = { id?: string; url: string; alt_text?: string | null; position?: number | null };
+export type ShopCompatibility = { brand: string; model: string; year_from?: number | null; year_to?: number | null; notes?: string | null };
 export type ShopVariant = {
   id: string;
   name: string;
@@ -30,10 +31,12 @@ export type ShopProduct = {
   brands?: { name: string } | null;
   product_variants?: ShopVariant[];
   product_images?: ShopImage[];
+  product_compatibility?: ShopCompatibility[];
 };
 export type ShopCategory = { id: string; slug: string; name: string; description?: string | null; image_url?: string | null; position?: number };
 
 const PRODUCT_FIELDS = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
+const PRODUCT_DETAIL_FIELDS = `${PRODUCT_FIELDS},product_compatibility(brand,model,year_from,year_to,notes)`;
 const PRODUCT_FIELDS_WITH_CATEGORY = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories!inner(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
 
 export async function getShopCategories(): Promise<ShopCategory[]> {
@@ -55,7 +58,7 @@ export async function getShopProducts(options: { category?: string; featured?: b
 
 export async function getShopProduct(slug: string): Promise<ShopProduct | null> {
   const supabase = await createClient();
-  const { data } = await supabase.from("products").select(PRODUCT_FIELDS).eq("slug", slug).eq("status", "active").maybeSingle();
+  const { data } = await supabase.from("products").select(PRODUCT_DETAIL_FIELDS).eq("slug", slug).eq("status", "active").maybeSingle();
   return data ? sortProductImages(data as unknown as ShopProduct) : null;
 }
 
