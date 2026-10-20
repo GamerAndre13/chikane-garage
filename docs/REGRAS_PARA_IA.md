@@ -2,6 +2,10 @@
 
 > **Este ficheiro é a regra mais importante do projeto. Lê-o todo antes de
 > alterar uma única linha de código.**
+>
+> Antes dele (ou logo a seguir), lê o ponto de entrada
+> [`INSTRUCOES_PARA_IA.md`](INSTRUCOES_PARA_IA.md) — visão do dono, estado da obra
+> e onde está cada documento.
 
 ---
 
@@ -134,7 +138,8 @@ autenticação, pagamentos, emails, permissões), **não improvises**:
 
 ---
 
-Voltar ao [README](../README.md) · Ver [guia de layouts](GUIA_LAYOUTS.md) ·
+Voltar ao [README](../README.md) · Ver [instruções para IA](INSTRUCOES_PARA_IA.md) ·
+Ver [guia de layouts](GUIA_LAYOUTS.md) ·
 Ver [pôr o site no ar](COLOCAR_NO_AR.md) ·
 Ver [variáveis de ambiente](VARIAVEIS_AMBIENTE.md)
 

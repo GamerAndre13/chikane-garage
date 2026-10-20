@@ -26,6 +26,14 @@ completa (deploy, chaves): pasta **`docs/`** — os ficheiros antigos
 (`DOCUMENTO_PROJETO.txt`, `DEPLOY_GUIDE.html`, `BOOTSTRAP.txt`) já não são a fonte
 de verdade.
 
+## 📌 Ponto de entrada da IA — ler primeiro
+
+**`docs/INSTRUCOES_PARA_IA.md`** diz o que o dono tem em mente, o que já está
+definido, o que é só plano, como se classifica cada pedido (layout vs lógica) e
+onde está cada documento. Antes de qualquer trabalho, ler por esta ordem:
+`docs/INSTRUCOES_PARA_IA.md` → `docs/REGRAS_PARA_IA.md` → `docs/FASES.md` →
+`docs/PLANO_LOJA.md`.
+
 # Chikane Garage
 
 Single Next.js 16 App Router app (React 19, Tailwind v4, strict TS) — no monorepo. **All UI copy, code comments, and commit messages are in Portuguese (pt-PT); keep new ones that way.** Import alias `@/*` → repo root.

@@ -17,6 +17,7 @@ Se recebeste este pacote e o objetivo é **pôr o site no ar**, lê por esta ord
 
 | # | Documento | Para que serve |
 |---|---|---|
+| 0 | [`docs/INSTRUCOES_PARA_IA.md`](docs/INSTRUCOES_PARA_IA.md) | **Ponto de entrada** (dono e IA): visão, estado da obra, como trabalhar e onde está cada documento. |
 | 1 | [`docs/COLOCAR_NO_AR.md`](docs/COLOCAR_NO_AR.md) | **Guia principal.** Todos os passos, do zero até ao site online, por ordem. |
 | 2 | [`docs/VARIAVEIS_AMBIENTE.md`](docs/VARIAVEIS_AMBIENTE.md) | Todas as variáveis/chaves: para que servem, onde se obtêm e onde têm de ficar. |
 | 3 | [`docs/GUIA_LAYOUTS.md`](docs/GUIA_LAYOUTS.md) | Onde está cada ecrã e onde se mexe (só) no layout. |

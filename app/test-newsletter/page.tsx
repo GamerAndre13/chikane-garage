@@ -1,10 +1,23 @@
 import { Resend } from "resend";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+// Ferramenta interna: só administradores podem usá-la (o /admin é protegido
+// pelo proxy, mas esta rota está fora dele — por isso se verifica aqui).
+async function isAdmin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return profile?.role === "admin";
+}
+
 async function sendTestEmail(email: string) {
   "use server";
+
+  if (!(await isAdmin())) return { result: null, vehicles: null };
 
   const resend = new Resend(process.env.RESEND_API_KEY!);
 
@@ -94,6 +107,8 @@ async function sendTestEmail(email: string) {
 }
 
 export default async function TestNewsletterPage() {
+  if (!(await isAdmin())) notFound();
+
   return (
     <main className="min-h-screen bg-black px-4 py-12">
       <div className="mx-auto max-w-2xl">
@@ -112,6 +127,7 @@ export default async function TestNewsletterPage() {
           <form
             action={async (formData) => {
               "use server";
+              if (!(await isAdmin())) return;
               const email = formData.get("email") as string;
               if (!email) return;
 

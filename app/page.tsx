@@ -13,25 +13,26 @@ import { getShopProducts } from "@/lib/shop";
 import { ProductCard } from "@/components/shop/product-card";
 
 export const metadata = {
-  title: "Chikane Garage — Viaturas e acessórios de performance",
-  description: "Viaturas novas e usadas, acessórios e merchandising Chikane Garage.",
+  title: "Chikane Garage — Viaturas de performance e acessórios",
+  description:
+    "Boutique de viaturas de performance importadas: unidades escolhidas à mão, inspeccionadas em 140 pontos e entregues com garantia Chikane. Novos, usados e loja de acessórios.",
 };
 
 const FALLBACK = {
-  "hero.tagline": "Seleção rigorosa · Garantia garantida",
-  "hero.slogan": "Precision.\nPerfected.\nPassion.",
-  "hero.intro": "Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane para quem vive a estrada com paixão.",
+  "hero.tagline": "Seleção rigorosa · Garantia Chikane",
+  "hero.slogan": "Precision.\nImported.\nPassion Delivered.",
+  "hero.intro": "Uma garagem privada de viaturas de performance importadas. Cada unidade escolhida à mão, inspeccionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.",
   "garage.title": "A Garagem",
-  "garage.text": "Compramos cada viatura como se fosse para a nossa própria coleção: histórico verificado, mecânica e estética inspecionadas ao detalhe, sempre com a garantia Chikane. Fala connosco para confirmar a disponibilidade e as condições.",
+  "garage.text": "Cada viatura é escolhida como se fosse para a nossa própria garagem. Avaliamos o histórico, o estado mecânico e estético, e só depois de passar a nossa lista de 140 pontos é que uma unidade recebe o número de série Chikane.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
   "newsletter.text": "Alguns clientes são informados antes de as viaturas serem anunciadas.",
 };
 
 const PROCESS_STEPS = [
   { num: "01", title: "Selecção", text: "Critérios rigorosos de escolha: histórico, estado e equipamento." },
-  { num: "02", title: "Informação", text: "Consulta os dados disponíveis na ficha de cada viatura." },
-  { num: "03", title: "Contacto", text: "Esclarece dúvidas e confirma disponibilidade diretamente com a equipa." },
-  { num: "04", title: "Condições", text: "Confirma por escrito as condições da viatura antes de avançar." },
+  { num: "02", title: "Inspecção", text: "140 pontos verificados, relatório fotográfico e histórico validado." },
+  { num: "03", title: "Transparência", text: "Documentação completa e acompanhamento de todo o processo." },
+  { num: "04", title: "Entrega", text: "Viatura pronta a rolar, com garantia Chikane e apoio contínuo." },
 ];
 
 type Vehicle = {

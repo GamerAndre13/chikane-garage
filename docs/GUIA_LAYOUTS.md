@@ -5,6 +5,8 @@ partiu nada.
 
 > ⚠️ **Antes de mexer:** lê as [regras para IA/programadores](REGRAS_PARA_IA.md).
 > A regra nº 1 é: **não se altera a lógica**, só layouts, estilo e textos visuais.
+> Se é a primeira vez neste projeto, começa por
+> [as instruções para IA](INSTRUCOES_PARA_IA.md).
 
 ---
 
@@ -23,6 +25,18 @@ partiu nada.
 | **Perfil** (dados, favoritos, pedidos) | `app/conta/perfil/page.tsx` |
 | Termos e condições | `app/termos-e-condicoes/page.tsx` |
 | Política de privacidade | `app/politica-de-privacidade/page.tsx` |
+| Envios e devoluções | `app/envios-e-devolucoes/page.tsx` |
+| Perguntas frequentes | `app/faq/page.tsx` |
+| Livro de Reclamações | `app/livro-reclamacoes/page.tsx` |
+| **Viaturas novas** | `app/novos/page.tsx` (+ `components/ui/vehicle-condition-catalog.tsx`) |
+| **Viaturas usadas** | `app/usados/page.tsx` (idem) |
+| **Loja (catálogo)** | `app/loja/page.tsx` |
+| ↳ Categoria da loja | `app/loja/[categoria]/page.tsx` |
+| ↳ Ficha de artigo | `app/produto/[slug]/page.tsx` |
+| **Carrinho** | `app/carrinho/page.tsx` (+ `components/shop/cart-view.tsx`) |
+| **Checkout** | `app/checkout/page.tsx` (+ `components/shop/checkout-form.tsx`) |
+| ↳ Comprovativo da encomenda | `app/encomenda/[token]/page.tsx` |
+| Conta — encomendas | `app/conta/encomendas/page.tsx` |
 | Página 404 | `app/not-found.tsx` |
 | Imagem de partilha (redes sociais) | `app/opengraph-image.tsx` |
 | **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx`) |
