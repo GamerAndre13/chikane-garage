@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { pickFromPool } from "@/lib/avatar-pool";
+import { useShopCart } from "@/components/shop/cart-provider";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -16,6 +17,7 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const { count: cartCount, hydrated: cartHydrated } = useShopCart();
   const navClass = (href: string) => {
     const active = pathname === href || pathname.startsWith(`${href}/`);
     return `group relative py-2 font-display text-xs font-medium uppercase tracking-[0.2em] transition-colors ${active ? "text-copper group-hover/nav:text-silver hover:!text-copper" : "text-silver hover:text-copper"} after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:scale-x-0 after:bg-copper after:transition-transform after:duration-300 ${active ? "after:scale-x-100 group-hover/nav:after:scale-x-0 hover:after:scale-x-100" : "hover:after:scale-x-100"}`;
@@ -118,8 +120,14 @@ export function Header() {
           <Link href="/" className={navClass("/")}>
             Home
           </Link>
-          <Link href="/catalogo" className={navClass("/catalogo")}>
-            Catálogo
+          <Link href="/usados" className={navClass("/usados")}>
+            Usados
+          </Link>
+          <Link href="/novos" className={navClass("/novos")}>
+            Novos
+          </Link>
+          <Link href="/loja" className={navClass("/loja")}>
+            Loja
           </Link>
           <Link href="/sobre" className={navClass("/sobre")}>
             Sobre Nós
@@ -133,6 +141,11 @@ export function Header() {
             está escondida); a partir de md a nav já tem ml-auto e o espaçamento
             volta a ser o ml-6. */}
         <div className="ml-auto flex items-center gap-3 md:ml-6">
+          <Link href="/carrinho" aria-label={`Carrinho${cartHydrated ? `, ${cartCount} artigos` : ""}`} className="relative flex h-10 items-center gap-2 border border-border px-3 text-xs uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l2.2 11.1a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+            <span className="hidden sm:inline">Carrinho</span>
+            {cartHydrated && cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-copper px-1 text-[10px] font-bold text-black">{cartCount}</span>}
+          </Link>
           {user ? (
             <>
               {isAdmin && (
@@ -205,8 +218,14 @@ export function Header() {
             <Link href="/" className={`${navClass("/")} w-fit`} onClick={() => setMobileOpen(false)}>
               Início
             </Link>
-            <Link href="/catalogo" className={`${navClass("/catalogo")} w-fit`} onClick={() => setMobileOpen(false)}>
-              Catálogo
+            <Link href="/usados" className={`${navClass("/usados")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Usados
+            </Link>
+            <Link href="/novos" className={`${navClass("/novos")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Novos
+            </Link>
+            <Link href="/loja" className={`${navClass("/loja")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Loja
             </Link>
             <Link href="/sobre" className={`${navClass("/sobre")} w-fit`} onClick={() => setMobileOpen(false)}>
               Sobre Nós

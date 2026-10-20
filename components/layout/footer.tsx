@@ -7,8 +7,11 @@ import { mapsUrl } from "@/lib/maps";
 
 const NAV_LINKS = [
   { label: "Catálogo", href: "/catalogo" },
+  { label: "Loja", href: "/loja" },
   { label: "Sobre Nós", href: "/sobre" },
   { label: "Contacto", href: "/contacto" },
+  { label: "Envios e devoluções", href: "/envios-e-devolucoes" },
+  { label: "Perguntas frequentes", href: "/faq" },
 ];
 
 export async function Footer() {

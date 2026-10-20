@@ -1,0 +1,12 @@
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { adjustShopStock } from "@/app/actions/shop-admin";
+
+export default async function StockLojaPage() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("product_variants").select("id,name,sku,stock_quantity,is_active,products!inner(id,name,stock_mode,low_stock_threshold)").eq("is_active", true).order("name");
+  const variants = (data ?? []) as unknown as { id: string; name: string; sku: string; stock_quantity: number; products: { id: string; name: string; stock_mode: string; low_stock_threshold: number } }[];
+  return <section><Link href="/admin/loja" className="font-display text-[10px] uppercase tracking-widest text-copper">← Loja</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Stock</h1><p className="mt-3 max-w-2xl text-sm text-muted">Regista cada entrada ou saída. O histórico de movimentos fica associado à variante.</p>
+    <div className="mt-7 divide-y divide-border border-y border-border">{variants.map((variant) => { const low = variant.products.stock_mode === "managed" && variant.stock_quantity <= variant.products.low_stock_threshold; return <div key={variant.id} className="grid gap-4 py-5 sm:grid-cols-[1fr_90px_300px] sm:items-center"><div><Link href={`/admin/loja/produtos/${variant.products.id}`} className="font-medium text-foreground hover:text-copper">{variant.products.name}</Link><p className="mt-1 text-xs text-muted">{variant.name}{variant.sku ? ` · ${variant.sku}` : ""}</p></div><p className={`font-display text-xl ${low ? "text-warning" : "text-foreground"}`}>{variant.products.stock_mode === "unlimited" ? "∞" : variant.stock_quantity}{low && <span className="ml-2 text-[10px] uppercase tracking-widest">Stock baixo</span>}</p><form action={adjustShopStock} className="flex gap-2"><input type="hidden" name="variant_id" value={variant.id}/><input type="number" name="delta" required placeholder="± unidades" className="min-w-0 flex-1 border border-border bg-background px-3 py-2 text-sm"/><select name="reason" className="w-28 border border-border bg-background px-2 text-xs"><option value="adjustment">Ajuste</option><option value="restock">Reposição</option><option value="return">Devolução</option></select><button className="bg-copper px-3 font-display text-[10px] uppercase text-black">Registar</button></form></div>; })}</div>
+  </section>;
+}

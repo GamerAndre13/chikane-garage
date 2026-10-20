@@ -1,0 +1,34 @@
+import Link from "next/link";
+import { saveShopProduct } from "@/app/actions/shop-admin";
+
+type FormData = { id?: string; name?: string; slug?: string; category_id?: string; brand_id?: string; price?: number; compare_at_price?: number | null; short_description?: string; description?: string; sku?: string; weight_grams?: number; stock_mode?: string; status?: string; vat_rate?: number; is_featured?: boolean; is_new?: boolean };
+const input = "mt-2 block w-full border border-border bg-background px-3 py-3 text-sm text-foreground";
+
+export function ProductForm({ categories, brands, initial = {} }: { categories: { id: string; name: string }[]; brands: { id: string; name: string }[]; initial?: FormData }) {
+  return <form action={saveShopProduct} className="mt-7 grid gap-5 lg:grid-cols-[1fr_320px]">
+    {initial.id && <input type="hidden" name="id" value={initial.id}/>}
+    <div className="space-y-5">
+      <section className="border border-border bg-surface p-5 sm:p-7"><h2 className="font-display text-lg uppercase">Informação do artigo</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <Field name="name" label="Nome" defaultValue={initial.name} required/><Field name="slug" label="Referência do endereço" defaultValue={initial.slug} required/>
+        <label className="block text-xs uppercase tracking-widest text-muted">Categoria<select name="category_id" required defaultValue={initial.category_id ?? ""} className={input}><option value="" disabled>Escolher categoria</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label className="block text-xs uppercase tracking-widest text-muted">Marca<select name="brand_id" defaultValue={initial.brand_id ?? ""} className={input}><option value="">Sem marca</option>{brands.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <Field name="price" label="Preço com IVA (€)" type="number" step="0.01" defaultValue={initial.price ?? ""} required/><Field name="compare_at_price" label="Preço anterior (€)" type="number" step="0.01" defaultValue={initial.compare_at_price ?? ""}/>
+        <Field name="sku" label="Referência interna" defaultValue={initial.sku}/><Field name="weight_grams" label="Peso (gramas)" type="number" defaultValue={initial.weight_grams ?? 0}/>
+        <label className="block text-xs uppercase tracking-widest text-muted sm:col-span-2">Resumo<textarea name="short_description" defaultValue={initial.short_description ?? ""} rows={2} className={input}/></label>
+        <label className="block text-xs uppercase tracking-widest text-muted sm:col-span-2">Descrição completa<textarea name="description" defaultValue={initial.description ?? ""} rows={7} className={input}/></label>
+      </div></section>
+      {!initial.id && <section className="border border-border bg-surface p-5 sm:p-7"><h2 className="font-display text-lg uppercase">Variantes e stock</h2><p className="mt-2 text-xs leading-relaxed text-muted">Uma variante por linha no formato: Nome; referência; stock; ajuste de preço. Exemplo: Preto / M; CG-TS-M; 5; 0</p><textarea name="variants" defaultValue="Único;;;0" rows={4} className={`${input} font-mono text-xs`}/></section>}
+    </div>
+    <aside className="h-fit border border-border bg-surface p-5 sm:p-6"><h2 className="font-display text-lg uppercase">Publicação e fotografia</h2><label className="mt-5 block text-xs uppercase tracking-widest text-muted">Estado<select name="status" defaultValue={initial.status ?? "active"} className={input}><option value="active">Ativo</option><option value="draft">Rascunho</option></select></label>
+      <label className="mt-4 block text-xs uppercase tracking-widest text-muted">Gestão de stock<select name="stock_mode" defaultValue={initial.stock_mode ?? "managed"} className={input}><option value="managed">Stock controlado</option><option value="unlimited">Sem limite</option><option value="on_request">Por encomenda</option></select></label>
+      <Field name="low_stock_threshold" label="Aviso de stock baixo" type="number" defaultValue={3}/><Field name="vat_rate" label="Taxa de IVA (%)" type="number" step="0.01" defaultValue={initial.vat_rate ?? 23}/>
+      <label className="mt-5 block text-xs uppercase tracking-widest text-muted">Fotografia principal{initial.id && <span className="mt-1 block normal-case tracking-normal text-muted">Para substituir ou adicionar outras fotografias, usa a gestão de imagens do artigo.</span>}<input name="image" type="file" accept="image/jpeg,image/png,image/webp" className="mt-3 block w-full text-xs file:mr-3 file:border-0 file:bg-copper file:px-3 file:py-2 file:font-display file:uppercase file:text-black"/></label>
+      <label className="mt-5 flex items-center gap-3 text-sm text-muted"><input type="checkbox" name="is_featured" defaultChecked={initial.is_featured} className="accent-[var(--copper)]"/>Destaque na montra</label><label className="mt-3 flex items-center gap-3 text-sm text-muted"><input type="checkbox" name="is_new" defaultChecked={initial.is_new} className="accent-[var(--copper)]"/>Etiqueta de novidade</label>
+      <button className="mt-7 w-full bg-copper px-4 py-3 font-display text-xs uppercase tracking-widest text-black">Guardar artigo</button><Link href="/admin/loja/produtos" className="mt-4 block text-center text-xs text-muted underline">Cancelar</Link>
+    </aside>
+  </form>;
+}
+
+function Field({ name, label, defaultValue, required, type = "text", step }: { name: string; label: string; defaultValue?: string | number; required?: boolean; type?: string; step?: string }) {
+  return <label className="block text-xs uppercase tracking-widest text-muted">{label}<input name={name} type={type} step={step} required={required} defaultValue={defaultValue} className={input}/></label>;
+}

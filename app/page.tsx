@@ -9,10 +9,12 @@ import { Reveal } from "@/components/ui/reveal";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import type { SiteSettings } from "@/lib/site-settings";
+import { getShopProducts } from "@/lib/shop";
+import { ProductCard } from "@/components/shop/product-card";
 
 export const metadata = {
-  title: "Chikane Garage — Catálogo de Viaturas",
-  description: "Consulta as viaturas disponíveis na Chikane Garage e pede informação sobre cada unidade.",
+  title: "Chikane Garage — Viaturas e acessórios de performance",
+  description: "Viaturas novas e usadas, acessórios e merchandising Chikane Garage.",
 };
 
 const FALLBACK = {
@@ -77,7 +79,7 @@ export default async function HomePage() {
   // de 7 dias são arquivadas antes da leitura.
   await expireReservations();
   await archiveSoldVehicles();
-  const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
+  const [vehiclesRes, spotlightRes, contentRes, settingsRes, shopProducts] = await Promise.all([
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
@@ -91,6 +93,7 @@ export default async function HomePage() {
       .limit(1),
     supabase.from("site_content").select("section_key, body"),
     supabase.from("site_settings").select("photo_home_hero, photo_home_history, phone, email, address, location, location_url, social_instagram, social_facebook, social_youtube, social_tiktok").limit(1).maybeSingle(),
+    getShopProducts({ featured: true, limit: 4 }),
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
@@ -178,12 +181,13 @@ export default async function HomePage() {
             {t("hero.intro")}
           </p>
           <div className="mt-auto flex flex-col items-start gap-3 pt-9 sm:mt-9 sm:flex-row sm:pt-0">
-            <Link href="/catalogo" className="inline-flex items-center justify-center bg-copper px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
-              Ver Catálogo
+            <Link href="/usados" className="inline-flex items-center justify-center bg-copper px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-black transition-colors hover:bg-copper-light">
+              Ver Usados
             </Link>
-            <Link href="/sobre" className="inline-flex items-center justify-center border border-white/30 px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">
-              A Nossa História
+            <Link href="/novos" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">
+              Ver Novos
             </Link>
+            <Link href="/loja" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">Loja</Link>
           </div>
         </div>
       </section>
@@ -356,6 +360,17 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ─── LOJA ─── */}
+      <section className="border-y border-border bg-background-alt px-5 py-20 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1400px]">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div><p className="kicker">Loja Chikane</p><h2 className="mt-3 max-w-3xl font-display text-3xl font-bold uppercase leading-[0.95] text-foreground sm:text-5xl">A garagem também se leva contigo</h2></div>
+            <Link href="/loja" className="font-display text-xs uppercase tracking-widest text-copper hover:text-copper-light">Explorar a loja</Link>
+          </div>
+          {shopProducts.length ? <div className="mt-9 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">{shopProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div> : <p className="mt-7 max-w-2xl text-sm leading-relaxed text-muted">Acessórios, produtos de cuidado e merchandising da garagem serão apresentados aqui.</p>}
+        </div>
+      </section>
 
       {/* ─── A GARAGEM ─── */}
       <section className="bg-surface-oxide">
