@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { pickFromPool } from "@/lib/avatar-pool";
-import { useShopCart } from "@/components/shop/cart-provider";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -17,7 +16,6 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const { count: cartCount, hydrated: cartHydrated } = useShopCart();
   const navClass = (href: string) => {
     const active = pathname === href || pathname.startsWith(`${href}/`);
     return `group relative py-2 font-display text-xs font-medium uppercase tracking-[0.2em] transition-colors ${active ? "text-copper group-hover/nav:text-silver hover:!text-copper" : "text-silver hover:text-copper"} after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:scale-x-0 after:bg-copper after:transition-transform after:duration-300 ${active ? "after:scale-x-100 group-hover/nav:after:scale-x-0 hover:after:scale-x-100" : "hover:after:scale-x-100"}`;
@@ -117,9 +115,6 @@ export function Header() {
         </Link>
 
         <nav className="group/nav ml-auto hidden items-center gap-9 md:flex">
-          <Link href="/" className={navClass("/")}>
-            Home
-          </Link>
           <Link href="/usados" className={navClass("/usados")}>
             Usados
           </Link>
@@ -141,11 +136,6 @@ export function Header() {
             está escondida); a partir de md a nav já tem ml-auto e o espaçamento
             volta a ser o ml-6. */}
         <div className="ml-auto flex items-center gap-3 md:ml-6">
-          <Link href="/carrinho" aria-label={`Carrinho${cartHydrated ? `, ${cartCount} artigos` : ""}`} className="relative flex h-10 items-center gap-2 border border-border px-3 text-xs uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h2l2.2 11.1a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-            <span className="hidden sm:inline">Carrinho</span>
-            {cartHydrated && cartCount > 0 && <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-copper px-1 text-[10px] font-bold text-black">{cartCount}</span>}
-          </Link>
           {user ? (
             <>
               {isAdmin && (
@@ -158,7 +148,7 @@ export function Header() {
               )}
               <Link
                 href="/conta/perfil"
-                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded border border-border text-silver hover:border-copper hover:text-copper transition-colors"
+                className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border text-silver transition-colors hover:border-copper hover:text-copper"
                 title="Meu perfil"
                 aria-label="Abrir o meu perfil"
               >
@@ -184,20 +174,21 @@ export function Header() {
           ) : (
             <Link
               href="/conta"
-              className="flex items-center gap-2 border border-border px-4 py-2 text-xs font-medium uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper"
+              className="flex h-10 w-10 shrink-0 items-center justify-center border border-border text-silver transition-colors hover:border-copper hover:text-copper"
+              title="Entrar"
+              aria-label="Entrar na conta"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
                 <polyline points="10 17 15 12 10 7" />
                 <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
-              Entrar
             </Link>
           )}
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-11 w-11 items-center justify-center md:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center md:hidden"
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={mobileOpen}
           >
@@ -215,9 +206,6 @@ export function Header() {
       {mobileOpen && (
         <div className="border-t border-border bg-background px-4 py-4 md:hidden">
           <nav className="flex flex-col gap-3">
-            <Link href="/" className={`${navClass("/")} w-fit`} onClick={() => setMobileOpen(false)}>
-              Início
-            </Link>
             <Link href="/usados" className={`${navClass("/usados")} w-fit`} onClick={() => setMobileOpen(false)}>
               Usados
             </Link>

@@ -34,6 +34,7 @@ export type ShopProduct = {
 export type ShopCategory = { id: string; slug: string; name: string; description?: string | null; image_url?: string | null; position?: number };
 
 const PRODUCT_FIELDS = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
+const PRODUCT_FIELDS_WITH_CATEGORY = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories!inner(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
 
 export async function getShopCategories(): Promise<ShopCategory[]> {
   const supabase = await createClient();
@@ -43,12 +44,10 @@ export async function getShopCategories(): Promise<ShopCategory[]> {
 
 export async function getShopProducts(options: { category?: string; featured?: boolean; limit?: number } = {}): Promise<ShopProduct[]> {
   const supabase = await createClient();
-  let query = supabase.from("products").select(PRODUCT_FIELDS).eq("status", "active").order("published_at", { ascending: false }).limit(options.limit ?? 24);
+  let query = supabase.from("products").select(options.category ? PRODUCT_FIELDS_WITH_CATEGORY : PRODUCT_FIELDS).eq("status", "active").order("published_at", { ascending: false }).limit(options.limit ?? 24);
   if (options.featured) query = query.eq("is_featured", true);
   if (options.category) {
-    const { data: category } = await supabase.from("product_categories").select("id").eq("slug", options.category).eq("is_active", true).maybeSingle();
-    if (!category) return [];
-    query = query.eq("category_id", category.id);
+    query = query.eq("product_categories.slug", options.category).eq("product_categories.is_active", true);
   }
   const { data } = await query;
   return ((data ?? []) as unknown as ShopProduct[]).map(sortProductImages);

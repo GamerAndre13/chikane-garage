@@ -17,8 +17,7 @@ type Vehicle = {
 export async function VehicleConditionCatalog({ condition, title, intro }: { condition: "new" | "used"; title: string; intro: string }) {
   let vehicles: Vehicle[] = [];
   try {
-    await expireReservations();
-    await archiveSoldVehicles();
+    await Promise.all([expireReservations(), archiveSoldVehicles()]);
     const supabase = await createClient();
     const { data } = await supabase.from("vehicles").select("*, vehicle_images(url, position, alt_text)").eq("condition", condition).in("status", ["available", "reserved", "sold"]).order("created_at", { ascending: false });
     vehicles = ((data || []) as Vehicle[]).filter(isVehiclePubliclyVisible);

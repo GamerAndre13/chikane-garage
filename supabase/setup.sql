@@ -1395,9 +1395,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
   shipping_total NUMERIC NOT NULL DEFAULT 0,
   vat_total NUMERIC NOT NULL DEFAULT 0,
   total NUMERIC NOT NULL DEFAULT 0,
-  coupon_id UUID REFERENCES public.coupons(id) ON DELETE SET NULL,
+  coupon_id UUID,
   coupon_code TEXT DEFAULT '',
-  shipping_zone_id UUID REFERENCES public.shipping_zones(id) ON DELETE SET NULL,
+  shipping_zone_id UUID,
   shipping_rate_name TEXT DEFAULT '',
   shipping_weight_grams INT DEFAULT 0,
   payment_method TEXT,
@@ -1527,6 +1527,31 @@ CREATE TABLE IF NOT EXISTS public.coupon_uses (
   discount_total NUMERIC NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- As encomendas são declaradas antes dos cupões e das zonas de envio.
+-- Adiar estas chaves evita referências a tabelas que ainda não existem e
+-- mantém a aplicação repetida do esquema segura.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.orders'::regclass AND conname = 'orders_coupon_id_fkey'
+  ) THEN
+    ALTER TABLE public.orders
+      ADD CONSTRAINT orders_coupon_id_fkey
+      FOREIGN KEY (coupon_id) REFERENCES public.coupons(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.orders'::regclass AND conname = 'orders_shipping_zone_id_fkey'
+  ) THEN
+    ALTER TABLE public.orders
+      ADD CONSTRAINT orders_shipping_zone_id_fkey
+      FOREIGN KEY (shipping_zone_id) REFERENCES public.shipping_zones(id) ON DELETE SET NULL;
+  END IF;
+END;
+$$;
 
 -- ----------------------------------------------------------------------------
 -- 12. Stock - movimentos e reservas durante o pagamento

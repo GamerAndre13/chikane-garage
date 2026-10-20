@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useShopCart } from "@/components/shop/cart-provider";
 import type { ShopProduct, ShopVariant } from "@/lib/shop";
 import { euro } from "@/lib/shop-format";
@@ -10,7 +11,7 @@ export function AddToCart({ product }: { product: ShopProduct }) {
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const { add } = useShopCart();
+  const { add, count, hydrated } = useShopCart();
   const variant = variants.find((item) => item.id === variantId) as ShopVariant | undefined;
   const stock = product.stock_mode === "unlimited" ? null : variant?.stock_quantity ?? 0;
   const canBuy = Boolean(variant) && (stock === null || stock > 0);
@@ -40,6 +41,7 @@ export function AddToCart({ product }: { product: ShopProduct }) {
       <button type="button" onClick={handleAdd} disabled={!canBuy} className="w-full bg-copper px-6 py-4 font-display text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:bg-copper-light disabled:cursor-not-allowed disabled:bg-surface-raised disabled:text-muted">
         {!canBuy ? "Indisponível" : added ? "Adicionado ao carrinho" : "Adicionar ao carrinho"}
       </button>
+      {hydrated && count > 0 && <Link href="/carrinho" className="block text-center font-display text-xs uppercase tracking-widest text-copper underline underline-offset-4">Ver carrinho ({count})</Link>}
       <p className="text-xs leading-relaxed text-muted">{stock === null ? "Disponível por encomenda." : stock > 0 ? `${stock} unidade${stock === 1 ? "" : "s"} disponível${stock === 1 ? "" : "is"}.` : "Sem stock neste momento."} O preço apresentado inclui IVA.</p>
     </div>
   );
