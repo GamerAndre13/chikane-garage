@@ -42,10 +42,23 @@ partiu nada.
 | **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx`) |
 | ↳ Painel inicial | `app/admin/page.tsx` |
 | ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/`) |
+| ↳ Conteúdo do site (CMS de textos) | `app/admin/conteudo/page.tsx` (client; edita `site_content`) |
 | ↳ Pedidos | `app/admin/pedidos/page.tsx` |
 | ↳ Contas | `app/admin/contas/page.tsx` |
 | ↳ Estatísticas | `app/admin/analytics/page.tsx` |
-| ↳ Definições | `app/admin/definicoes/page.tsx` |
+| ↳ Definições | `app/admin/definicoes/page.tsx` (contactos, redes, fotos — `site_settings`) |
+| ↳ Loja (hub) | `app/admin/loja/page.tsx` — índice de todas as secções abaixo |
+| ↳↳ Produtos | `app/admin/loja/produtos/` (`page.tsx`, `novo/`, `[id]/` com imagens + variantes) |
+| ↳↳ Categorias | `app/admin/loja/categorias/page.tsx` |
+| ↳↳ Marcas | `app/admin/loja/marcas/page.tsx` (criar, editar, ativar, apagar) |
+| ↳↳ Stock | `app/admin/loja/stock/page.tsx` |
+| ↳↳ Encomendas | `app/admin/loja/encomendas/` (`page.tsx` com pesquisa + CSV, `[id]/` detalhe) |
+| ↳↳ Devoluções | `app/admin/loja/devolucoes/page.tsx` (estados, reembolso, notas) |
+| ↳↳ Cupões | `app/admin/loja/cupoes/page.tsx` (criar, editar, ativar, apagar) |
+| ↳↳ Portes | `app/admin/loja/portes/page.tsx` (zonas + escalões por peso) |
+| ↳↳ Clientes | `app/admin/loja/clientes/page.tsx` |
+| ↳↳ Newsletter | `app/admin/loja/newsletter/page.tsx` (subscritores + CSV) |
+| ↳↳ Definições da loja | `app/admin/loja/definicoes/page.tsx` (`shop_settings`) |
 
 ### Componentes reutilizáveis
 

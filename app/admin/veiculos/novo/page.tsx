@@ -39,6 +39,7 @@ const ORIGIN_OPTIONS = [
 const initialForm = {
   condition: "used",
   sale_type: "stock",
+  reference_code: "",
   brand_warranty_months: "",
   delivery_estimate_days: "",
   config_summary: "",
@@ -62,11 +63,21 @@ const initialForm = {
   mileage_km: "",
   previous_owners: "1",
   service_book: "full_dealer",
+  accident_history: "false",
+  accident_details: "",
+  last_service_date: "",
+  tires_condition: "",
   origin: "imported",
   origin_country: "DE",
+  coc_confirmed: "false",
+  isv_paid: "false",
+  legalization_date: "",
   price: "",
   warranty_months: "6",
+  financing_available: "false",
+  trade_in_accepted: "false",
   cover_image_url: "",
+  video_url: "",
   description: "",
   is_featured: "false",
   status: "available",
@@ -95,6 +106,13 @@ const labelStyle = {
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div><label style={labelStyle}>{label}</label>{children}</div>
+);
+
+const CheckField = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "end", paddingBottom: "0.4rem" }}>
+    <input type="checkbox" id={id} checked={checked} onChange={onChange} />
+    <label htmlFor={id} style={{ color: "var(--foreground)", fontSize: "0.875rem", marginBottom: 0 }}>{label}</label>
+  </div>
 );
 
 export default function NovoVeiculo() {
@@ -152,6 +170,17 @@ export default function NovoVeiculo() {
         mileage_km: form.condition === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
         previous_owners: form.condition === "new" ? null : form.previous_owners ? parseInt(form.previous_owners) : null,
         service_book: form.condition === "new" ? null : form.service_book,
+        accident_history: form.accident_history === "true",
+        accident_details: form.accident_details || null,
+        last_service_date: form.last_service_date || null,
+        tires_condition: form.tires_condition || null,
+        reference_code: form.reference_code || null,
+        coc_confirmed: form.coc_confirmed === "true",
+        isv_paid: form.isv_paid === "true",
+        legalization_date: form.legalization_date || null,
+        financing_available: form.financing_available === "true",
+        trade_in_accepted: form.trade_in_accepted === "true",
+        video_url: form.video_url || null,
         price: form.price ? parseFloat(form.price) : null,
         warranty_months: form.condition === "used" && form.warranty_months ? parseInt(form.warranty_months) : null,
         condition: form.condition,
@@ -221,6 +250,7 @@ export default function NovoVeiculo() {
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
+          <Field label="Referência interna"><input style={inputStyle} placeholder="ex: CH-2024-018" value={form.reference_code} onChange={handleChange("reference_code")} /></Field>
           <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
@@ -246,6 +276,10 @@ export default function NovoVeiculo() {
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
           {form.condition !== "new" && <><Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field><Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field></>}
+          <CheckField id="accident_history" label="Histórico de acidentes" checked={form.accident_history === "true"} onChange={handleCheckboxChange("accident_history")} />
+          {form.accident_history === "true" && <Field label="Detalhes do acidente"><input style={inputStyle} value={form.accident_details} onChange={handleChange("accident_details")} /></Field>}
+          <Field label="Data da última revisão"><input type="date" style={inputStyle} value={form.last_service_date} onChange={handleChange("last_service_date")} /></Field>
+          <Field label="Estado dos pneus"><input style={inputStyle} placeholder="ex: Novos (2024)" value={form.tires_condition} onChange={handleChange("tires_condition")} /></Field>
         </div>
 
         {/* Origem */}
@@ -253,6 +287,9 @@ export default function NovoVeiculo() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
+          <CheckField id="coc_confirmed" label="CoC (certificado comunitário) confirmado" checked={form.coc_confirmed === "true"} onChange={handleCheckboxChange("coc_confirmed")} />
+          <CheckField id="isv_paid" label="ISV liquidado" checked={form.isv_paid === "true"} onChange={handleCheckboxChange("isv_paid")} />
+          <Field label="Data de legalização"><input type="date" style={inputStyle} value={form.legalization_date} onChange={handleChange("legalization_date")} /></Field>
         </div>
 
         {/* Preço & Status */}
@@ -264,6 +301,8 @@ export default function NovoVeiculo() {
             {form.sale_type === "on_order" && <Field label="Prazo estimado (dias)"><input type="number" min="1" style={inputStyle} value={form.delivery_estimate_days} onChange={handleChange("delivery_estimate_days")} /></Field>}
           </>}
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          <CheckField id="financing_available" label="Aceita financiamento" checked={form.financing_available === "true"} onChange={handleCheckboxChange("financing_available")} />
+          <CheckField id="trade_in_accepted" label="Aceita retoma" checked={form.trade_in_accepted === "true"} onChange={handleCheckboxChange("trade_in_accepted")} />
         </div>
         {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
 
@@ -272,6 +311,10 @@ export default function NovoVeiculo() {
         <div style={{ marginTop: "0.75rem" }}>
           <label style={labelStyle}>Descrição</label>
           <textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} />
+        </div>
+        <div style={{ marginTop: "0.75rem" }}>
+          <label style={labelStyle}>Vídeo (URL do YouTube ou Vimeo)</label>
+          <input style={inputStyle} placeholder="https://www.youtube.com/watch?v=..." value={form.video_url} onChange={handleChange("video_url")} />
         </div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />

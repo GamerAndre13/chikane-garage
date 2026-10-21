@@ -38,6 +38,8 @@ const ORIGIN_OPTIONS = [
 const initialForm = {
   condition: "used",
   sale_type: "stock",
+  slug: "",
+  reference_code: "",
   brand_warranty_months: "",
   delivery_estimate_days: "",
   config_summary: "",
@@ -61,11 +63,21 @@ const initialForm = {
   mileage_km: "",
   previous_owners: "1",
   service_book: "full_dealer",
+  accident_history: "false",
+  accident_details: "",
+  last_service_date: "",
+  tires_condition: "",
   origin: "imported",
   origin_country: "DE",
+  coc_confirmed: "false",
+  isv_paid: "false",
+  legalization_date: "",
   price: "",
   warranty_months: "6",
+  financing_available: "false",
+  trade_in_accepted: "false",
   cover_image_url: "",
+  video_url: "",
   description: "",
   is_featured: "false",
   status: "available",
@@ -106,6 +118,13 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
   <div><label style={labelStyle}>{label}</label>{children}</div>
 );
 
+const CheckField = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "end", paddingBottom: "0.4rem" }}>
+    <input type="checkbox" id={id} checked={checked} onChange={onChange} />
+    <label htmlFor={id} style={{ color: "var(--foreground)", fontSize: "0.875rem", marginBottom: 0 }}>{label}</label>
+  </div>
+);
+
 export default function EditarVeiculo() {
   const router = useRouter();
   const params = useParams();
@@ -129,6 +148,8 @@ export default function EditarVeiculo() {
           brand: data.brand || "BMW",
           condition: data.condition || "used",
           sale_type: data.sale_type || "stock",
+          slug: data.slug || "",
+          reference_code: data.reference_code || "",
           brand_warranty_months: data.brand_warranty_months?.toString() || "",
           delivery_estimate_days: data.delivery_estimate_days?.toString() || "",
           config_summary: data.config_summary || "",
@@ -151,11 +172,21 @@ export default function EditarVeiculo() {
           mileage_km: data.mileage_km?.toString() || "",
           previous_owners: data.previous_owners?.toString() || "1",
           service_book: data.service_book || "full_dealer",
+          accident_history: data.accident_history ? "true" : "false",
+          accident_details: data.accident_details || "",
+          last_service_date: data.last_service_date || "",
+          tires_condition: data.tires_condition || "",
           origin: data.origin || "imported",
           origin_country: data.origin_country || "DE",
+          coc_confirmed: data.coc_confirmed ? "true" : "false",
+          isv_paid: data.isv_paid ? "true" : "false",
+          legalization_date: data.legalization_date || "",
           price: data.price?.toString() || "",
           warranty_months: data.warranty_months?.toString() || "6",
+          financing_available: data.financing_available ? "true" : "false",
+          trade_in_accepted: data.trade_in_accepted ? "true" : "false",
           cover_image_url: data.cover_image_url || "",
+          video_url: data.video_url || "",
           description: data.description || "",
           is_featured: data.is_featured ? "true" : "false",
           status: data.status || "available",
@@ -209,7 +240,8 @@ export default function EditarVeiculo() {
     e.preventDefault();
     setSaving(true);
     const { features, ...vehicleForm } = form;
-    const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
+    // Slug editável: vazio = gera a partir de marca/modelo/versão/ano.
+    const slug = (form.slug.trim() ? form.slug : generateSlug(form.brand, form.model, form.trim, form.registration_year)).toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     const { error } = await supabase.from("vehicles").update({
       ...vehicleForm,
       slug,
@@ -222,6 +254,17 @@ export default function EditarVeiculo() {
       mileage_km: form.condition === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
       previous_owners: form.condition === "new" ? null : form.previous_owners ? parseInt(form.previous_owners) : null,
       service_book: form.condition === "new" ? null : form.service_book,
+      accident_history: form.accident_history === "true",
+      accident_details: form.accident_details || null,
+      last_service_date: form.last_service_date || null,
+      tires_condition: form.tires_condition || null,
+      reference_code: form.reference_code || null,
+      coc_confirmed: form.coc_confirmed === "true",
+      isv_paid: form.isv_paid === "true",
+      legalization_date: form.legalization_date || null,
+      financing_available: form.financing_available === "true",
+      trade_in_accepted: form.trade_in_accepted === "true",
+      video_url: form.video_url || null,
       price: form.price ? parseFloat(form.price) : null,
       warranty_months: form.condition === "used" && form.warranty_months ? parseInt(form.warranty_months) : null,
       condition: form.condition,
@@ -238,7 +281,8 @@ export default function EditarVeiculo() {
     }).eq("id", id);
     if (error) {
       setSaving(false);
-      alert("Erro ao guardar: " + error.message);
+      const duplicate = error.message.includes("slug") || error.message.includes("duplicate key");
+      alert("Erro ao guardar: " + (duplicate ? "Este endereço (slug) já está a ser usado por outra viatura — muda-o." : error.message));
       return;
     }
     const { error: deleteFeaturesError } = await supabase.from("vehicle_features").delete().eq("vehicle_id", id);
@@ -284,6 +328,8 @@ export default function EditarVeiculo() {
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
+          <Field label="Endereço (slug)"><input style={inputStyle} placeholder="gerado se vazio" value={form.slug} onChange={handleChange("slug")} /><span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Endereço público da ficha — alterar muda o link.</span></Field>
+          <Field label="Referência interna"><input style={inputStyle} placeholder="ex: CH-2024-018" value={form.reference_code} onChange={handleChange("reference_code")} /></Field>
           <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
@@ -307,12 +353,19 @@ export default function EditarVeiculo() {
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
           {form.condition !== "new" && <><Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field><Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field></>}
+          <CheckField id="accident_history" label="Histórico de acidentes" checked={form.accident_history === "true"} onChange={handleCheckboxChange("accident_history")} />
+          {form.accident_history === "true" && <Field label="Detalhes do acidente"><input style={inputStyle} value={form.accident_details} onChange={handleChange("accident_details")} /></Field>}
+          <Field label="Data da última revisão"><input type="date" style={inputStyle} value={form.last_service_date} onChange={handleChange("last_service_date")} /></Field>
+          <Field label="Estado dos pneus"><input style={inputStyle} placeholder="ex: Novos (2024)" value={form.tires_condition} onChange={handleChange("tires_condition")} /></Field>
         </div>
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
+          <CheckField id="coc_confirmed" label="CoC (certificado comunitário) confirmado" checked={form.coc_confirmed === "true"} onChange={handleCheckboxChange("coc_confirmed")} />
+          <CheckField id="isv_paid" label="ISV liquidado" checked={form.isv_paid === "true"} onChange={handleCheckboxChange("isv_paid")} />
+          <Field label="Data de legalização"><input type="date" style={inputStyle} value={form.legalization_date} onChange={handleChange("legalization_date")} /></Field>
         </div>
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
@@ -323,6 +376,8 @@ export default function EditarVeiculo() {
             {form.sale_type === "on_order" && <Field label="Prazo estimado (dias)"><input type="number" min="1" style={inputStyle} value={form.delivery_estimate_days} onChange={handleChange("delivery_estimate_days")} /></Field>}
           </>}
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          <CheckField id="financing_available" label="Aceita financiamento" checked={form.financing_available === "true"} onChange={handleCheckboxChange("financing_available")} />
+          <CheckField id="trade_in_accepted" label="Aceita retoma" checked={form.trade_in_accepted === "true"} onChange={handleCheckboxChange("trade_in_accepted")} />
           {(form.status === "sold" || form.status === "archived") && (
             <Field label="Data de venda">
               <input type="datetime-local" style={inputStyle} value={form.sold_at} onChange={handleChange("sold_at")} />
@@ -338,6 +393,10 @@ export default function EditarVeiculo() {
 
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
+        <div style={{ marginTop: "0.75rem" }}>
+          <label style={labelStyle}>Vídeo (URL do YouTube ou Vimeo)</label>
+          <input style={inputStyle} placeholder="https://www.youtube.com/watch?v=..." value={form.video_url} onChange={handleChange("video_url")} />
+        </div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />
           <label htmlFor="featured" style={{ color: "var(--foreground)", fontSize: "0.875rem" }}>Destaque</label>

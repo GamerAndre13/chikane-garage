@@ -20,7 +20,7 @@ function friendlyDbError(msg: string): string {
     low.includes("does not exist") ||
     low.includes("sem permissão")
   ) {
-    return "Funcionalidade ainda não ativa na base de dados. Executa as migrations 005 e 007 no SQL Editor do Supabase.";
+    return "Funcionalidade ainda não ativa na base de dados. Corre o ficheiro supabase/setup.sql no SQL Editor do Supabase (é idempotente, não apaga dados) e volta a tentar.";
   }
   return msg || "Erro ao carregar";
 }

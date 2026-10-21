@@ -3,12 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 
 const sections = [
   ["Produtos", "/admin/loja/produtos", "Artigos, fotografias, variantes e preços"],
+  ["Marcas", "/admin/loja/marcas", "Marcas da loja e as suas referências"],
   ["Categorias", "/admin/loja/categorias", "Organizar as secções da loja"],
   ["Stock", "/admin/loja/stock", "Quantidades e movimentos"],
   ["Encomendas", "/admin/loja/encomendas", "Preparação, estados e seguimento"],
-  ["Cupões", "/admin/loja/cupoes", "Códigos e limites de desconto"],
+  ["Devoluções", "/admin/loja/devolucoes", "Pedidos, reembolsos e estados"],
+  ["Cupões", "/admin/loja/cupoes", "Criar, editar e desativar códigos"],
   ["Portes", "/admin/loja/portes", "Zonas, peso e valores de envio"],
   ["Clientes", "/admin/loja/clientes", "Contactos e exportação para faturação"],
+  ["Newsletter", "/admin/loja/newsletter", "Subscritores e exportação"],
+  ["Definições", "/admin/loja/definicoes", "Portes grátis, stock e prazos"],
 ];
 
 export default async function AdminLojaPage() {
