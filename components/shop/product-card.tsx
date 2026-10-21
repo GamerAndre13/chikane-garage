@@ -13,6 +13,7 @@ export function ProductCard({ product }: { product: ShopProduct }) {
         <div className="relative aspect-[4/3] overflow-hidden bg-surface-mid">
           {image ? <Image src={image.url} alt={image.alt_text || product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.04]" /> : <div className="flex h-full items-center justify-center font-display text-sm uppercase tracking-widest text-muted">Chikane Garage</div>}
           <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+            {product.kind === "part" && <span className="border border-silver/40 bg-black/80 px-2 py-1 font-display text-[10px] uppercase tracking-widest text-silver">Peça</span>}
             {product.is_new && <span className="bg-copper px-2 py-1 font-display text-[10px] uppercase tracking-widest text-black">Novo</span>}
             {onRequest && <span className="border border-copper/60 bg-black/80 px-2 py-1 font-display text-[10px] uppercase tracking-widest text-copper">Só por encomenda</span>}
           </div>

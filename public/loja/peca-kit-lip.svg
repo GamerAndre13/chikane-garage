@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" fill="none">
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#202020"/><stop offset="1" stop-color="#090909"/></linearGradient><linearGradient id="copper" x2="0" y2="1"><stop stop-color="#e4a76a"/><stop offset="1" stop-color="#9b5d30"/></linearGradient></defs>
+  <rect width="1200" height="900" fill="url(#bg)"/><circle cx="900" cy="180" r="260" fill="#c77c42" opacity=".08"/><path d="M0 680h1200" stroke="#39332f" stroke-width="2"/>
+  <!-- Para-choques inferior (vista frontal) -->
+  <path d="M320 270h560v155c0 34-26 60-60 60H380c-34 0-60-26-60-60z" fill="#171717" stroke="#77716b" stroke-width="5"/>
+  <path d="M400 330h400M400 368h400M400 406h400" stroke="#3d3934" stroke-width="7" opacity=".85"/>
+  <rect x="345" y="325" width="46" height="115" rx="12" fill="#0d0d0d" stroke="#57524c" stroke-width="4"/>
+  <rect x="809" y="325" width="46" height="115" rx="12" fill="#0d0d0d" stroke="#57524c" stroke-width="4"/>
+  <!-- Lip frontal em carbono -->
+  <rect x="280" y="500" width="640" height="56" rx="28" fill="url(#copper)"/>
+  <path d="M280 500l-58 72h76l30-72z" fill="#8a5327"/>
+  <path d="M920 500l58 72h-76l-30-72z" fill="#8a5327"/>
+  <path d="M320 516h560M320 540h560" stroke="#7a4a24" stroke-width="3" opacity=".5"/>
+  <text x="600" y="539" text-anchor="middle" fill="#1a1006" font-family="Arial" font-size="25" font-weight="700" letter-spacing="7">CHIKANE</text>
+  <text x="600" y="750" text-anchor="middle" fill="#e9e3dc" font-family="Arial" font-size="23" letter-spacing="8">ARTIGO DE TESTE</text>
+</svg>

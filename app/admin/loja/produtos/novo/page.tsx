@@ -8,5 +8,5 @@ export default async function NovoProdutoPage() {
     supabase.from("product_categories").select("id,name").eq("is_active", true).order("position"),
     supabase.from("brands").select("id,name").eq("is_active", true).order("position"),
   ]);
-  return <section><Link href="/admin/loja/produtos" className="font-display text-[10px] uppercase tracking-widest text-copper">← Produtos</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Novo artigo</h1>{categories?.length ? <ProductForm categories={categories} brands={brands ?? []}/> : <p className="mt-6 border border-border p-5 text-sm text-muted">Cria uma categoria antes de adicionares o primeiro artigo.</p>}</section>;
+  return <section><Link href="/admin/loja/produtos" className="font-display text-[10px] uppercase tracking-widest text-copper">← Produtos</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Novo artigo</h1>{categories?.length ? <div className="mt-7 grid gap-5 lg:grid-cols-[1fr_340px]"><ProductForm categories={categories} brands={brands ?? []}/></div> : <p className="mt-6 border border-border p-5 text-sm text-muted">Cria uma categoria antes de adicionares o primeiro artigo.</p>}</section>;
 }

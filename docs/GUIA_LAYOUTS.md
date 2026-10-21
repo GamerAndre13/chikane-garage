@@ -19,7 +19,7 @@ partiu nada.
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
 | **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
-| ↳ Configurador (viatura nova 0 km + acessórios → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx`) |
+| ↳ Configurador (viatura nova 0 km + acessórios → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — cada acessório aparece com a sua fotografia/ilustração) |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
 | **Conta** (entrar / registar) | `app/conta/page.tsx` |
@@ -40,7 +40,7 @@ partiu nada.
 | Conta — encomendas | `app/conta/encomendas/page.tsx` |
 | Página 404 | `app/not-found.tsx` |
 | Imagem de partilha (redes sociais) | `app/opengraph-image.tsx` |
-| **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx`) |
+| **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx` — agrupado por secções no formato Shopify: Painel · Vendas · Catálogo · Conteúdo · Gestão) |
 | ↳ Painel inicial | `app/admin/page.tsx` |
 | ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/` — forms novos/editar incluem painel `components/admin/vehicle-accessories-browser.tsx` com as peças compatíveis da loja) |
 | ↳ Conteúdo do site (CMS de textos) | `app/admin/conteudo/page.tsx` (client; edita `site_content`) |
@@ -49,11 +49,11 @@ partiu nada.
 | ↳ Estatísticas | `app/admin/analytics/page.tsx` |
 | ↳ Definições | `app/admin/definicoes/page.tsx` (contactos, redes, fotos — `site_settings`) |
 | ↳ Loja (hub) | `app/admin/loja/page.tsx` — índice de todas as secções abaixo |
-| ↳↳ Produtos | `app/admin/loja/produtos/` (`page.tsx`, `novo/`, `[id]/` com imagens + variantes) |
+| ↳↳ Produtos | `app/admin/loja/produtos/` — lista em formato Shopify (abas Todos/Produtos/Peças com contagens, filtros de estado, miniatura e etiquetas de `app/admin/loja/badges.tsx`); `novo/` e `[id]/` com o formulário em rail (campo Tipo: Produto/Peça — coluna `products.kind`) + `product-images-manager.tsx` |
 | ↳↳ Categorias | `app/admin/loja/categorias/page.tsx` |
 | ↳↳ Marcas | `app/admin/loja/marcas/page.tsx` (criar, editar, ativar, apagar) |
 | ↳↳ Stock | `app/admin/loja/stock/page.tsx` |
-| ↳↳ Encomendas | `app/admin/loja/encomendas/` (`page.tsx` com pesquisa + CSV, `[id]/` detalhe) |
+| ↳↳ Encomendas | `app/admin/loja/encomendas/` — lista em formato Shopify (abas Todas/Por entregar/Por pagar/Fechadas, pesquisa + CSV, etiquetas de pagamento/entrega); `[id]/` detalhe com artigos, histórico em timeline e rail de atualização/pagamento/cliente/entrega |
 | ↳↳ Devoluções | `app/admin/loja/devolucoes/page.tsx` (estados, reembolso, notas) |
 | ↳↳ Cupões | `app/admin/loja/cupoes/page.tsx` (criar, editar, ativar, apagar) |
 | ↳↳ Portes | `app/admin/loja/portes/page.tsx` (zonas + escalões por peso) |
@@ -81,6 +81,7 @@ partiu nada.
 | Linhas decorativas | `components/ui/vgpu-speed-lines.tsx` | Detalhe gráfico |
 | Formulário de newsletter | `components/newsletter-form.tsx` | Rodapé |
 | Aviso de cookies | `components/cookie-consent.tsx` | Banner + Analytics |
+| Etiquetas de estado (loja) | `app/admin/loja/badges.tsx` | Pastilhas de pagamento/entrega/estado/tipo no backoffice |
 
 ---
 

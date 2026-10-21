@@ -33,6 +33,7 @@ export async function saveShopProduct(form: FormData) {
     price, compare_at_price: number(form, "compare_at_price", 0) || null,
     weight_grams: Math.max(0, Math.round(number(form, "weight_grams"))),
     sku: text(form, "sku", 80), status: text(form, "status", 20) === "draft" ? "draft" : "active",
+    kind: text(form, "kind", 10) === "part" ? "part" : "product",
     stock_mode: ["managed", "unlimited", "on_request"].includes(text(form, "stock_mode", 20)) ? text(form, "stock_mode", 20) : "managed",
     low_stock_threshold: Math.max(0, Math.round(number(form, "low_stock_threshold", 3))),
     is_featured: form.get("is_featured") === "on", is_new: form.get("is_new") === "on",

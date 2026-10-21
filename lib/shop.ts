@@ -25,6 +25,7 @@ export type ShopProduct = {
   compare_at_price?: number | null;
   weight_grams?: number | null;
   stock_mode?: string | null;
+  kind?: string | null;
   is_featured?: boolean;
   is_new?: boolean;
   product_categories?: { name: string; slug: string } | null;
@@ -35,9 +36,9 @@ export type ShopProduct = {
 };
 export type ShopCategory = { id: string; slug: string; name: string; description?: string | null; image_url?: string | null; position?: number };
 
-const PRODUCT_FIELDS = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
+const PRODUCT_FIELDS = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,kind,is_featured,is_new,product_categories(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
 const PRODUCT_DETAIL_FIELDS = `${PRODUCT_FIELDS},product_compatibility(brand,model,year_from,year_to,notes)`;
-const PRODUCT_FIELDS_WITH_CATEGORY = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories!inner(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
+const PRODUCT_FIELDS_WITH_CATEGORY = "id,slug,name,short_description,description,price,compare_at_price,weight_grams,stock_mode,kind,is_featured,is_new,product_categories!inner(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position)";
 
 export async function getShopCategories(): Promise<ShopCategory[]> {
   const supabase = await createClient();

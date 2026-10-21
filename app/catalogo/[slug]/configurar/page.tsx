@@ -28,7 +28,7 @@ export default async function VehicleConfiguratorPage({ params }: { params: Prom
     if (vehicle) {
       const { data: products } = await supabase
         .from("products")
-        .select("id,slug,name,price,stock_mode,is_featured,product_categories(name,slug),brands(name),product_variants(id,name,price_delta,is_active),product_compatibility(brand,model,year_from,year_to)")
+        .select("id,slug,name,price,stock_mode,is_featured,product_categories(name,slug),brands(name),product_variants(id,name,price_delta,is_active),product_images(url,alt_text,position),product_compatibility(brand,model,year_from,year_to)")
         .eq("status", "active")
         .order("published_at", { ascending: false })
         .limit(120);
@@ -55,6 +55,7 @@ export default async function VehicleConfiguratorPage({ params }: { params: Prom
           price: Number(entry.product.price),
           category: entry.product.product_categories?.name ?? null,
           stock_mode: entry.product.stock_mode ?? null,
+          image: [...(entry.product.product_images ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? null,
           variants: (entry.product.product_variants ?? []).filter((variant) => variant.is_active !== false).map((variant) => ({ id: variant.id, name: variant.name, price_delta: Number(variant.price_delta ?? 0) })),
         }))
         .filter((item) => item.variants.length > 0));

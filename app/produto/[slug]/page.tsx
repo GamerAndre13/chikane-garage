@@ -26,6 +26,7 @@ export default async function ProdutoPage({ params }: PageProps<"/produto/[slug]
       <section className="lg:sticky lg:top-28 lg:h-fit">
         <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">{product.product_categories?.name ?? "Loja"}{product.brands?.name ? ` · ${product.brands.name}` : ""}</p>
         <h1 className="mt-3 font-display text-4xl font-bold uppercase leading-[0.95] text-foreground sm:text-5xl">{product.name}</h1>
+        {product.kind === "part" && <p className="mr-2 mt-4 inline-flex border border-silver/40 px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.18em] text-silver">Peça</p>}
         {product.stock_mode === "on_request" && <p className="mt-4 inline-flex border border-copper/50 px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.18em] text-copper">Só por encomenda</p>}
         <p className="mt-5 font-display text-2xl text-copper">{euro(Number(product.price))}</p>
         {product.short_description && <p className="mt-5 text-sm leading-relaxed text-silver">{product.short_description}</p>}

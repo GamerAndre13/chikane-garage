@@ -1667,6 +1667,22 @@ ALTER TABLE public.vehicles ADD CONSTRAINT vehicles_condition_check CHECK (condi
 ALTER TABLE public.vehicles DROP CONSTRAINT IF EXISTS vehicles_sale_type_check;
 ALTER TABLE public.vehicles ADD CONSTRAINT vehicles_sale_type_check CHECK (sale_type IN ('stock','on_order'));
 
+-- Tipo de artigo da loja: 'part' = peça/acessório que serve viaturas (aparece
+-- como "Peça" no backoffice e no configurador); 'product' = produto avulso.
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'product';
+ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_kind_check;
+ALTER TABLE public.products ADD CONSTRAINT products_kind_check CHECK (kind IN ('product','part'));
+
+-- Classificação inicial OPCIONAL (descomentar e correr UMA única vez): marca
+-- como peça tudo o que já tem compatibilidade declarada ou pertence às
+-- categorias de peças. Não deixa comentado: correr de novo voltaria a
+-- classificar como peça qualquer artigo que tenhas mudado para "produto" no
+-- backoffice.
+-- UPDATE public.products SET kind = 'part'
+--   WHERE kind = 'product'
+--     AND (EXISTS (SELECT 1 FROM public.product_compatibility pc WHERE pc.product_id = public.products.id)
+--          OR category_id IN (SELECT id FROM public.product_categories WHERE slug IN ('pecas-e-manutencao','jantes-e-pneus','extras-e-acessorios')));
+
 
 -- ============================================================================
 -- 17. Indices

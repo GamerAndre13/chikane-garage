@@ -16,6 +16,7 @@ export type ConfiguratorAccessory = {
   price: number;
   category?: string | null;
   stock_mode?: string | null;
+  image?: string | null;
   variants: { id: string; name: string; price_delta: number }[];
 };
 
@@ -114,6 +115,12 @@ export function VehicleConfigurator({ vehicle, accessories, prefill }: Props) {
                   <li key={item.id} className="py-4">
                     <label className="flex cursor-pointer items-start gap-3">
                       <input type="checkbox" checked={isChecked} onChange={() => toggle(item)} className="mt-1 accent-[var(--copper)]" />
+                      <span className="h-16 w-20 shrink-0 overflow-hidden border border-border bg-surface-mid sm:h-20 sm:w-28">
+                        {item.image
+                          // eslint-disable-next-line @next/next/no-img-element -- fotografia do artigo (R2/SVG local) sem dimensões conhecidas
+                          ? <img src={item.image} alt="" className="h-full w-full object-cover" />
+                          : <span className="flex h-full items-center justify-center font-display text-[8px] uppercase tracking-widest text-muted">Chikane</span>}
+                      </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                           <span className="font-display text-sm uppercase text-foreground">{item.name}</span>

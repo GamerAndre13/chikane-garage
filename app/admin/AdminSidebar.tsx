@@ -4,18 +4,62 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const links = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/analytics", label: "Analytics" },
-  { href: "/admin/veiculos", label: "Viaturas" },
-  { href: "/admin/conteudo", label: "Conteúdo" },
-  { href: "/admin/pedidos", label: "Pedidos" },
-  { href: "/admin/loja", label: "Loja" },
-  { href: "/admin/contas", label: "Contas" },
-  { href: "/admin/definicoes", label: "Definições" },
+// Navegação do backoffice agrupada por secções, no formato Shopify
+// (Painel · Vendas · Catálogo · Conteúdo · Gestão).
+const groups = [
+  {
+    title: "Painel",
+    links: [
+      { href: "/admin", label: "Dashboard" },
+      { href: "/admin/analytics", label: "Analytics" },
+    ],
+  },
+  {
+    title: "Vendas",
+    links: [
+      { href: "/admin/loja/encomendas", label: "Encomendas" },
+      { href: "/admin/loja/devolucoes", label: "Devoluções" },
+      { href: "/admin/pedidos", label: "Pedidos" },
+    ],
+  },
+  {
+    title: "Catálogo",
+    links: [
+      { href: "/admin/veiculos", label: "Viaturas" },
+      { href: "/admin/loja/produtos", label: "Produtos" },
+      { href: "/admin/loja", label: "Loja" },
+    ],
+  },
+  {
+    title: "Conteúdo",
+    links: [
+      { href: "/admin/conteudo", label: "Conteúdo" },
+      { href: "/admin/loja/newsletter", label: "Newsletter" },
+    ],
+  },
+  {
+    title: "Gestão",
+    links: [
+      { href: "/admin/contas", label: "Contas" },
+      { href: "/admin/definicoes", label: "Definições" },
+    ],
+  },
 ];
 
-// Destaca a aba aberta e permite esconder/mostrar a barra lateral.
+const allLinks = groups.flatMap((group) => group.links);
+
+// Destaca a aba aberta: o hub da loja (/admin/loja) só fica ativo quando
+// nenhum link específico da loja corresponde ao endereço.
+const isActiveLink = (pathname: string, href: string) => {
+  if (href === "/admin") return pathname === "/admin";
+  if (href === "/admin/loja") {
+    if (!pathname.startsWith("/admin/loja")) return false;
+    return !allLinks.some((link) => link.href !== "/admin/loja" && pathname.startsWith(link.href));
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+};
+
+// Permite esconder/mostrar a barra lateral (preferência guardada no browser).
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -70,20 +114,25 @@ export default function AdminSidebar() {
         </button>
       </div>
       <nav className="p-3 flex-1">
-        {links.map((link) => {
-          const active = pathname === link.href || (link.href !== "/admin" && pathname.startsWith(link.href));
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={active ? "page" : undefined}
-              className={`block rounded px-3 py-2 text-sm transition-colors ${active ? "bg-surface-raised" : ""} hover:bg-surface-raised hover:text-foreground`}
-              style={{ color: active ? "var(--foreground)" : "var(--muted)", fontWeight: active ? 600 : 400 }}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
+        {groups.map((group) => (
+          <div key={group.title} className="mb-3">
+            <p className="px-3 pb-1 pt-4 font-display text-[9px] uppercase tracking-[0.28em] text-muted-deep">{group.title}</p>
+            {group.links.map((link) => {
+              const active = isActiveLink(pathname, link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`block rounded px-3 py-2 text-sm transition-colors ${active ? "bg-surface-raised" : ""} hover:bg-surface-raised hover:text-foreground`}
+                  style={{ color: active ? "var(--foreground)" : "var(--muted)", fontWeight: active ? 600 : 400 }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
         <Link

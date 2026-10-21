@@ -7,7 +7,7 @@ import { uploadProductImage, deleteProductImage, makeFirstProductImage } from "@
 type ManagedImage = { id: string; url: string; alt_text: string; position: number };
 
 // Gestão das fotografias do artigo: adicionar, apagar e escolher a principal.
-export function ProductImagesManager({ productId, images }: { productId: string; images: ManagedImage[] }) {
+export function ProductImagesManager({ productId, images, className }: { productId: string; images: ManagedImage[]; className?: string }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,7 @@ export function ProductImagesManager({ productId, images }: { productId: string;
     }
   };
 
-  return <section className="border border-border bg-surface p-5 sm:p-6"><h2 className="font-display text-lg uppercase">Fotografias</h2>
+  return <section className={`border border-border bg-surface p-5 sm:p-6 ${className ?? ""}`}><h2 className="font-display text-lg uppercase">Fotografias</h2>
     <p className="mt-2 text-xs leading-relaxed text-muted">A primeira fotografia é a principal na loja e nos cartões. A ordem é a que aparece na galeria da ficha do artigo.</p>
     {error && <p className="mt-3 border border-red/40 p-3 text-xs text-red">{error}</p>}
     {!sorted.length ? <p className="mt-4 text-sm text-muted">Este artigo ainda não tem fotografias.</p> :

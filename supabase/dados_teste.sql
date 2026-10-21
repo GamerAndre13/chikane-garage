@@ -60,12 +60,12 @@ ON CONFLICT (slug) DO NOTHING;
 
 -- 2.1 Jantes com 2 VARIANTES e stock → aparece no configurador, comprável
 --     normalmente no carrinho e com compatibilidade declarada (BMW).
-INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, is_featured, is_new)
+INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, kind, is_featured, is_new)
 SELECT 'd0000000-0000-4000-8000-000000000001', 'teste-momo-jantes-20-forjadas', c.id, b.id,
        'Jantes 20" Forjadas (Teste)',
        'Jantes forjadas de 20" com 2 acabamentos — artigo de teste.',
        'Jantes forjadas em alumínio 20" — serve em BMW série 2 (2019 em diante). Dados de teste: apagar com a limpeza.',
-       2490, 12000, 'TESTE-JANTES-20', 'active', 'managed', true, true
+       2490, 12000, 'TESTE-JANTES-20', 'active', 'managed', 'part', true, true
 FROM (SELECT id FROM public.product_categories WHERE slug = 'jantes-e-pneus') c
 LEFT JOIN (SELECT id FROM public.brands WHERE slug = 'momo') b ON true
 ON CONFLICT DO NOTHING;
@@ -81,12 +81,12 @@ ON CONFLICT DO NOTHING;
 
 -- 2.2 Kit Lip POR ENCOMENDA (stock_mode on_request) → tag "Só por encomenda"
 --     + botão "Pedir por encomenda" + compatibilidade declarada com modelo.
-INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, is_featured, is_new)
+INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, kind, is_featured, is_new)
 SELECT 'd0000000-0000-4000-8000-000000000002', 'teste-kit-lip-carbono', c.id, NULL,
        'Kit Lip Frontal em Carbono (Teste)',
        'Lip frontal em fibra de carbono — fornecido por encomenda.',
        'Artigo de teste do fluxo "só por encomenda": sem stock imediato, o cliente envia pedido de compra e a equipa confirma prazo e custos.',
-       890, 3500, 'TESTE-LIP-CARBONO', 'active', 'on_request', false, true
+       890, 3500, 'TESTE-LIP-CARBONO', 'active', 'on_request', 'part', false, true
 FROM (SELECT id FROM public.product_categories WHERE slug = 'extras-e-acessorios') c
 ON CONFLICT DO NOTHING;
 
@@ -96,12 +96,12 @@ FROM (SELECT id FROM public.products WHERE id = 'd0000000-0000-4000-8000-0000000
 ON CONFLICT DO NOTHING;
 
 -- 2.3 Pastilhas de travão com stock 8 → carrinho + checkout normal
-INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, is_featured, is_new)
+INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, kind, is_featured, is_new)
 SELECT 'd0000000-0000-4000-8000-000000000003', 'teste-pastilhas-travao', c.id, b.id,
        'Pastilhas de Travão Performance (Teste)',
        'Pastilhas de alto desempenho — artigo de teste com stock.',
        'Pastilhas de travão para testar o fluxo normal de carrinho e checkout. Stock de teste: 8 unidades.',
-       145, 2400, 'TESTE-PASTILHAS', 'active', 'managed', false, false
+       145, 2400, 'TESTE-PASTILHAS', 'active', 'managed', 'part', false, false
 FROM (SELECT id FROM public.product_categories WHERE slug = 'pecas-e-manutencao') c
 LEFT JOIN (SELECT id FROM public.brands WHERE slug = 'bosch') b ON true
 ON CONFLICT DO NOTHING;
@@ -112,12 +112,12 @@ FROM (SELECT id FROM public.products WHERE id = 'd0000000-0000-4000-8000-0000000
 ON CONFLICT DO NOTHING;
 
 -- 2.4 Escape com stock 0 → demonstra o estado "Esgotado"
-INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, is_featured, is_new)
+INSERT INTO public.products (id, slug, category_id, brand_id, name, short_description, description, price, weight_grams, sku, status, stock_mode, kind, is_featured, is_new)
 SELECT 'd0000000-0000-4000-8000-000000000004', 'teste-escape-esportivo', c.id, NULL,
        'Escape Esportivo em Aço (Teste)',
        'Escape esportivo em aço inox — esgotado de propósito (artigo de teste).',
        'Artigo de teste para verificar o estado "Esgotado" na loja e a lista de aviso de disponibilidade.',
-       1750, 9000, 'TESTE-ESCAPE', 'active', 'managed', false, false
+       1750, 9000, 'TESTE-ESCAPE', 'active', 'managed', 'part', false, false
 FROM (SELECT id FROM public.product_categories WHERE slug = 'extras-e-acessorios') c
 ON CONFLICT DO NOTHING;
 
@@ -140,6 +140,21 @@ JOIN public.products p ON p.id = v.product_id
 WHERE NOT EXISTS (
   SELECT 1 FROM public.product_compatibility x
   WHERE x.product_id = v.product_id AND x.brand = v.brand AND x.model = v.model
+);
+
+-- 2.6 Fotografias ilustrativas (SVGs em /public/loja) — é o que os cartões
+--     da loja e o configurador mostram enquanto não carregares fotos reais.
+INSERT INTO public.product_images (product_id, url, alt_text, position)
+SELECT p.id, v.url, v.alt, v.pos
+FROM (VALUES
+  ('d0000000-0000-4000-8000-000000000001'::uuid, '/loja/peca-jantes.svg', 'Jantes 20" forjadas — imagem ilustrativa de teste', 0),
+  ('d0000000-0000-4000-8000-000000000002'::uuid, '/loja/peca-kit-lip.svg', 'Kit lip frontal em carbono — imagem ilustrativa de teste', 0),
+  ('d0000000-0000-4000-8000-000000000003'::uuid, '/loja/peca-pastilhas.svg', 'Pastilhas de travão — imagem ilustrativa de teste', 0),
+  ('d0000000-0000-4000-8000-000000000004'::uuid, '/loja/peca-escape.svg', 'Escape esportivo — imagem ilustrativa de teste', 0)
+) AS v(product_id, url, alt, pos)
+JOIN public.products p ON p.id = v.product_id
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.product_images x WHERE x.product_id = v.product_id AND x.url = v.url
 );
 
 
@@ -271,6 +286,9 @@ ON CONFLICT DO NOTHING;
 --   'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000002',
 --   'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000004');
 -- DELETE FROM public.product_variants WHERE product_id IN (
+--   'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000002',
+--   'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000004');
+-- DELETE FROM public.product_images WHERE product_id IN (
 --   'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000002',
 --   'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000004');
 -- DELETE FROM public.products WHERE id IN (
