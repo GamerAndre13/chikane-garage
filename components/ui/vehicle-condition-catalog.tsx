@@ -51,7 +51,7 @@ export async function VehicleConditionCatalog({ condition, title, intro }: { con
         </div>
       </div>
     ) : (
-      <Suspense fallback={null}><CatalogBrowser vehicles={vehicles}/></Suspense>
+      <Suspense fallback={null}><CatalogBrowser vehicles={vehicles} hideMileageYear={condition === "new"}/></Suspense>
     )}
   </div>;
 }
