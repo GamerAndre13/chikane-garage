@@ -17,23 +17,49 @@ async function adminClient() {
 const text = (form: FormData, key: string, max = 500) => String(form.get(key) ?? "").trim().slice(0, max);
 const number = (form: FormData, key: string, fallback = 0) => { const value = Number(text(form, key, 40)); return Number.isFinite(value) ? value : fallback; };
 
+// Encontra marca/categoria pelo nome (o combobox do back office aceita escrever
+// nomes novos); se ainda não existir, cria-a com o respetivo slug.
+async function findOrCreateShopTerm(supabase: Awaited<ReturnType<typeof createClient>>, table: "brands" | "product_categories", name: string): Promise<string | null> {
+  if (name.length < 2) return null;
+  const slug = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  const { data: existing } = await supabase.from(table).select("id").eq("slug", slug).maybeSingle();
+  if (existing) return existing.id;
+  // Inserts separados por tabela: evita a união de tipos que o supabase-js
+  // rejeita (as categorias têm coluna description; as marcas não).
+  const base = { name: name.slice(0, 100), slug, is_active: true, position: 999 };
+  const res = table === "brands"
+    ? await supabase.from("brands").insert(base).select("id").single()
+    : await supabase.from("product_categories").insert({ ...base, description: "" }).select("id").single();
+  if (res.error || !res.data) throw new Error(table === "brands" ? "Não foi possível criar a marca." : "Não foi possível criar a categoria.");
+  return res.data.id;
+}
+
 export async function saveShopProduct(form: FormData) {
   const { supabase } = await adminClient();
   const id = text(form, "id", 64);
   const name = text(form, "name", 160);
   const slug = text(form, "slug", 160).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
   const price = number(form, "price", -1);
-  if (name.length < 2 || !slug || price < 0 || !text(form, "category_id", 64)) throw new Error("Preenche o nome, categoria e preço do artigo.");
+  const kind = text(form, "kind", 10) === "part" ? "part" : "product";
+  // O combobox de categoria aceita escrever nomes novos: se não vier um id
+  // conhecido, cria (ou reutiliza) a categoria pelo nome escrito.
+  let categoryId = text(form, "category_id", 64);
+  if (!categoryId) categoryId = (await findOrCreateShopTerm(supabase, "product_categories", text(form, "category", 100))) ?? "";
+  // A marca é opcional — mas se escreverem um nome novo, cria-se a marca.
+  let brandId = text(form, "brand_id", 64);
+  const brandName = text(form, "brand", 100);
+  if (!brandId && brandName) brandId = (await findOrCreateShopTerm(supabase, "brands", brandName)) ?? "";
+  if (name.length < 2 || !slug || price < 0 || !categoryId) throw new Error("Preenche o nome, categoria e preço do artigo.");
   const productData = {
     slug, name,
-    category_id: text(form, "category_id", 64),
-    brand_id: text(form, "brand_id", 64) || null,
+    category_id: categoryId,
+    brand_id: brandId || null,
     short_description: text(form, "short_description", 240),
     description: text(form, "description", 8000),
     price, compare_at_price: number(form, "compare_at_price", 0) || null,
     weight_grams: Math.max(0, Math.round(number(form, "weight_grams"))),
     sku: text(form, "sku", 80), status: text(form, "status", 20) === "draft" ? "draft" : "active",
-    kind: text(form, "kind", 10) === "part" ? "part" : "product",
+    kind,
     stock_mode: ["managed", "unlimited", "on_request"].includes(text(form, "stock_mode", 20)) ? text(form, "stock_mode", 20) : "managed",
     low_stock_threshold: Math.max(0, Math.round(number(form, "low_stock_threshold", 3))),
     is_featured: form.get("is_featured") === "on", is_new: form.get("is_new") === "on",
@@ -61,27 +87,46 @@ export async function saveShopProduct(form: FormData) {
     if (error) throw new Error("O artigo foi guardado, mas não foi possível guardar as variantes.");
   }
 
-  const compatibilityRows = text(form, "compatibility", 8000).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
-    const [brand = "", model = "", yearFrom = "", yearTo = "", notes = ""] = line.split(";").map((part) => part.trim());
-    const from = yearFrom ? Number(yearFrom) : null;
-    const to = yearTo ? Number(yearTo) : null;
-    if (brand.length < 2 || model.length < 1 || (from !== null && (!Number.isInteger(from) || from < 1900 || from > 2100)) || (to !== null && (!Number.isInteger(to) || to < 1900 || to > 2100)) || (from !== null && to !== null && from > to)) throw new Error("Revê as linhas de compatibilidade: marca, modelo e anos têm de ser válidos.");
-    return { product_id: productId, brand: brand.slice(0, 80), model: model.slice(0, 100), year_from: from, year_to: to, notes: notes.slice(0, 240) };
-  });
+  // A compatibilidade com viaturas só faz sentido para peças (kind=part): num
+  // produto simples apaga-se o que restasse e não se lê o campo do formulário.
   const { error: compatibilityDeleteError } = await supabase.from("product_compatibility").delete().eq("product_id", productId);
   if (compatibilityDeleteError) throw new Error("O artigo foi guardado, mas não foi possível atualizar a compatibilidade.");
-  if (compatibilityRows.length) {
-    const { error: compatibilityInsertError } = await supabase.from("product_compatibility").insert(compatibilityRows);
-    if (compatibilityInsertError) throw new Error("O artigo foi guardado, mas não foi possível guardar a compatibilidade.");
+  if (kind === "part") {
+    const compatibilityRows = text(form, "compatibility", 8000).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
+      const [brand = "", model = "", yearFrom = "", yearTo = "", notes = ""] = line.split(";").map((part) => part.trim());
+      const from = yearFrom ? Number(yearFrom) : null;
+      const to = yearTo ? Number(yearTo) : null;
+      if (brand.length < 2 || model.length < 1 || (from !== null && (!Number.isInteger(from) || from < 1900 || from > 2100)) || (to !== null && (!Number.isInteger(to) || to < 1900 || to > 2100)) || (from !== null && to !== null && from > to)) throw new Error("Revê as linhas de compatibilidade: marca, modelo e anos têm de ser válidos.");
+      return { product_id: productId, brand: brand.slice(0, 80), model: model.slice(0, 100), year_from: from, year_to: to, notes: notes.slice(0, 240) };
+    });
+    if (compatibilityRows.length) {
+      const { error: compatibilityInsertError } = await supabase.from("product_compatibility").insert(compatibilityRows);
+      if (compatibilityInsertError) throw new Error("O artigo foi guardado, mas não foi possível guardar a compatibilidade.");
+    }
   }
 
-  const image = form.get("image");
-  if (image instanceof File && image.size > 0) {
-    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(image.type) || image.size > 10 * 1024 * 1024) throw new Error("Escolhe uma imagem JPG, PNG ou WEBP até 10 MB.");
-    const ext = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
-    const url = await uploadToR2(`products/${productId}/${Date.now()}.${ext}`, Buffer.from(await image.arrayBuffer()), image.type);
-    const { error } = await supabase.from("product_images").insert({ product_id: productId, url, alt_text: text(form, "name", 160), position: 0 });
-    if (error) throw new Error("A fotografia foi enviada, mas não foi associada ao artigo.");
+  // Fotografias do criar: várias de uma vez (o editar usa o gestor próprio).
+  // A primeira enviada entra na posição 0, portanto é a principal.
+  const imageFiles = form.getAll("images").filter((file): file is File => file instanceof File && file.size > 0);
+  if (imageFiles.length) {
+    let position = 0;
+    for (const file of imageFiles) {
+      if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type) || file.size > 10 * 1024 * 1024) throw new Error("Escolhe imagens JPG, PNG ou WEBP até 10 MB.");
+      const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+      const url = await uploadToR2(`products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`, Buffer.from(await file.arrayBuffer()), file.type);
+      const { error } = await supabase.from("product_images").insert({ product_id: productId, url, alt_text: name, position });
+      if (error) throw new Error("Uma fotografia foi enviada, mas não foi associada ao artigo.");
+      position += 1;
+    }
+  } else {
+    const image = form.get("image");
+    if (image instanceof File && image.size > 0) {
+      if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(image.type) || image.size > 10 * 1024 * 1024) throw new Error("Escolhe uma imagem JPG, PNG ou WEBP até 10 MB.");
+      const ext = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
+      const url = await uploadToR2(`products/${productId}/${Date.now()}.${ext}`, Buffer.from(await image.arrayBuffer()), image.type);
+      const { error } = await supabase.from("product_images").insert({ product_id: productId, url, alt_text: text(form, "name", 160), position: 0 });
+      if (error) throw new Error("A fotografia foi enviada, mas não foi associada ao artigo.");
+    }
   }
 
   revalidatePath("/loja"); revalidatePath(`/produto/${slug}`); revalidatePath("/admin/loja/produtos");
@@ -371,6 +416,27 @@ export async function makeFirstProductImage(form: FormData) {
   for (let index = 0; index < reordered.length; index += 1) {
     if (reordered[index].position !== index) await supabase.from("product_images").update({ position: index }).eq("id", reordered[index].id);
   }
+  revalidatePath("/loja"); if (product?.slug) revalidatePath(`/produto/${product.slug}`); revalidatePath("/admin/loja/produtos");
+}
+
+// Sobe ou desce uma fotografia na ordem da galeria (troca de posição com a
+// vizinha). A primeira posição continua a ser a principal.
+export async function moveProductImage(form: FormData) {
+  const { supabase } = await adminClient();
+  const id = text(form, "id", 64);
+  const direction = text(form, "direction", 4) === "up" ? -1 : 1;
+  if (!id) return;
+  const { data: image } = await supabase.from("product_images").select("id,product_id,position").eq("id", id).maybeSingle();
+  if (!image) return;
+  const { data: product } = await supabase.from("products").select("slug").eq("id", image.product_id).maybeSingle();
+  const { data: all } = await supabase.from("product_images").select("id,position").eq("product_id", image.product_id).order("position");
+  const ordered = (all ?? []).map((item) => ({ id: item.id, position: Number(item.position ?? 0) }));
+  const index = ordered.findIndex((item) => item.id === id);
+  const target = index + direction;
+  if (index === -1 || target < 0 || target >= ordered.length) return;
+  // Troca as posições das duas linhas — o primeiro passa a ser o segundo.
+  await supabase.from("product_images").update({ position: ordered[target].position }).eq("id", ordered[index].id);
+  await supabase.from("product_images").update({ position: ordered[index].position }).eq("id", ordered[target].id);
   revalidatePath("/loja"); if (product?.slug) revalidatePath(`/produto/${product.slug}`); revalidatePath("/admin/loja/produtos");
 }
 

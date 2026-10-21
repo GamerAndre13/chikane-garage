@@ -18,7 +18,7 @@ partiu nada.
 | Estilos globais, cores e utilitários | `app/globals.css` |
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
-| **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
+| **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` (pedidos de test-drive e de informação num painel inline no local — `components/ui/vehicle-request-panel.tsx`, sem sair da ficha) |
 | ↳ Configurador (viatura nova 0 km + acessórios → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — cada acessório aparece com a sua fotografia/ilustração) |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
@@ -34,6 +34,7 @@ partiu nada.
 | **Loja (catálogo)** | `app/loja/page.tsx` |
 | ↳ Categoria da loja | `app/loja/[categoria]/page.tsx` |
 | ↳ Ficha de artigo | `app/produto/[slug]/page.tsx` (artigos "só por encomenda" → `components/shop/product-quote-request.tsx`, pedido de compra sem pagamento) |
+| **Campanhas** (promosções ativas) | `app/campanhas/page.tsx` (cartões de `campaigns` ativas e dentro das datas — secção 25 do `supabase/setup.sql`) |
 | **Carrinho** (só artigos da loja — viaturas não entram no carrinho) | `app/carrinho/page.tsx` (+ `components/shop/cart-view.tsx`) |
 | **Checkout** | `app/checkout/page.tsx` (+ `components/shop/checkout-form.tsx`) |
 | ↳ Comprovativo / acompanhamento de pedido (percurso + histórico) | `app/encomenda/[token]/page.tsx` |
@@ -49,7 +50,7 @@ partiu nada.
 | ↳ Estatísticas | `app/admin/analytics/page.tsx` |
 | ↳ Definições | `app/admin/definicoes/page.tsx` (contactos, redes, fotos — `site_settings`) |
 | ↳ Loja (hub) | `app/admin/loja/page.tsx` — índice de todas as secções abaixo |
-| ↳↳ Produtos | `app/admin/loja/produtos/` — lista em formato Shopify (abas Todos/Produtos/Peças com contagens, filtros de estado, miniatura e etiquetas de `app/admin/loja/badges.tsx`); `novo/` e `[id]/` com o formulário em rail (campo Tipo: Produto/Peça — coluna `products.kind`) + `product-images-manager.tsx` |
+| ↳↳ Produtos | `app/admin/loja/produtos/` — lista em formato Shopify (abas Todos/Produtos/Peças com contagens, filtros de estado, miniatura e etiquetas de `app/admin/loja/badges.tsx`); `novo/` e `[id]/` com o formulário em rail (`product-form.tsx` — campo Tipo: Produto/Peça → compatibilidade só aparece para peças; marca/categoria em combobox escrever+selecionar, criando a que faltar; variantes por eixos ilimitados → tabela de combinações SKU/stock/ajuste) + `product-images-manager.tsx` (fotos com setas ↑↓ e pôr em primeiro); no criar, fotografias multi com pré-visualização |
 | ↳↳ Categorias | `app/admin/loja/categorias/page.tsx` |
 | ↳↳ Marcas | `app/admin/loja/marcas/page.tsx` (criar, editar, ativar, apagar) |
 | ↳↳ Stock | `app/admin/loja/stock/page.tsx` |
@@ -59,6 +60,7 @@ partiu nada.
 | ↳↳ Portes | `app/admin/loja/portes/page.tsx` (zonas + escalões por peso) |
 | ↳↳ Clientes | `app/admin/loja/clientes/page.tsx` |
 | ↳↳ Newsletter | `app/admin/loja/newsletter/page.tsx` (subscritores + CSV) |
+| ↳↳ Campanhas | `app/admin/loja/campanhas/page.tsx` (criar/editar campanhas com foto, datas de início/fim e estado calculado — tabela `campaigns`) |
 | ↳↳ Definições da loja | `app/admin/loja/definicoes/page.tsx` (`shop_settings`) |
 
 ### Componentes reutilizáveis
@@ -76,7 +78,8 @@ partiu nada.
 | Botão de favorito | `components/ui/favorite-button.tsx` | Coração nos cartões |
 | Lista de favoritos | `components/ui/favorites-list.tsx` | Favoritos no perfil |
 | Meus pedidos | `components/ui/my-requests.tsx` | Pedidos no perfil |
-| Escolher fotografias | `components/ui/vehicle-photo-picker.tsx` | Upload no backoffice |
+| Escolher fotografias | `components/ui/vehicle-photo-picker.tsx` | Upload no backoffice (aceita `label` para o rótulo — viatura ou artigo) |
+| Pedido inline na ficha | `components/ui/vehicle-request-panel.tsx` | Test-drive e pedidos de informação sem sair da ficha |
 | Animação ao aparecer | `components/ui/reveal.tsx` | Efeito de entrada |
 | Linhas decorativas | `components/ui/vgpu-speed-lines.tsx` | Detalhe gráfico |
 | Formulário de newsletter | `components/newsletter-form.tsx` | Rodapé |

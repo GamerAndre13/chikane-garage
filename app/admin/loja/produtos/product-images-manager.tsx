@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadProductImage, deleteProductImage, makeFirstProductImage } from "@/app/actions/shop-admin";
+import { uploadProductImage, deleteProductImage, makeFirstProductImage, moveProductImage } from "@/app/actions/shop-admin";
 
 type ManagedImage = { id: string; url: string; alt_text: string; position: number };
 
-// Gestão das fotografias do artigo: adicionar, apagar e escolher a principal.
+// Gestão das fotografias do artigo: adicionar, apagar, reordenar (setas) e
+// escolher a principal (primeira posição).
 export function ProductImagesManager({ productId, images, className }: { productId: string; images: ManagedImage[]; className?: string }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -37,6 +38,11 @@ export function ProductImagesManager({ productId, images, className }: { product
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image.url} alt={image.alt_text || "Fotografia do artigo"} className="aspect-[4/3] w-full object-cover"/>{index === 0 && <span className="absolute left-2 top-2 bg-copper px-2 py-0.5 font-display text-[9px] uppercase tracking-widest text-black">Principal</span>}</div>
         <div className="flex flex-wrap items-center justify-between gap-2 p-2">
+          <form action={(formData) => run(moveProductImage, formData)} className="flex gap-1">
+            <input type="hidden" name="id" value={image.id}/>
+            <button name="direction" value="up" disabled={busy || index === 0} aria-label={`Mover fotografia ${index + 1} para cima`} className="border border-border px-2 py-1 text-xs text-muted underline-offset-2 hover:border-copper hover:text-copper disabled:opacity-30">↑</button>
+            <button name="direction" value="down" disabled={busy || index === sorted.length - 1} aria-label={`Mover fotografia ${index + 1} para baixo`} className="border border-border px-2 py-1 text-xs text-muted underline-offset-2 hover:border-copper hover:text-copper disabled:opacity-30">↓</button>
+          </form>
           <form action={(formData) => run(makeFirstProductImage, formData)}><input type="hidden" name="id" value={image.id}/><button disabled={busy || index === 0} className="text-[10px] uppercase tracking-widest text-muted underline underline-offset-2 hover:text-copper disabled:opacity-40">Pôr em primeiro</button></form>
           <form action={(formData) => run(deleteProductImage, formData)}><input type="hidden" name="id" value={image.id}/><button disabled={busy} className="text-[10px] uppercase tracking-widest text-muted underline underline-offset-2 hover:text-red disabled:opacity-40">Apagar</button></form>
         </div>
