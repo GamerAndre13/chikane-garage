@@ -10,6 +10,7 @@ import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { ProductCard } from "@/components/shop/product-card";
+import { VehicleRequestPanel } from "@/components/ui/vehicle-request-panel";
 import type { ShopProduct } from "@/lib/shop";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
@@ -341,8 +342,9 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
               {vehicle.status === "available" && !isNewOnOrder && (
                 <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center border border-copper/60 px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Reservar viatura</Link>
               )}
-              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center border border-copper/60 px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">{isNewOnOrder ? "Pedir proposta" : "Pedir informações"}</Link>
-              <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex items-center justify-center border border-copper/60 px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Marcar test-drive</Link>
+              {/* Pedidos de test-drive e de informação: formulário inline no
+                  local (estilo Lovable), sem sair da ficha. */}
+              <VehicleRequestPanel vehicleId={vehicle.id} infoLabel={isNewOnOrder ? "Pedir proposta" : "Pedir informações"} />
             </div>
           )}
 
