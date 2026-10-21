@@ -3,14 +3,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ShopProduct, ShopVariant } from "@/lib/shop";
 
-// Uma linha pode ser um artigo da loja (variantId) ou uma viatura (vehicleId).
-// `key` é o identificador único da linha: variantId nos artigos, "veiculo:<id>"
-// nas viaturas. As linhas antigas guardadas no localStorage não têm `key` e são
-// normalizadas na leitura (variantId continua a ser a chave nesse caso).
+// Uma linha do carrinho é sempre um artigo da loja (variantId). `key` é o
+// identificador único da linha (variantId); linhas antigas guardadas no
+// localStorage sem `key` são normalizadas na leitura.
 export type CartLine = {
   key: string;
-  type?: "vehicle";
-  vehicleId?: string;
   productId: string;
   slug: string;
   name: string;
@@ -23,16 +20,12 @@ export type CartLine = {
   weightGrams: number;
 };
 
-export type VehicleForCart = { id: string; slug: string; name: string; image: string; price: number };
-
 type CartContextValue = {
   lines: CartLine[];
   hydrated: boolean;
   count: number;
   subtotal: number;
-  hasVehicle: boolean;
   add: (product: ShopProduct, variant: ShopVariant, quantity?: number) => void;
-  addVehicle: (vehicle: VehicleForCart) => void;
   setQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
@@ -48,7 +41,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const timeout = window.setTimeout(() => {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) setLines((JSON.parse(saved) as CartLine[]).map((line) => ({ ...line, key: line.key || line.variantId })));
+        // Linhas antigas de viaturas (gravadas no fluxo de carrinho com
+        // viaturas) são descartadas: as viaturas agora são por pedido de
+        // encomenda, pelo configurador.
+        if (saved) setLines((JSON.parse(saved) as CartLine[]).filter((line) => Boolean(line.variantId)).map((line) => ({ ...line, key: line.key || line.variantId })));
       } catch { /* Um carrinho inválido começa vazio. */ }
       setHydrated(true);
     }, 0);
@@ -76,19 +72,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Viaturas: uma linha por viatura, sempre com quantidade 1.
-  const addVehicle = useCallback((vehicle: VehicleForCart) => {
-    const line: CartLine = {
-      key: `veiculo:${vehicle.id}`, type: "vehicle", vehicleId: vehicle.id,
-      productId: "", slug: vehicle.slug, name: vehicle.name, image: vehicle.image,
-      variantId: "", variantName: "", price: vehicle.price, quantity: 1,
-      stock: null, weightGrams: 0,
-    };
-    setLines((current) => (current.some((item) => item.key === line.key) ? current : [...current, line]));
-  }, []);
-
+  // Viaturas: removidas do carrinho — a compra de viaturas novas é feita por
+  // pedido de encomenda no configurador (/catalogo/[slug]/configurar).
   const setQuantity = useCallback((key: string, quantity: number) => setLines((current) => current.map((item) => {
-    if (item.key !== key || item.type === "vehicle") return item;
+    if (item.key !== key) return item;
     return { ...item, quantity: Math.min(Math.max(1, quantity), item.stock ?? Number.MAX_SAFE_INTEGER) };
   })), []);
   const remove = useCallback((key: string) => setLines((current) => current.filter((item) => item.key !== key)), []);
@@ -97,9 +84,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     lines, hydrated,
     count: lines.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: lines.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    hasVehicle: lines.some((item) => item.type === "vehicle"),
-    add, addVehicle, setQuantity, remove, clear,
-  }), [lines, hydrated, add, addVehicle, setQuantity, remove, clear]);
+    add, setQuantity, remove, clear,
+  }), [lines, hydrated, add, setQuantity, remove, clear]);
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 

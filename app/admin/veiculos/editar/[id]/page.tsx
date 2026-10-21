@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehicleGallery, type VehicleGalleryHandle } from "@/components/ui/vehicle-gallery";
+import { VehicleAccessoriesBrowser } from "@/components/admin/vehicle-accessories-browser";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -385,6 +386,7 @@ export default function EditarVeiculo() {
           )}
         </div>
         {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
+        {form.condition === "new" && <VehicleAccessoriesBrowser brand={form.brand} model={form.model} registrationYear={form.registration_year} />}
 
         {/* Galeria de imagens (R2) */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>

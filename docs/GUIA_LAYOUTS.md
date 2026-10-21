@@ -19,6 +19,7 @@ partiu nada.
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
 | **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
+| ↳ Configurador (viatura nova 0 km + acessórios → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx`) |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
 | **Conta** (entrar / registar) | `app/conta/page.tsx` |
@@ -32,16 +33,16 @@ partiu nada.
 | **Viaturas usadas** | `app/usados/page.tsx` (idem) |
 | **Loja (catálogo)** | `app/loja/page.tsx` |
 | ↳ Categoria da loja | `app/loja/[categoria]/page.tsx` |
-| ↳ Ficha de artigo | `app/produto/[slug]/page.tsx` |
-| **Carrinho** | `app/carrinho/page.tsx` (+ `components/shop/cart-view.tsx`) |
+| ↳ Ficha de artigo | `app/produto/[slug]/page.tsx` (artigos "só por encomenda" → `components/shop/product-quote-request.tsx`, pedido de compra sem pagamento) |
+| **Carrinho** (só artigos da loja — viaturas não entram no carrinho) | `app/carrinho/page.tsx` (+ `components/shop/cart-view.tsx`) |
 | **Checkout** | `app/checkout/page.tsx` (+ `components/shop/checkout-form.tsx`) |
-| ↳ Comprovativo da encomenda | `app/encomenda/[token]/page.tsx` |
+| ↳ Comprovativo / acompanhamento de pedido (percurso + histórico) | `app/encomenda/[token]/page.tsx` |
 | Conta — encomendas | `app/conta/encomendas/page.tsx` |
 | Página 404 | `app/not-found.tsx` |
 | Imagem de partilha (redes sociais) | `app/opengraph-image.tsx` |
 | **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx`) |
 | ↳ Painel inicial | `app/admin/page.tsx` |
-| ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/`) |
+| ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/` — forms novos/editar incluem painel `components/admin/vehicle-accessories-browser.tsx` com as peças compatíveis da loja) |
 | ↳ Conteúdo do site (CMS de textos) | `app/admin/conteudo/page.tsx` (client; edita `site_content`) |
 | ↳ Pedidos | `app/admin/pedidos/page.tsx` |
 | ↳ Contas | `app/admin/contas/page.tsx` |

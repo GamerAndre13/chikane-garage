@@ -10,7 +10,6 @@ import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { ProductCard } from "@/components/shop/product-card";
-import { AddVehicleToCartButton } from "@/components/shop/add-vehicle-to-cart-button";
 import type { ShopProduct } from "@/lib/shop";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
@@ -298,7 +297,10 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
     } catch { accessories = []; }
   }
 
-  const showCartButton = vehicle.condition === "new" && vehicle.status === "available" && vehicle.price != null;
+  // Viaturas novas com preço: em vez de compra direta, o cliente configura a
+  // viatura (acessórios e peças compatíveis) e envia um pedido de encomenda à
+  // equipa — sem pagamento online.
+  const showConfigurator = vehicle.condition === "new" && vehicle.status === "available" && vehicle.price != null;
 
   return (
     <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -332,15 +334,15 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           )}
 
           {vehicle.status !== "sold" && (
-            <div className={`mt-7 grid grid-cols-1 gap-3 ${showCartButton ? "sm:grid-cols-2" : vehicle.status === "available" && !isNewOnOrder ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-              {showCartButton && (
-                <AddVehicleToCartButton vehicle={{ id: vehicle.id, slug: vehicle.slug, brand: vehicle.brand, model: vehicle.model, trim: vehicle.trim, price: vehicle.price, cover_image_url: vehicle.cover_image_url }} />
+            <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {showConfigurator && (
+                <Link href={`/catalogo/${vehicle.slug}/configurar`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Configurar e pedir</Link>
               )}
               {vehicle.status === "available" && !isNewOnOrder && (
-                <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
+                <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center border border-copper/60 px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Reservar viatura</Link>
               )}
-              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">{isNewOnOrder ? "Pedir proposta" : "Pedir informações"}</Link>
-              <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Marcar test-drive</Link>
+              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center border border-copper/60 px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">{isNewOnOrder ? "Pedir proposta" : "Pedir informações"}</Link>
+              <Link href={`/contacto?testdrive=${vehicle.slug}`} className="flex items-center justify-center border border-copper/60 px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Marcar test-drive</Link>
             </div>
           )}
 
@@ -360,11 +362,14 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
         <section className="mt-16 border-t border-border pt-10">
           <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Para o teu novo</p>
           <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Peças e acessórios</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Lips, jantes, capas, espelhos e mais para o teu {vehicle.brand} {vehicle.model}. Confirma a compatibilidade com a equipa antes de comprar.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Lips, jantes, capas, espelhos e mais para o teu {vehicle.brand} {vehicle.model}. Escolhe os que queres incluir no teu pedido de encomenda no configurador.</p>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {accessories.map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
-          <Link href="/loja" className="mt-6 inline-flex border border-copper/60 px-6 py-3 font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Ver toda a loja</Link>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {showConfigurator && <Link href={`/catalogo/${vehicle.slug}/configurar`} className="inline-flex bg-copper px-6 py-3 font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Configurar com acessórios</Link>}
+            <Link href="/loja" className="inline-flex border border-copper/60 px-6 py-3 font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Ver toda a loja</Link>
+          </div>
         </section>
       )}
 

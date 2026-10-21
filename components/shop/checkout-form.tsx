@@ -3,12 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createShopOrder, createVehicleOrder } from "@/app/actions/shop";
+import { createShopOrder } from "@/app/actions/shop";
 import { useShopCart } from "@/components/shop/cart-provider";
 
 export function CheckoutForm() {
-  const { lines, hydrated, clear, hasVehicle } = useShopCart();
-  const hasProducts = lines.some((line) => line.type !== "vehicle");
+  const { lines, hydrated, clear } = useShopCart();
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState("");
   const router = useRouter();
@@ -16,20 +15,6 @@ export function CheckoutForm() {
   function submit(formData: FormData) {
     setError("");
     startTransition(async () => {
-      if (hasVehicle && hasProducts) {
-        setError("As encomendas com viaturas são tratadas em separado dos artigos da loja. Faz o checkout da viatura ou remove os artigos da loja.");
-        return;
-      }
-      if (hasVehicle) {
-        const result = await createVehicleOrder({
-          vehicles: lines.filter((line) => line.type === "vehicle").map((line) => ({ vehicle_id: line.vehicleId ?? "" })),
-          customer: Object.fromEntries(formData.entries()),
-        });
-        if (result.error) { setError(result.error); return; }
-        clear();
-        if (result.orderToken) router.push(`/encomenda/${result.orderToken}`);
-        return;
-      }
       const result = await createShopOrder({
         items: lines.map(({ variantId, quantity }) => ({ variant_id: variantId, quantity })),
         customer: Object.fromEntries(formData.entries()),
@@ -58,7 +43,7 @@ export function CheckoutForm() {
         </div>
       </section>
       <section className="border border-border bg-surface p-5 sm:p-7">
-        <h2 className="font-display text-xl uppercase text-foreground">{hasVehicle ? "Morada de faturação" : "Morada de envio"}</h2>
+        <h2 className="font-display text-xl uppercase text-foreground">Morada de envio</h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field name="shipping_name" label="Nome de quem recebe" required />
           <Field name="shipping_phone" label="Telemóvel" type="tel" required />
@@ -76,24 +61,15 @@ export function CheckoutForm() {
       </section>
       <section className="border border-border bg-surface p-5 sm:p-7">
         <h2 className="font-display text-xl uppercase text-foreground">Pagamento</h2>
-        {hasVehicle ? (
-          <div className="mt-5 border border-copper/40 bg-surface-mid p-4 text-sm leading-6 text-silver">
-            <p className="font-display text-xs uppercase tracking-[0.2em] text-copper">Sem pagamento online</p>
-            <p className="mt-2">A compra da viatura é tratada diretamente com a garagem: transferência bancária ou pagamento na entrega. Depois de confirmares a encomenda, a equipa contacta-te para combinar tudo — incluindo a entrega ou o levantamento.</p>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-3">
-            <label className="flex cursor-pointer items-start gap-3 border border-border p-4 text-sm"><input type="radio" name="payment_method" value="card" defaultChecked className="mt-0.5 accent-[var(--copper)]" /><span><strong className="font-medium text-foreground">Cartão</strong><span className="mt-1 block text-xs text-muted">Pagamento seguro por cartão.</span></span></label>
-            <label className="flex cursor-pointer items-start gap-3 border border-border p-4 text-sm"><input type="radio" name="payment_method" value="mb_way" className="mt-0.5 accent-[var(--copper)]" /><span><strong className="font-medium text-foreground">MB WAY</strong><span className="mt-1 block text-xs text-muted">Receberás um pedido de pagamento na aplicação.</span></span></label>
-          </div>
-        )}
+        <div className="mt-5 space-y-3">
+          <label className="flex cursor-pointer items-start gap-3 border border-border p-4 text-sm"><input type="radio" name="payment_method" value="card" defaultChecked className="mt-0.5 accent-[var(--copper)]" /><span><strong className="font-medium text-foreground">Cartão</strong><span className="mt-1 block text-xs text-muted">Pagamento seguro por cartão.</span></span></label>
+          <label className="flex cursor-pointer items-start gap-3 border border-border p-4 text-sm"><input type="radio" name="payment_method" value="mb_way" className="mt-0.5 accent-[var(--copper)]" /><span><strong className="font-medium text-foreground">MB WAY</strong><span className="mt-1 block text-xs text-muted">Receberás um pedido de pagamento na aplicação.</span></span></label>
+        </div>
       </section>
       <section className="border border-border bg-surface p-5 sm:p-7">
-        {!hasVehicle && <>
-          <label className="block font-display text-xl uppercase text-foreground" htmlFor="coupon_code">Cupão de desconto</label>
-          <input id="coupon_code" name="coupon_code" autoComplete="off" className="mt-4 w-full border border-border bg-background px-3 py-3 text-sm uppercase text-foreground sm:max-w-sm" placeholder="Código do cupão" />
-        </>}
-        <label className={`block text-xs uppercase tracking-widest text-muted ${hasVehicle ? "" : "mt-6"}`} htmlFor="customer_note">Nota para a garagem (opcional)
+        <label className="block font-display text-xl uppercase text-foreground" htmlFor="coupon_code">Cupão de desconto</label>
+        <input id="coupon_code" name="coupon_code" autoComplete="off" className="mt-4 w-full border border-border bg-background px-3 py-3 text-sm uppercase text-foreground sm:max-w-sm" placeholder="Código do cupão" />
+        <label className="mt-6 block text-xs uppercase tracking-widest text-muted" htmlFor="customer_note">Nota para a garagem (opcional)
           <textarea id="customer_note" name="customer_note" rows={3} className="mt-2 block w-full border border-border bg-background px-3 py-3 text-sm normal-case tracking-normal text-foreground" />
         </label>
       </section>
@@ -101,11 +77,11 @@ export function CheckoutForm() {
     <aside className="h-fit border border-border bg-surface p-5 sm:p-6 lg:sticky lg:top-28">
       <h2 className="font-display text-xl uppercase text-foreground">Rever encomenda</h2>
       <ul className="mt-5 divide-y divide-border border-y border-border">
-        {lines.map((line) => <li key={line.key} className="flex justify-between gap-4 py-3 text-sm"><span className="text-muted">{line.quantity} × {line.name} <span className="block text-xs">{line.type === "vehicle" ? "Viatura · 1 unidade" : line.variantName}</span></span><span className="shrink-0 text-foreground">{new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(line.price * line.quantity)}</span></li>)}
+        {lines.map((line) => <li key={line.key} className="flex justify-between gap-4 py-3 text-sm"><span className="text-muted">{line.quantity} × {line.name} <span className="block text-xs">{line.variantName}</span></span><span className="shrink-0 text-foreground">{new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(line.price * line.quantity)}</span></li>)}
       </ul>
-      <p className="mt-4 text-xs leading-relaxed text-muted">{hasVehicle ? "Sem portes: a entrega ou levantamento da viatura é combinado com a garagem. IVA incluído." : "Os portes e o total final serão confirmados pelo servidor antes do pagamento. IVA incluído."}</p>
+      <p className="mt-4 text-xs leading-relaxed text-muted">Os portes e o total final serão confirmados pelo servidor antes do pagamento. IVA incluído.</p>
       {error && <p role="alert" className="mt-5 border border-red/50 bg-red/10 p-3 text-sm text-red-light">{error}</p>}
-      <button disabled={busy} className="mt-6 w-full bg-copper px-5 py-4 font-display text-xs uppercase tracking-widest text-black transition-colors hover:bg-copper-light disabled:opacity-50">{busy ? (hasVehicle ? "A registar encomenda…" : "A preparar pagamento…") : hasVehicle ? "Confirmar encomenda" : "Confirmar e pagar"}</button>
+      <button disabled={busy} className="mt-6 w-full bg-copper px-5 py-4 font-display text-xs uppercase tracking-widest text-black transition-colors hover:bg-copper-light disabled:opacity-50">{busy ? "A preparar pagamento…" : "Confirmar e pagar"}</button>
       <p className="mt-3 text-center text-[11px] leading-relaxed text-muted">Ao continuar, confirmas que leste os <Link href="/termos-e-condicoes" className="underline">termos e condições</Link> e a <Link href="/envios-e-devolucoes" className="underline">política de envios e devoluções</Link>.</p>
     </aside>
   </form>;
