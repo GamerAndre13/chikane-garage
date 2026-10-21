@@ -137,3 +137,128 @@ async function cancelCreatedOrder(supabase: ReturnType<typeof createPaymentAdmin
   await supabase.rpc("cancel_order", { p_order_id: order.order_id, p_access_token: order.access_token, p_reason: message });
   return { error: message };
 }
+
+// ----------------------------------------------------------------------------
+// Encomenda com viatura (carrinho de viaturas): sem pagamento online — o
+// pagamento (transferência ou na entrega) e a entrega são combinados com a
+// garagem. O comprovativo fica visível em /encomenda/<token> e o backoffice
+// vê a encomenda como as outras, pronta a marcar como paga depois de acordado.
+// ----------------------------------------------------------------------------
+type VehicleLineInput = { vehicle_id: string };
+type VehicleCheckoutInput = { vehicles: VehicleLineInput[]; customer: Record<string, FormDataEntryValue> };
+
+export async function createVehicleOrder(input: VehicleCheckoutInput): Promise<{ error?: string; orderToken?: string }> {
+  try {
+    if (!Array.isArray(input.vehicles) || input.vehicles.length < 1 || input.vehicles.length > 5) return { error: "O carrinho de viaturas está vazio." };
+    if (!input.vehicles.every((line) => typeof line?.vehicle_id === "string" && /^[0-9a-f-]{36}$/i.test(line.vehicle_id))) return { error: "Confirma a viatura no carrinho." };
+    const vehicleIds = input.vehicles.map((line) => line.vehicle_id);
+    if (new Set(vehicleIds).size !== vehicleIds.length) return { error: "O carrinho tem viaturas repetidas." };
+
+    const text = (key: string) => String(input.customer[key] ?? "").trim();
+    const customerName = text("customer_name");
+    const email = text("customer_email").toLowerCase();
+    const phone = text("customer_phone");
+    const address = text("shipping_line1");
+    const city = text("shipping_city");
+    const postal = text("shipping_postal_code");
+    if (customerName.length < 2 || customerName.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || phone.length < 6 || phone.length > 30 || address.length < 3 || address.length > 160 || city.length < 2 || city.length > 100 || postal.length < 3 || postal.length > 20) return { error: "Confirma o nome, email, telemóvel e morada." };
+
+    const paymentAdmin = createPaymentAdminClient();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // O preço e a disponibilidade são sempre lidos da base de dados: o carrinho
+    // do browser não manda nada aqui.
+    const { data: vehicles, error: vehiclesError } = await paymentAdmin
+      .from("vehicles")
+      .select("id, slug, brand, model, trim, price, condition, status")
+      .in("id", vehicleIds);
+    if (vehiclesError || !vehicles || vehicles.length !== vehicleIds.length) return { error: "Não foi possível confirmar as viaturas do carrinho." };
+    for (const vehicle of vehicles) {
+      if (vehicle.status !== "available") return { error: `A viatura ${[vehicle.brand, vehicle.model].filter(Boolean).join(" ")} já não está disponível. Vê alternativas no catálogo.` };
+      if (vehicle.price == null || !Number.isFinite(Number(vehicle.price)) || Number(vehicle.price) <= 0) return { error: "Esta viatura não tem preço publicado — pede proposta pela ficha." };
+    }
+
+    const subtotal = vehicles.reduce((sum, vehicle) => sum + Number(vehicle.price), 0);
+    const vatTotal = Number((vehicles.reduce((sum, vehicle) => { const price = Number(vehicle.price); return sum + (price - price / 1.23); }, 0)).toFixed(2));
+
+    const { data: orderNumber, error: numberError } = await paymentAdmin.rpc("next_order_number");
+    if (numberError || !orderNumber) return { error: "Não foi possível gerar o número da encomenda." };
+    const accessToken = globalThis.crypto.randomUUID();
+
+    const customer = {
+      customer_name: customerName,
+      customer_email: email,
+      customer_phone: phone,
+      nif: text("nif").slice(0, 20),
+      shipping_name: text("shipping_name").slice(0, 120) || customerName,
+      shipping_phone: text("shipping_phone").slice(0, 30) || phone,
+      shipping_line1: address,
+      shipping_line2: text("shipping_line2").slice(0, 160),
+      shipping_city: city,
+      shipping_postal_code: postal,
+      shipping_country: text("shipping_country").toUpperCase() || "PT",
+      billing_same_as_shipping: true,
+      billing_name: text("shipping_name").slice(0, 120) || customerName,
+      billing_line1: address,
+      billing_line2: text("shipping_line2").slice(0, 160),
+      billing_city: city,
+      billing_postal_code: postal,
+      billing_country: text("shipping_country").toUpperCase() || "PT",
+      customer_note: text("customer_note").slice(0, 1000),
+      user_id: user?.id ?? null,
+    };
+
+    const { data: order, error: orderError } = await paymentAdmin
+      .from("orders")
+      .insert({
+        order_number: String(orderNumber),
+        access_token: accessToken,
+        ...customer,
+        subtotal,
+        discount_total: 0,
+        shipping_total: 0,
+        vat_total: vatTotal,
+        total: subtotal,
+        payment_method: null,
+        payment_status: "pending",
+        status: "pending_payment",
+      })
+      .select("id")
+      .single();
+    if (orderError || !order) return { error: "Não foi possível registar a encomenda. Tenta novamente ou contacta a garagem." };
+
+    const items = vehicles.map((vehicle) => ({
+      order_id: order.id,
+      product_id: null,
+      variant_id: null,
+      product_name: `Viatura ${vehicle.condition === "new" ? "nova" : "usada"}: ${[vehicle.brand, vehicle.model, vehicle.trim].filter(Boolean).join(" ")}`,
+      variant_name: vehicle.condition === "new" ? "Viatura nova" : "Viatura usada",
+      sku: `VH-${vehicle.slug}`,
+      unit_price: Number(vehicle.price),
+      quantity: 1,
+      vat_rate: 23,
+      line_total: Number(vehicle.price),
+      weight_grams: 0,
+    }));
+    const { error: itemsError } = await paymentAdmin.from("order_items").insert(items);
+    if (itemsError) {
+      await paymentAdmin.from("orders").delete().eq("id", order.id);
+      return { error: "Não foi possível registar a encomenda. Tenta novamente ou contacta a garagem." };
+    }
+    await paymentAdmin.from("order_status_history").insert({ order_id: order.id, status: "pending_payment", note: "Encomenda com viatura — pagamento e entrega a combinar com a garagem." });
+
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://chikanegarage.blog").replace(/\/$/, "");
+    const receiptPath = `/encomenda/${accessToken}`;
+    const vehicleList = vehicles.map((vehicle) => [vehicle.brand, vehicle.model].filter(Boolean).join(" ")).join(", ");
+    await sendShopEmail(email, `Encomenda ${String(orderNumber)} registada`, shopEmailHtml("Encomenda de viatura registada", [
+      `Olá ${escapeShopEmailText(customerName)}, recebemos a tua encomenda <strong>${escapeShopEmailText(String(orderNumber))}</strong> pela viatura: <strong>${escapeShopEmailText(vehicleList)}</strong>.`,
+      "Não há pagamento online nesta encomenda: a equipa contacta-te para combinar a transferência bancária ou o pagamento na entrega, e para marcar a entrega ou o levantamento.",
+      `Consulta o estado e o resumo da encomenda em <a href="${siteUrl}${receiptPath}" style="color:#c38a58">acompanhar encomenda</a>.`,
+      `Total: <strong>${subtotal.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}</strong> (IVA incluído).`,
+    ]));
+    return { orderToken: accessToken };
+  } catch {
+    return { error: "Ocorreu um erro ao registar a encomenda. Tenta novamente ou contacta a garagem." };
+  }
+}

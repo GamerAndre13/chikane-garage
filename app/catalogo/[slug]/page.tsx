@@ -9,6 +9,9 @@ import { VehicleSpecifications } from "@/components/ui/vehicle-specifications";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
 import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
+import { ProductCard } from "@/components/shop/product-card";
+import { AddVehicleToCartButton } from "@/components/shop/add-vehicle-to-cart-button";
+import type { ShopProduct } from "@/lib/shop";
 
 // Para cada viatura (página dinâmica), gerar metadata próprio → melhor SEO
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -262,6 +265,41 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
     }
   } catch { similarVehicles = []; }
 
+  // Viaturas novas: peças e acessórios possíveis para este carro — a loja guarda
+  // compatibilidade declarada (product_compatibility), marca e categorias de peças.
+  let accessories: ShopProduct[] = [];
+  if (vehicle.condition === "new") {
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("products")
+        .select("id,slug,name,short_description,price,compare_at_price,weight_grams,stock_mode,is_featured,is_new,product_categories(name,slug),brands(name),product_variants(id,name,option1_name,option1_value,option2_name,option2_value,price_delta,stock_quantity,is_active),product_images(id,url,alt_text,position),product_compatibility(brand,model,year_from,year_to)")
+        .eq("status", "active")
+        .order("published_at", { ascending: false })
+        .limit(60);
+      const brand = (vehicle.brand ?? "").trim().toLowerCase();
+      const model = (vehicle.model ?? "").trim().toLowerCase();
+      const year = vehicle.registration_year ?? null;
+      const partCategories = new Set(["pecas-e-manutencao", "jantes-e-pneus", "extras-e-acessorios"]);
+      accessories = ((data ?? []) as unknown as ShopProduct[])
+        .map((product) => {
+          const compatible = brand !== "" && (product.product_compatibility ?? []).some((entry) =>
+            (entry.brand ?? "").trim().toLowerCase() === brand &&
+            (!(entry.model ?? "").trim() || (entry.model ?? "").trim().toLowerCase() === model) &&
+            (year == null || ((entry.year_from ?? 0) <= year && (entry.year_to ?? 9999) >= year)));
+          const brandMatch = brand !== "" && (product.brands?.name ?? "").trim().toLowerCase() === brand;
+          const parts = partCategories.has(product.product_categories?.slug ?? "");
+          return { product, score: (compatible ? 6 : 0) + (brandMatch ? 3 : 0) + (parts ? 2 : 0) + (product.is_featured ? 1 : 0) };
+        })
+        .filter((entry) => entry.score >= 2)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4)
+        .map((entry) => entry.product);
+    } catch { accessories = []; }
+  }
+
+  const showCartButton = vehicle.condition === "new" && vehicle.status === "available" && vehicle.price != null;
+
   return (
     <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
       <Link href="/catalogo" className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">← Voltar ao catálogo</Link>
@@ -294,7 +332,10 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           )}
 
           {vehicle.status !== "sold" && (
-            <div className={`mt-7 grid grid-cols-1 gap-3 ${vehicle.status === "available" && !isNewOnOrder ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            <div className={`mt-7 grid grid-cols-1 gap-3 ${showCartButton ? "sm:grid-cols-2" : vehicle.status === "available" && !isNewOnOrder ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {showCartButton && (
+                <AddVehicleToCartButton vehicle={{ id: vehicle.id, slug: vehicle.slug, brand: vehicle.brand, model: vehicle.model, trim: vehicle.trim, price: vehicle.price, cover_image_url: vehicle.cover_image_url }} />
+              )}
               {vehicle.status === "available" && !isNewOnOrder && (
                 <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
               )}
@@ -314,6 +355,18 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           <p className="mt-7 border-l-2 border-copper bg-surface px-4 py-3 text-xs leading-5 text-muted">Contacta a equipa para confirmar disponibilidade, características e condições desta viatura.</p>
         </div>
       </div>
+
+      {accessories.length > 0 && (
+        <section className="mt-16 border-t border-border pt-10">
+          <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Para o teu novo</p>
+          <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Peças e acessórios</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Lips, jantes, capas, espelhos e mais para o teu {vehicle.brand} {vehicle.model}. Confirma a compatibilidade com a equipa antes de comprar.</p>
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+            {accessories.map((product) => <ProductCard key={product.id} product={product} />)}
+          </div>
+          <Link href="/loja" className="mt-6 inline-flex border border-copper/60 px-6 py-3 font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Ver toda a loja</Link>
+        </section>
+      )}
 
       <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={car.id}/></div>{car.status === "reserved" && <span className="absolute bottom-3 left-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span>}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
     </div>
