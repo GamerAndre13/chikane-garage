@@ -137,6 +137,9 @@ export function Header() {
           <Link href="/loja" className={navClass("/loja")}>
             Loja
           </Link>
+          <Link href="/campanhas" className={navClass("/campanhas")}>
+            Campanhas
+          </Link>
           <Link href="/sobre" className={navClass("/sobre")}>
             Sobre Nós
           </Link>
@@ -278,6 +281,9 @@ export function Header() {
               </Link>
               <Link href="/loja" className={navClass("/loja")} onClick={() => setMobileOpen(false)}>
                 Loja
+              </Link>
+              <Link href="/campanhas" className={navClass("/campanhas")} onClick={() => setMobileOpen(false)}>
+                Campanhas
               </Link>
               <Link href="/sobre" className={navClass("/sobre")} onClick={() => setMobileOpen(false)}>
                 Sobre Nós

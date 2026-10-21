@@ -34,6 +34,7 @@ const groups = [
     title: "Conteúdo",
     links: [
       { href: "/admin/conteudo", label: "Conteúdo" },
+      { href: "/admin/loja/campanhas", label: "Campanhas" },
       { href: "/admin/loja/newsletter", label: "Newsletter" },
     ],
   },

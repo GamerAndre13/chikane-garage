@@ -5,6 +5,7 @@ const sections = [
   ["Produtos", "/admin/loja/produtos", "Artigos, fotografias, variantes e preços"],
   ["Marcas", "/admin/loja/marcas", "Marcas da loja e as suas referências"],
   ["Categorias", "/admin/loja/categorias", "Organizar as secções da loja"],
+  ["Campanhas", "/admin/loja/campanhas", "Campanhas promocionais do site"],
   ["Stock", "/admin/loja/stock", "Quantidades e movimentos"],
   ["Encomendas", "/admin/loja/encomendas", "Preparação, estados e seguimento"],
   ["Devoluções", "/admin/loja/devolucoes", "Pedidos, reembolsos e estados"],
