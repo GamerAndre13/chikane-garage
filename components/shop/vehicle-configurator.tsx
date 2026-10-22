@@ -162,42 +162,42 @@ export function VehicleConfigurator({ vehicle, accessories, prefill }: Props) {
                         )}
                       </div>
                     </div>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {section.items.map((item) => {
                         const isChosen = item.id in selected;
                         const variant = item.variants.find((option) => option.id === selected[item.id]) ?? item.variants[0];
                         return (
                           <div key={item.id} className={`relative flex flex-col border transition-colors ${isChosen ? "border-copper bg-copper/10" : "border-border bg-surface hover:border-copper/60"}`}>
                             <button type="button" onClick={() => toggle(item, section.wheels)} aria-pressed={isChosen} className="flex w-full flex-1 flex-col text-left">
-                              <span className="block aspect-[4/3] w-full overflow-hidden border-b border-border bg-surface-mid">
+                              <span className="block aspect-[3/2] w-full overflow-hidden border-b border-border bg-surface-mid">
                                 {item.image
                                   // eslint-disable-next-line @next/next/no-img-element -- fotografia do artigo (R2/externa) sem dimensões conhecidas
                                   ? <img src={item.image} alt={item.name} className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]" />
                                   : <span className="flex h-full items-center justify-center font-display text-[10px] uppercase tracking-[0.24em] text-muted">Chikane</span>}
                               </span>
-                              <span className="block p-4 pr-10">
-                                <span className="block font-display text-sm uppercase leading-tight text-foreground">{item.name}</span>
-                                <span className="mt-1.5 block font-display text-base text-copper">+ {euro(item.price + Number(variant?.price_delta ?? 0))}</span>
+                              <span className="block p-3 pr-9">
+                                <span className="block font-display text-xs uppercase leading-tight text-foreground">{item.name}</span>
+                                <span className="mt-1 block font-display text-sm text-copper">+ {euro(item.price + Number(variant?.price_delta ?? 0))}</span>
                                 {(item.stock_mode === "on_request") && <span className="mt-1 block text-[11px] text-muted">só por encomenda</span>}
                               </span>
                             </button>
-                            <span aria-hidden="true" className={`pointer-events-none absolute right-3 top-3 flex h-5 w-5 items-center justify-center border text-[11px] ${isChosen ? "border-copper bg-copper text-black" : "border-white/40 bg-black/50 text-transparent"}`}>✓</span>
+                            <span aria-hidden="true" className={`pointer-events-none absolute right-2 top-2 flex h-5 w-5 items-center justify-center border text-[11px] ${isChosen ? "border-copper bg-copper text-black" : "border-white/40 bg-black/50 text-transparent"}`}>✓</span>
                             {isChosen && item.variants.length > 1 && (
-                              <div className="border-t border-white/10 p-4 pt-3">
+                              <div className="border-t border-white/10 p-3 pt-2.5">
                                 <p className="text-[10px] uppercase tracking-widest text-muted">{section.wheels ? "Tamanho" : "Opção"}</p>
                                 {section.wheels ? (
-                                  <div className="mt-2 flex flex-wrap gap-2">
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
                                     {item.variants.map((option) => {
                                       const active = (selected[item.id] ?? "") === option.id;
                                       return (
-                                        <button key={option.id} type="button" onClick={() => setSelected((current) => ({ ...current, [item.id]: option.id }))} aria-pressed={active} className={`border px-3 py-1.5 font-display text-xs uppercase tracking-wider transition-colors ${active ? "border-copper bg-copper text-black" : "border-border text-silver hover:border-copper/60"}`}>
+                                        <button key={option.id} type="button" onClick={() => setSelected((current) => ({ ...current, [item.id]: option.id }))} aria-pressed={active} className={`border px-2 py-1 font-display text-[11px] uppercase tracking-wider transition-colors ${active ? "border-copper bg-copper text-black" : "border-border text-silver hover:border-copper/60"}`}>
                                           {option.name}{Number(option.price_delta) > 0 && <span className="ml-1 text-[10px]">+{euro(Number(option.price_delta))}</span>}
                                         </button>
                                       );
                                     })}
                                   </div>
                                 ) : (
-                                  <select value={selected[item.id] ?? ""} onChange={(event) => setSelected((current) => ({ ...current, [item.id]: event.target.value }))} className="mt-2 block w-full border border-border bg-background px-3 py-2 text-sm text-foreground">
+                                  <select value={selected[item.id] ?? ""} onChange={(event) => setSelected((current) => ({ ...current, [item.id]: event.target.value }))} className="mt-2 block w-full border border-border bg-background px-2 py-1.5 text-xs text-foreground">
                                     {item.variants.map((option) => <option key={option.id} value={option.id}>{option.name}{Number(option.price_delta) > 0 ? ` — +${euro(Number(option.price_delta))}` : ""}</option>)}
                                   </select>
                                 )}
