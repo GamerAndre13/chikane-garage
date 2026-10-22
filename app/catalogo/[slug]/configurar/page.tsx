@@ -7,12 +7,13 @@ import type { ShopProduct } from "@/lib/shop";
 
 export const metadata = { title: "Configurar viatura | Chikane Garage" };
 
-// Configurador de viatura nova 0 km: monta a viatura com os acessórios
-// compatíveis e envia um pedido de encomenda à equipa (sem pagamento online).
+// Compra online de viatura nova 0 km: monta a viatura com os acessórios
+// compatíveis, escolhe a entrega e envia um pedido de encomenda à equipa
+// (sem pagamento online).
 export default async function VehicleConfiguratorPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  let vehicle: { id: string; slug: string; brand?: string | null; model?: string | null; trim?: string | null; price?: number | null; condition?: string | null; status?: string | null; cover_image_url?: string | null; registration_year?: number | null; sold_at?: string | null; updated_at?: string | null; created_at?: string | null } | null = null;
+  let vehicle: { id: string; slug: string; brand?: string | null; model?: string | null; trim?: string | null; price?: number | null; condition?: string | null; status?: string | null; cover_image_url?: string | null; registration_year?: number | null; mileage_km?: number | null; sold_at?: string | null; updated_at?: string | null; created_at?: string | null } | null = null;
   let accessories: ConfiguratorAccessory[] = [];
   let prefill: { name?: string; email?: string; phone?: string } = {};
 
@@ -20,7 +21,7 @@ export default async function VehicleConfiguratorPage({ params }: { params: Prom
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")
-      .select("id, slug, brand, model, trim, price, condition, status, cover_image_url, registration_year, sold_at, updated_at, created_at")
+      .select("id, slug, brand, model, trim, price, condition, status, cover_image_url, registration_year, mileage_km, sold_at, updated_at, created_at")
       .eq("slug", slug)
       .maybeSingle();
     if (data && isVehiclePubliclyVisible(data)) vehicle = data;
@@ -80,18 +81,19 @@ export default async function VehicleConfiguratorPage({ params }: { params: Prom
   return (
     <div className="mx-auto max-w-[1280px] px-5 pb-20 pt-10 sm:px-8 sm:pt-14 lg:px-12">
       <Link href={`/catalogo/${slug}`} className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">← Voltar à ficha da viatura</Link>
-      <p className="mt-8 font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">Configurador · pedido de encomenda</p>
-      <h1 className="mt-3 font-display text-4xl font-bold uppercase leading-none tracking-tight text-foreground sm:text-5xl">Configura o teu {name}</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">Escolhe os acessórios e peças que queres incluir e envia o pedido à nossa equipa. Sem pagamento online — contactamos-te nas próximas 24 horas úteis para confirmar tudo, e podes acompanhar o percurso do pedido a partir do site.</p>
+      <p className="mt-8 font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">Compra online</p>
+      <h1 className="mt-3 font-display text-4xl font-bold uppercase leading-none tracking-tight text-foreground sm:text-5xl">{name}{vehicle.trim && <span className="ml-3 font-normal text-silver">{vehicle.trim}</span>}</h1>
       <div className="mt-10">
         <VehicleConfigurator
           vehicle={{
             id: vehicle.id,
             slug: vehicle.slug,
-            name: [vehicle.brand, vehicle.model, vehicle.trim].filter(Boolean).join(" "),
+            name,
             trim: vehicle.trim,
             price: Number(vehicle.price),
             image: vehicle.cover_image_url,
+            year: vehicle.registration_year,
+            mileageKm: vehicle.mileage_km,
           }}
           accessories={accessories}
           prefill={prefill}

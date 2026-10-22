@@ -151,7 +151,8 @@ export type QuoteAccessoryInput = { product_id: string; variant_id?: string | nu
 type QuoteRequestInput = {
   vehicleId: string;
   accessories?: QuoteAccessoryInput[];
-  customer: { customer_name?: string; customer_email?: string; customer_phone?: string; customer_note?: string };
+  delivery?: "stand" | "home";
+  customer: { customer_name?: string; customer_email?: string; customer_phone?: string; customer_nif?: string; customer_note?: string };
 };
 
 export async function createVehicleQuoteRequest(input: QuoteRequestInput): Promise<{ error?: string; orderToken?: string }> {
@@ -164,7 +165,12 @@ export async function createVehicleQuoteRequest(input: QuoteRequestInput): Promi
     const name = String(input.customer?.customer_name ?? "").trim();
     const email = String(input.customer?.customer_email ?? "").trim().toLowerCase();
     const phone = String(input.customer?.customer_phone ?? "").trim();
+    const nif = String(input.customer?.customer_nif ?? "").replace(/\D/g, "").slice(0, 9);
     const note = String(input.customer?.customer_note ?? "").trim().slice(0, 1000);
+    // Entrega: levantar no stand é grátis; em casa tem um valor fixo combinado
+    // com o dono. O preço nunca vem do browser — só a escolha.
+    const delivery: "stand" | "home" = input.delivery === "home" ? "home" : "stand";
+    const deliveryFee = delivery === "home" ? 350 : 0;
     if (name.length < 2 || name.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || phone.length < 6 || phone.length > 30) return { error: "Confirma o nome, o email e o telemóvel." };
 
     const paymentAdmin = createPaymentAdminClient();
@@ -223,7 +229,10 @@ export async function createVehicleQuoteRequest(input: QuoteRequestInput): Promi
     });
     const subtotal = Number(vehicle.price) + lines.reduce((sum, line) => sum + line.unit_price, 0);
     const vatTotal = Number((Number(vehicle.price) - Number(vehicle.price) / 1.23).toFixed(2)) +
-      Number((lines.reduce((sum, line) => sum + (line.unit_price - line.unit_price / 1.23), 0)).toFixed(2));
+      Number((lines.reduce((sum, line) => sum + (line.unit_price - line.unit_price / 1.23), 0)).toFixed(2)) +
+      Number((deliveryFee - deliveryFee / 1.23).toFixed(2));
+    const total = subtotal + deliveryFee;
+    const deliveryLabel = delivery === "home" ? `Entrega em casa (+${deliveryFee.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })})` : "Levantamento no stand (grátis)";
 
     const { data: orderNumber, error: numberError } = await paymentAdmin.rpc("next_order_number");
     if (numberError || !orderNumber) return { error: "Não foi possível gerar o número do pedido." };
@@ -239,13 +248,15 @@ export async function createVehicleQuoteRequest(input: QuoteRequestInput): Promi
         customer_name: name,
         customer_email: email,
         customer_phone: phone,
-        customer_note: note,
+        nif,
+        customer_note: [note, deliveryLabel].filter(Boolean).join("\n").slice(0, 1000),
         billing_same_as_shipping: true,
+        shipping_rate_name: deliveryLabel,
         subtotal,
         discount_total: 0,
-        shipping_total: 0,
+        shipping_total: deliveryFee,
         vat_total: vatTotal,
-        total: subtotal,
+        total,
         payment_method: null,
         payment_status: "pending",
         status: "pending_payment",
@@ -287,14 +298,15 @@ export async function createVehicleQuoteRequest(input: QuoteRequestInput): Promi
       await paymentAdmin.from("orders").delete().eq("id", order.id);
       return { error: "Não foi possível registar o pedido. Tenta novamente ou contacta a garagem." };
     }
-    await paymentAdmin.from("order_status_history").insert({ order_id: order.id, status: "pending_payment", note: `Pedido de encomenda de viatura nova (${vehicleName}) — a equipa contacta o cliente para confirmar configuração e condições.` });
+    await paymentAdmin.from("order_status_history").insert({ order_id: order.id, status: "pending_payment", note: `Pedido de encomenda de viatura nova (${vehicleName}) — ${deliveryLabel}. A equipa contacta o cliente para confirmar configuração e condições.` });
 
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://chikanegarage.blog").replace(/\/$/, "");
     await sendShopEmail(email, `Pedido de encomenda ${String(orderNumber)} recebido`, shopEmailHtml("Pedido de encomenda recebido", [
       `Olá ${escapeShopEmailText(name)}, recebemos o teu pedido de encomenda <strong>${escapeShopEmailText(String(orderNumber))}</strong> pela viatura <strong>${escapeShopEmailText(vehicleName)}</strong>${lines.length ? ` com <strong>${lines.length}</strong> acessório${lines.length > 1 ? "s" : ""}` : ""}.`,
       "Agora é connosco: a equipa contacta-te nas próximas 24 horas úteis para confirmar a configuração, o preço final, financiamento e prazo de entrega. Só depois disso é que o pagamento é combinado — não há qualquer cobrança agora.",
       `Acompanha o percurso do pedido e as atualizações em <a href="${siteUrl}/encomenda/${accessToken}" style="color:#c38a58">acompanhar pedido</a>.`,
-      `Valor de referência: <strong>${subtotal.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}</strong> (IVA incluído, sujeito a confirmação).`,
+      `Entrega: <strong>${escapeShopEmailText(deliveryLabel)}</strong>.`,
+      `Valor de referência: <strong>${total.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}</strong> (IVA incluído, sujeito a confirmação).`,
     ]));
     return { orderToken: accessToken };
   } catch {
