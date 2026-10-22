@@ -28,6 +28,16 @@ export default async function AdminProdutosPage({ searchParams }: PageProps<"/ad
   };
 
   const supabase = await createClient();
+  // O tipo (peça/produto) considera a categoria: tudo o que esteja numa
+  // categoria de peças/acessórios conta como peça, mesmo que o campo `kind`
+  // ainda esteja com o valor por omissão («produto»). É a classificação usada
+  // no filtro e nas contagens das abas.
+  const partCategoryIds = await (async () => {
+    const { data } = await supabase.from("product_categories").select("id,slug");
+    const pecas = new Set(["pecas-e-manutencao", "jantes-e-pneus", "extras-e-acessorios"]);
+    return (data ?? []).filter((category) => pecas.has(category.slug)).map((category) => category.id);
+  })();
+  const idsPecas = partCategoryIds.length ? partCategoryIds : ["00000000-0000-0000-0000-000000000000"];
   const base = () => {
     let builder = supabase.from("products").select("id", { count: "exact", head: true });
     if (safe) builder = builder.or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`);
@@ -45,14 +55,15 @@ export default async function AdminProdutosPage({ searchParams }: PageProps<"/ad
     .limit(300);
   if (safe) query = query.or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`);
   if (estadoAtual) query = query.eq("status", estadoAtual);
-  if (tipoAtual) query = query.eq("kind", tipoAtual);
+  if (tipoAtual === "part") query = query.in("category_id", idsPecas);
+  if (tipoAtual === "product") query = query.not("category_id", "in", `(${idsPecas.join(",")})`);
   const [{ data }, total, prodCount, partCount] = await Promise.all([
     query,
     countPromise(base()),
-    countPromise(base().eq("kind", "product")),
-    countPromise(base().eq("kind", "part")),
+    countPromise(base().not("category_id", "in", `(${idsPecas.join(",")})`)),
+    countPromise(base().in("category_id", idsPecas)),
   ]);
-  const products = (data ?? []) as unknown as { id: string; slug: string; name: string; price: number; status: string; kind?: string | null; stock_mode: string; product_categories: { name: string } | null; product_variants: { stock_quantity: number }[]; product_images: { url: string; position: number | null }[] }[];
+  const products = (data ?? []) as unknown as { id: string; slug: string; name: string; price: number; status: string; kind?: string | null; category_id: string | null; stock_mode: string; product_categories: { name: string } | null; product_variants: { stock_quantity: number }[]; product_images: { url: string; position: number | null }[] }[];
 
   const tabs = [
     { label: "Todos", value: "", count: total },
@@ -162,7 +173,7 @@ export default async function AdminProdutosPage({ searchParams }: PageProps<"/ad
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3"><KindBadge kind={product.kind} /></td>
+                    <td className="px-4 py-3"><KindBadge kind={product.kind} categoryIsPart={idsPecas.includes(product.category_id ?? "")} /></td>
                     <td className="px-4 py-3 text-muted">{product.product_categories?.name ?? "—"}</td>
                     <td className="px-4 py-3 text-right text-foreground">{euro(product.price)}</td>
                     <td className={`px-4 py-3 ${product.stock_mode !== "unlimited" && product.stock_mode !== "on_request" && emStock === 0 ? "text-red-light" : "text-muted"}`}>{stockLabel}</td>

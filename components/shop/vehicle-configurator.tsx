@@ -273,7 +273,7 @@ export function VehicleConfigurator({ vehicle, accessories, prefill }: Props) {
           </dl>
 
           {error && <p role="alert" className="mt-5 border border-red/50 bg-red/10 p-3 text-sm text-red-light">{error}</p>}
-          <button type="submit" disabled={busy} className="mt-6 w-full bg-copper px-5 py-4 font-display text-xs uppercase tracking-widest text-black transition-colors hover:bg-copper-light disabled:opacity-50">{busy ? "A enviar pedido…" : "Confirmar compra"}</button>
+          <button type="submit" disabled={busy} className="mt-6 w-full bg-copper px-5 py-4 font-display text-xs uppercase tracking-widest text-black transition-colors hover:bg-copper-light disabled:opacity-50">{busy ? "A enviar pedido…" : "Enviar pedido"}</button>
           <p className="mt-3 text-center text-[11px] leading-relaxed text-muted">A viatura fica reservada no teu nome. Enviamos os dados de pagamento e o contrato por email.</p>
           <p className="mt-2 text-center text-[11px] leading-relaxed text-muted">Sem cobrança agora. <Link href="/termos-e-condicoes" className="underline">Termos</Link>.</p>
         </div>

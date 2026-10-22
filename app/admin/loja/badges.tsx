@@ -38,9 +38,12 @@ const fulfillmentLabel: Record<string, string> = {
   delivered: "Entregue", cancelled: "Cancelada", refunded: "Reembolsada", returned: "Devolvida",
 };
 
-// Percurso da encomenda (status) — o lado da entrega/preparação.
-export function FulfillmentBadge({ status }: { status?: string | null }) {
+// Percurso da encomenda (status) — o lado da entrega/preparação. `paymentMethod`
+// a nulo significa pedido de encomenda (viatura do configurador ou artigo por
+// encomenda) ainda sem resposta da equipa: mostra-se «Por aceitar».
+export function FulfillmentBadge({ status, paymentMethod }: { status?: string | null; paymentMethod?: string | null }) {
   const key = status ?? "pending_payment";
+  if (key === "pending_payment" && (paymentMethod ?? null) === null) return <Badge tone="amber">Por aceitar</Badge>;
   return <Badge tone={fulfillmentTone[key] ?? "gray"}>{fulfillmentLabel[key] ?? "Por preparar"}</Badge>;
 }
 
@@ -52,7 +55,9 @@ export function ProductStatusBadge({ status }: { status?: string | null }) {
   return <Badge tone={productStatusTone[key] ?? "gray"}>{productStatusLabel[key] ?? "Ativo"}</Badge>;
 }
 
-// Tipo de artigo: peça (serve viaturas) ou produto avulso da loja.
-export function KindBadge({ kind }: { kind?: string | null }) {
-  return kind === "part" ? <Badge tone="copper">Peça</Badge> : <Badge tone="gray">Produto</Badge>;
+// Tipo de artigo: peça (serve viaturas) ou produto avulso da loja. A categoria
+// também conta — os artigos das categorias de peças/acessórios aparecem como
+// «Peça» mesmo que o campo `kind` ainda esteja com o valor por omissão.
+export function KindBadge({ kind, categoryIsPart }: { kind?: string | null; categoryIsPart?: boolean }) {
+  return kind === "part" || categoryIsPart ? <Badge tone="copper">Peça</Badge> : <Badge tone="gray">Produto</Badge>;
 }

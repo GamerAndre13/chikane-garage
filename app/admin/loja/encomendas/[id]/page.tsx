@@ -29,7 +29,7 @@ export default async function EncomendaDetalhePage({ params }: PageProps<"/admin
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <h1 className="font-display text-3xl font-bold uppercase">#{order.order_number}</h1>
       <PaymentBadge status={order.payment_status} />
-      <FulfillmentBadge status={order.status} />
+      <FulfillmentBadge status={order.status} paymentMethod={order.payment_method} />
     </div>
     <p className="mt-2 text-sm text-muted">{order.customer_name} · {new Date(order.created_at).toLocaleString("pt-PT")}</p>
 

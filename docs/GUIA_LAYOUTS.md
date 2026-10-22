@@ -19,7 +19,7 @@ partiu nada.
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
 | **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` (pedidos de test-drive e de informação num painel inline no local — `components/ui/vehicle-request-panel.tsx`, sem sair da ficha) |
-| ↳ Compra online / configurador (viatura nova 0 km + extras → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — checkout dark estilo BMW: «1 · Extras incluídos na compra» por secções da categoria, com seleção múltipla nos extras e escolha única nas jantes (máx. 4 modelos, variantes = tamanhos); «2 · Entrega» (stand grátis / casa +350 €) e «3 · Os seus dados»; painel lateral com fotografia grande, ano · km · Novo, custos e «Confirmar compra». Registos de teste em `supabase/configurador_demo.sql`) |
+| ↳ Compra online / configurador (viatura nova 0 km + extras → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — checkout dark estilo BMW: «1 · Extras incluídos na compra» por secções da categoria, com seleção múltipla nos extras e escolha única nas jantes (máx. 4 modelos, variantes = tamanhos); «2 · Entrega» (stand grátis / casa +350 €) e «3 · Os seus dados»; painel lateral com fotografia grande, ano · km · Novo, custos e botão «Enviar pedido» (o pedido fica «Por aceitar» no backoffice, sem cobrança). Cartões de extras 3 por linha em `lg`; registos de teste em `supabase/configurador_demo.sql`) |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
 | **Conta** (entrar / registar) | `app/conta/page.tsx` |
@@ -54,7 +54,7 @@ partiu nada.
 | ↳↳ Categorias | `app/admin/loja/categorias/page.tsx` |
 | ↳↳ Marcas | `app/admin/loja/marcas/page.tsx` (criar, editar, ativar, apagar) |
 | ↳↳ Stock | `app/admin/loja/stock/page.tsx` |
-| ↳↳ Encomendas | `app/admin/loja/encomendas/` — lista em formato Shopify (abas Todas/Por entregar/Por pagar/Fechadas, pesquisa + CSV, etiquetas de pagamento/entrega); `[id]/` detalhe com artigos, histórico em timeline e rail de atualização/pagamento/cliente/entrega |
+| ↳↳ Encomendas | `app/admin/loja/encomendas/` — lista em formato Shopify (abas Todas/**Por aceitar**/Por entregar/Por pagar/Fechadas, pesquisa + CSV, etiquetas de pagamento/entrega); `[id]/` detalhe com artigos, histórico em timeline e rail de atualização/pagamento/cliente/entrega. «Por aceitar» = `payment_method` nulo + `status = pending_payment` (pedidos do configurador e artigos por encomenda); o painel `/admin/loja` mostra um aviso com a contagem. Nos produtos, a classificação peça/produto também olha à categoria (peças, jantes/pneus, extras/acessórios → «Peça») |
 | ↳↳ Devoluções | `app/admin/loja/devolucoes/page.tsx` (estados, reembolso, notas) |
 | ↳↳ Cupões | `app/admin/loja/cupoes/page.tsx` (criar, editar, ativar, apagar) |
 | ↳↳ Portes | `app/admin/loja/portes/page.tsx` (zonas + escalões por peso) |
@@ -207,4 +207,4 @@ Voltar ao [README](../README.md) · Ver [pôr o site no ar](COLOCAR_NO_AR.md) ·
 Ver [variáveis de ambiente](VARIAVEIS_AMBIENTE.md) ·
 Ver [regras para IA](REGRAS_PARA_IA.md)
 
-*Última atualização: 2026-10-14.*
+*Última atualização: 2026-10-22.*

@@ -6,6 +6,11 @@ import { PaymentBadge, FulfillmentBadge } from "@/app/admin/loja/badges";
 const ENTREGAR = ["pending_payment", "paid", "preparing"];
 const FECHADAS = ["delivered", "cancelled", "refunded", "returned"];
 
+// Um pedido de encomenda de viatura (configurador) ou de artigo por encomenda
+// fica sempre com payment_method nulo — é isso que distingue, na aba «Por
+// aceitar», os pedidos que esperam resposta da equipa das encomendas pagas
+// online.
+
 // Lista de encomendas no formato Shopify: abas com contagens (Todas / Por
 // entregar / Por pagar / Fechadas), pesquisa, colunas de data, cliente, total
 // e etiquetas coloridas de pagamento e entrega.
@@ -14,7 +19,7 @@ export default async function EncomendasLojaPage({ searchParams }: PageProps<"/a
   const term = String(q ?? "").trim().slice(0, 80);
   const safe = term.replace(/[%,()]/g, " ");
   const abaParam = String(aba ?? "");
-  const abaAtual = ["por-entregar", "por-pagar", "fechadas"].includes(abaParam) ? abaParam : "";
+  const abaAtual = ["por-aceitar", "por-entregar", "por-pagar", "fechadas"].includes(abaParam) ? abaParam : "";
 
   // Constrói a URL mantendo a pesquisa e a aba activas.
   const href = (patch: Record<string, string>) => {
@@ -37,22 +42,25 @@ export default async function EncomendasLojaPage({ searchParams }: PageProps<"/a
     const { count } = await builder;
     return count ?? 0;
   };
-  let query = supabase.from("orders").select("id,order_number,customer_name,customer_email,status,payment_status,total,created_at").order("created_at", { ascending: false }).limit(200);
+  let query = supabase.from("orders").select("id,order_number,customer_name,customer_email,status,payment_status,payment_method,total,created_at").order("created_at", { ascending: false }).limit(200);
   if (safe) query = query.or(search(safe));
+  if (abaAtual === "por-aceitar") query = query.is("payment_method", null).eq("status", "pending_payment");
   if (abaAtual === "por-entregar") query = query.in("status", ENTREGAR);
   if (abaAtual === "por-pagar") query = query.eq("payment_status", "pending");
   if (abaAtual === "fechadas") query = query.in("status", FECHADAS);
-  const [{ data }, todas, porEntregar, porPagar, fechadas] = await Promise.all([
+  const [{ data }, todas, porAceitar, porEntregar, porPagar, fechadas] = await Promise.all([
     query,
     countPromise(base()),
+    countPromise(base().is("payment_method", null).eq("status", "pending_payment")),
     countPromise(base().in("status", ENTREGAR)),
     countPromise(base().eq("payment_status", "pending")),
     countPromise(base().in("status", FECHADAS)),
   ]);
-  const orders = (data ?? []) as unknown as { id: string; order_number: string; customer_name: string | null; customer_email: string | null; status: string; payment_status: string | null; total: number; created_at: string }[];
+  const orders = (data ?? []) as unknown as { id: string; order_number: string; customer_name: string | null; customer_email: string | null; status: string; payment_status: string | null; payment_method: string | null; total: number; created_at: string }[];
 
   const tabs = [
     { label: "Todas", value: "", count: todas },
+    { label: "Por aceitar", value: "por-aceitar", count: porAceitar },
     { label: "Por entregar", value: "por-entregar", count: porEntregar },
     { label: "Por pagar", value: "por-pagar", count: porPagar },
     { label: "Fechadas", value: "fechadas", count: fechadas },
@@ -130,7 +138,7 @@ export default async function EncomendasLojaPage({ searchParams }: PageProps<"/a
                     </td>
                     <td className="px-4 py-3 text-right text-foreground">{euro(order.total)}</td>
                     <td className="px-4 py-3"><PaymentBadge status={order.payment_status} /></td>
-                    <td className="px-4 py-3"><FulfillmentBadge status={order.status} /></td>
+                    <td className="px-4 py-3"><FulfillmentBadge status={order.status} paymentMethod={order.payment_method} /></td>
                   </tr>
                 );
               })}
