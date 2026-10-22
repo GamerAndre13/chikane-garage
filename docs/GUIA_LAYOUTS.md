@@ -19,7 +19,7 @@ partiu nada.
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
 | **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` (pedidos de test-drive e de informação num painel inline no local — `components/ui/vehicle-request-panel.tsx`, sem sair da ficha) |
-| ↳ Configurador (viatura nova 0 km + acessórios → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — cada acessório aparece com a sua fotografia/ilustração) |
+| ↳ Configurador (viatura nova 0 km + acessórios → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — estilo BMW: «1 · Extras incluídos na compra» dividido por secções da categoria, escolha única em cada uma, e «2 · Os teus dados») |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
 | **Conta** (entrar / registar) | `app/conta/page.tsx` |
@@ -36,7 +36,7 @@ partiu nada.
 | ↳ Ficha de artigo | `app/produto/[slug]/page.tsx` (artigos "só por encomenda" → `components/shop/product-quote-request.tsx`, pedido de compra sem pagamento) |
 | **Campanhas** (promosções ativas) | `app/campanhas/page.tsx` (cartões de `campaigns` ativas e dentro das datas — secção 25 do `supabase/setup.sql`) |
 | **Carrinho** (só artigos da loja — viaturas não entram no carrinho) | `app/carrinho/page.tsx` (+ `components/shop/cart-view.tsx`) |
-| **Checkout** | `app/checkout/page.tsx` (+ `components/shop/checkout-form.tsx`) |
+| **Checkout** | `app/checkout/page.tsx` (+ `components/shop/checkout-form.tsx` — nome/contacto vêm da morada e do perfil; cliente com sessão tem os campos pré-preenchidos; cupão debaixo do total; pagamento só abre com todos os campos completos) |
 | ↳ Comprovativo / acompanhamento de pedido (percurso + histórico) | `app/encomenda/[token]/page.tsx` |
 | Conta — encomendas | `app/conta/encomendas/page.tsx` |
 | Página 404 | `app/not-found.tsx` |
