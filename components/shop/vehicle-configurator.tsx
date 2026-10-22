@@ -13,10 +13,9 @@ import { euro } from "@/lib/shop-format";
 // link do comprovativo.
 //
 // O passo «1 · Extras incluídos na compra» está organizado por secções (ex.:
-// Jantes, Pneus, Tapetes) e em cada secção escolhe-se uma opção — como no
-// configurador da BMW — ou nenhuma. Clicar na opção outra vez desmarca-a.
-// Nas jantes mostram-se no máximo 4 modelos diferentes; o que varia depois é
-// o tamanho (variantes do artigo), nunca a cor.
+// Jantes e pneus, Extras e acessórios). Nos extras pode escolher-se mais do
+// que um artigo; nas jantes escolhe-se um modelo e depois só varia o tamanho
+// (variantes do artigo), nunca a cor. Há no máximo 4 modelos de jantes.
 export type ConfiguratorAccessory = {
   id: string;
   name: string;
@@ -87,17 +86,32 @@ export function VehicleConfigurator({ vehicle, accessories, prefill }: Props) {
   const total = vehicle.price + extrasTotal + deliveryFee;
   const mileage = vehicle.mileageKm ?? 0;
 
-  // Escolha única por secção: ao selecionar uma opção, as restantes da mesma
-  // secção saem da configuração. Clicar na mesma opção desmarca-a.
-  function choose(item: ConfiguratorAccessory) {
+  // Extras: liga/desliga cada artigo (vários ao mesmo tempo). Jantes: escolha
+  // única na secção — ao escolher outro modelo, o anterior sai.
+  function toggle(item: ConfiguratorAccessory, wheels: boolean) {
     setSelected((current) => {
-      const section = (item.category || SEM_CATEGORIA).trim();
-      const wasSelected = item.id in current;
       const next = { ...current };
-      for (const other of accessories) {
-        if ((other.category || SEM_CATEGORIA).trim() === section) delete next[other.id];
+      if (item.id in next) {
+        delete next[item.id];
+        return next;
       }
-      if (!wasSelected) next[item.id] = item.variants[0]?.id ?? null;
+      if (wheels) {
+        const section = (item.category || SEM_CATEGORIA).trim();
+        for (const other of accessories) {
+          if ((other.category || SEM_CATEGORIA).trim() === section) delete next[other.id];
+        }
+      }
+      next[item.id] = item.variants[0]?.id ?? null;
+      return next;
+    });
+  }
+
+  function clearSection(title: string) {
+    setSelected((current) => {
+      const next = { ...current };
+      for (const item of accessories) {
+        if ((item.category || SEM_CATEGORIA).trim() === title) delete next[item.id];
+      }
       return next;
     });
   }
@@ -124,7 +138,7 @@ export function VehicleConfigurator({ vehicle, accessories, prefill }: Props) {
   return (
     <form onSubmit={(event) => { event.preventDefault(); submit(); }} className="grid gap-10 lg:grid-cols-[1fr_360px]">
       <div className="space-y-8">
-        {/* 1 · Extras por secções (escolha única em cada uma) */}
+        {/* 1 · Extras por secções */}
         <section className="border border-border bg-surface p-5 sm:p-7">
           <h2 className="font-display text-xl uppercase tracking-tight text-foreground"><span className="text-copper">1 ·</span> Extras incluídos na compra</h2>
           <p className="mt-2 text-sm leading-6 text-silver">Montados por nós antes da entrega.</p>
@@ -132,41 +146,44 @@ export function VehicleConfigurator({ vehicle, accessories, prefill }: Props) {
           {sections.length === 0 ? (
             <p className="mt-5 border border-border bg-surface-mid p-4 text-sm text-silver">De momento não há extras compatíveis publicados para esta viatura. Envia o pedido mesmo assim e falamos contigo sobre o que queres incluir.</p>
           ) : (
-            <div className="mt-6 space-y-8">
+            <div className="mt-6 space-y-10">
               {sections.map((section) => {
-                const chosen = section.items.find((item) => item.id in selected) ?? null;
+                const chosenCount = section.items.filter((item) => item.id in selected).length;
                 return (
                   <div key={section.title}>
                     <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2">
                       <h3 className="font-display text-sm uppercase tracking-[0.18em] text-foreground">{section.title}</h3>
-                      {chosen ? (
-                        <button type="button" onClick={() => choose(chosen)} className="font-display text-[10px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-copper">Remover escolha</button>
-                      ) : (
-                        <span className="font-display text-[10px] uppercase tracking-[0.16em] text-muted">Escolhe uma opção</span>
-                      )}
+                      <div className="flex items-center gap-3">
+                        <span className="font-display text-[10px] uppercase tracking-[0.16em] text-muted">
+                          {chosenCount === 0 ? (section.wheels ? "Escolhe um modelo" : "Escolhe o que quiseres") : `${chosenCount} escolhido${chosenCount > 1 ? "s" : ""}`}
+                        </span>
+                        {chosenCount > 0 && (
+                          <button type="button" onClick={() => clearSection(section.title)} className="font-display text-[10px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-copper">Limpar</button>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       {section.items.map((item) => {
                         const isChosen = item.id in selected;
                         const variant = item.variants.find((option) => option.id === selected[item.id]) ?? item.variants[0];
                         return (
-                          <div key={item.id} className={`relative flex flex-col border p-3 transition-colors ${isChosen ? "border-copper bg-copper/10" : "border-border bg-surface hover:border-copper/60"}`}>
-                            <button type="button" onClick={() => choose(item)} aria-pressed={isChosen} className="flex w-full flex-1 items-start gap-3 pr-8 text-left">
-                              <span className="h-16 w-20 shrink-0 overflow-hidden border border-border bg-surface-mid">
+                          <div key={item.id} className={`relative flex flex-col border transition-colors ${isChosen ? "border-copper bg-copper/10" : "border-border bg-surface hover:border-copper/60"}`}>
+                            <button type="button" onClick={() => toggle(item, section.wheels)} aria-pressed={isChosen} className="flex w-full flex-1 flex-col text-left">
+                              <span className="block aspect-[4/3] w-full overflow-hidden border-b border-border bg-surface-mid">
                                 {item.image
-                                  // eslint-disable-next-line @next/next/no-img-element -- fotografia do artigo (R2/SVG local) sem dimensões conhecidas
-                                  ? <img src={item.image} alt="" className="h-full w-full object-cover" />
-                                  : <span className="flex h-full items-center justify-center font-display text-[8px] uppercase tracking-widest text-muted">Chikane</span>}
+                                  // eslint-disable-next-line @next/next/no-img-element -- fotografia do artigo (R2/externa) sem dimensões conhecidas
+                                  ? <img src={item.image} alt={item.name} className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]" />
+                                  : <span className="flex h-full items-center justify-center font-display text-[10px] uppercase tracking-[0.24em] text-muted">Chikane</span>}
                               </span>
-                              <span className="min-w-0 flex-1">
+                              <span className="block p-4 pr-10">
                                 <span className="block font-display text-sm uppercase leading-tight text-foreground">{item.name}</span>
-                                <span className="mt-1 block font-display text-sm text-copper">+ {euro(item.price + Number(variant?.price_delta ?? 0))}</span>
+                                <span className="mt-1.5 block font-display text-base text-copper">+ {euro(item.price + Number(variant?.price_delta ?? 0))}</span>
                                 {(item.stock_mode === "on_request") && <span className="mt-1 block text-[11px] text-muted">só por encomenda</span>}
                               </span>
                             </button>
-                            <span aria-hidden="true" className={`pointer-events-none absolute right-3 top-3 flex h-5 w-5 items-center justify-center border text-[11px] ${isChosen ? "border-copper bg-copper text-black" : "border-white/25 text-transparent"}`}>✓</span>
+                            <span aria-hidden="true" className={`pointer-events-none absolute right-3 top-3 flex h-5 w-5 items-center justify-center border text-[11px] ${isChosen ? "border-copper bg-copper text-black" : "border-white/40 bg-black/50 text-transparent"}`}>✓</span>
                             {isChosen && item.variants.length > 1 && (
-                              <div className="mt-3 border-t border-white/10 pt-3">
+                              <div className="border-t border-white/10 p-4 pt-3">
                                 <p className="text-[10px] uppercase tracking-widest text-muted">{section.wheels ? "Tamanho" : "Opção"}</p>
                                 {section.wheels ? (
                                   <div className="mt-2 flex flex-wrap gap-2">
