@@ -15,11 +15,17 @@ export function ProductImagesManager({ productId, images, className }: { product
   const [error, setError] = useState<string | null>(null);
   const sorted = [...images].sort((a, b) => a.position - b.position);
 
-  const run = async (action: (formData: FormData) => Promise<void>, formData: FormData) => {
+  // As ações de fotografia devolvem `{ error }` em vez de lançar (em produção o
+  // Next esconde a mensagem dos erros lançados: aparecia só «#441»).
+  const run = async (action: (formData: FormData) => Promise<{ error?: string } | void>, formData: FormData) => {
     setBusy(true);
     setError(null);
     try {
-      await action(formData);
+      const resultado = await action(formData);
+      if (resultado && "error" in resultado && resultado.error) {
+        setError(resultado.error);
+        return;
+      }
       if (fileRef.current) fileRef.current.value = "";
       router.refresh();
     } catch (err) {

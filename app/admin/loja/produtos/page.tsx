@@ -50,7 +50,7 @@ export default async function AdminProdutosPage({ searchParams }: PageProps<"/ad
   };
   let query = supabase
     .from("products")
-    .select("id,slug,name,price,status,kind,stock_mode,product_categories(name),product_variants(stock_quantity),product_images(url,position)")
+    .select("id,slug,name,price,status,kind,category_id,stock_mode,product_categories(name),product_variants(stock_quantity),product_images(url,position)")
     .order("created_at", { ascending: false })
     .limit(300);
   if (safe) query = query.or(`name.ilike.%${safe}%,slug.ilike.%${safe}%`);

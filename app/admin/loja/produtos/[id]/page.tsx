@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { ProductForm } from "@/app/admin/loja/produtos/product-form";
 import { ProductImagesManager } from "@/app/admin/loja/produtos/product-images-manager";
 
-export default async function EditarProdutoPage({ params }: PageProps<"/admin/loja/produtos/[id]">) {
+export default async function EditarProdutoPage({ params, searchParams }: PageProps<"/admin/loja/produtos/[id]">) {
   const { id } = await params;
+  const { aviso } = await searchParams;
   const supabase = await createClient();
   const [{ data: product }, { data: categories }, { data: brands }, { data: variants }, { data: images }] = await Promise.all([
     supabase.from("products").select("id,slug,name,category_id,brand_id,price,compare_at_price,short_description,description,sku,weight_grams,stock_mode,status,kind,vat_rate,is_featured,is_new,low_stock_threshold,product_compatibility(brand,model,year_from,year_to,notes)").eq("id", id).maybeSingle(),
@@ -16,5 +17,5 @@ export default async function EditarProdutoPage({ params }: PageProps<"/admin/lo
   ]);
   if (!product) notFound();
   const initial = { ...product, product_variants: variants ?? [] };
-  return <section><Link href="/admin/loja/produtos" className="font-display text-[10px] uppercase tracking-widest text-copper">← Produtos</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Editar artigo</h1><div className="mt-7 grid gap-5 lg:grid-cols-[1fr_340px]"><ProductForm categories={categories ?? []} brands={brands ?? []} initial={initial}/><ProductImagesManager productId={id} images={images ?? []} className="lg:col-start-1"/></div></section>;
+  return <section><Link href="/admin/loja/produtos" className="font-display text-[10px] uppercase tracking-widest text-copper">← Produtos</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Editar artigo</h1>{aviso === "fotos" && <p role="status" className="mt-4 max-w-2xl border border-warning/40 bg-warning/10 p-3 text-xs leading-5 text-warning">O artigo foi guardado, mas não foi possível enviar as fotografias. Volta a adicioná-las em «Fotografias».</p>}<div className="mt-7 grid gap-5 lg:grid-cols-[1fr_340px]"><ProductForm categories={categories ?? []} brands={brands ?? []} initial={initial}/><ProductImagesManager productId={id} images={images ?? []} className="lg:col-start-1"/></div></section>;
 }

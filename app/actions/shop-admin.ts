@@ -30,12 +30,27 @@ async function findOrCreateShopTerm(supabase: Awaited<ReturnType<typeof createCl
   const res = table === "brands"
     ? await supabase.from("brands").insert(base).select("id").single()
     : await supabase.from("product_categories").insert({ ...base, description: "" }).select("id").single();
-  if (res.error || !res.data) throw new Error(table === "brands" ? "Não foi possível criar a marca." : "Não foi possível criar a categoria.");
+  if (res.error || !res.data) throw new ErroArtigo(table === "brands" ? "Não foi possível criar a marca." : "Não foi possível criar a categoria.");
   return res.data.id;
 }
 
-export async function saveShopProduct(form: FormData) {
-  const { supabase } = await adminClient();
+// Erro esperado do formulário de artigo. Em produção o Next esconde a mensagem
+// dos erros lançados numa Server Action (o browser só recebe um «Minified React
+// error #441»), por isso estas mensagens são devolvidas como valor. Só o
+// redirect final continua a ser lançado, que é o mecanismo normal do Next.
+class ErroArtigo extends Error {}
+
+// Guarda (cria ou atualiza) o artigo e devolve o endereço para onde seguir.
+// As fotografias são «best effort»: se uma falhar, o artigo fica guardado e o
+// utilizador é levado para a ficha, onde pode voltar a enviá-las.
+async function guardarArtigo(form: FormData): Promise<string> {
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  try {
+    ({ supabase } = await adminClient());
+  } catch (error) {
+    // Sessão/permissões: mensagem própria do adminClient (texto seguro).
+    throw new ErroArtigo(error instanceof Error ? error.message : "Inicia sessão para continuar.");
+  }
   const id = text(form, "id", 64);
   const name = text(form, "name", 160);
   const slug = text(form, "slug", 160).toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
@@ -49,7 +64,7 @@ export async function saveShopProduct(form: FormData) {
   let brandId = text(form, "brand_id", 64);
   const brandName = text(form, "brand", 100);
   if (!brandId && brandName) brandId = (await findOrCreateShopTerm(supabase, "brands", brandName)) ?? "";
-  if (name.length < 2 || !slug || price < 0 || !categoryId) throw new Error("Preenche o nome, categoria e preço do artigo.");
+  if (name.length < 2 || !slug || price < 0 || !categoryId) throw new ErroArtigo("Preenche o nome, categoria e preço do artigo.");
   const productData = {
     slug, name,
     category_id: categoryId,
@@ -68,10 +83,10 @@ export async function saveShopProduct(form: FormData) {
   let productId = id;
   if (id) {
     const { error } = await supabase.from("products").update(productData).eq("id", id);
-    if (error) throw new Error("Não foi possível guardar o artigo. Confirma se a referência é única.");
+    if (error) throw new ErroArtigo("Não foi possível guardar o artigo. Confirma se a referência é única.");
   } else {
     const { data, error } = await supabase.from("products").insert(productData).select("id").single();
-    if (error || !data) throw new Error("Não foi possível criar o artigo. Confirma se a referência já existe.");
+    if (error || !data) throw new ErroArtigo("Não foi possível criar o artigo. Confirma se a referência já existe.");
     productId = data.id;
   }
 
@@ -84,53 +99,75 @@ export async function saveShopProduct(form: FormData) {
   if (variantRows.length > 0) {
     if (id) await supabase.from("product_variants").delete().eq("product_id", productId);
     const { error } = await supabase.from("product_variants").insert(variantRows);
-    if (error) throw new Error("O artigo foi guardado, mas não foi possível guardar as variantes.");
+    if (error) throw new ErroArtigo("O artigo foi guardado, mas não foi possível guardar as variantes.");
   }
 
   // A compatibilidade com viaturas só faz sentido para peças (kind=part): num
   // produto simples apaga-se o que restasse e não se lê o campo do formulário.
   const { error: compatibilityDeleteError } = await supabase.from("product_compatibility").delete().eq("product_id", productId);
-  if (compatibilityDeleteError) throw new Error("O artigo foi guardado, mas não foi possível atualizar a compatibilidade.");
+  if (compatibilityDeleteError) throw new ErroArtigo("O artigo foi guardado, mas não foi possível atualizar a compatibilidade.");
   if (kind === "part") {
     const compatibilityRows = text(form, "compatibility", 8000).split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
       const [brand = "", model = "", yearFrom = "", yearTo = "", notes = ""] = line.split(";").map((part) => part.trim());
       const from = yearFrom ? Number(yearFrom) : null;
       const to = yearTo ? Number(yearTo) : null;
-      if (brand.length < 2 || model.length < 1 || (from !== null && (!Number.isInteger(from) || from < 1900 || from > 2100)) || (to !== null && (!Number.isInteger(to) || to < 1900 || to > 2100)) || (from !== null && to !== null && from > to)) throw new Error("Revê as linhas de compatibilidade: marca, modelo e anos têm de ser válidos.");
+      if (brand.length < 2 || model.length < 1 || (from !== null && (!Number.isInteger(from) || from < 1900 || from > 2100)) || (to !== null && (!Number.isInteger(to) || to < 1900 || to > 2100)) || (from !== null && to !== null && from > to)) throw new ErroArtigo("Revê as linhas de compatibilidade: marca, modelo e anos têm de ser válidos.");
       return { product_id: productId, brand: brand.slice(0, 80), model: model.slice(0, 100), year_from: from, year_to: to, notes: notes.slice(0, 240) };
     });
     if (compatibilityRows.length) {
       const { error: compatibilityInsertError } = await supabase.from("product_compatibility").insert(compatibilityRows);
-      if (compatibilityInsertError) throw new Error("O artigo foi guardado, mas não foi possível guardar a compatibilidade.");
+      if (compatibilityInsertError) throw new ErroArtigo("O artigo foi guardado, mas não foi possível guardar a compatibilidade.");
     }
   }
 
   // Fotografias do criar: várias de uma vez (o editar usa o gestor próprio).
-  // A primeira enviada entra na posição 0, portanto é a principal.
-  const imageFiles = form.getAll("images").filter((file): file is File => file instanceof File && file.size > 0);
-  if (imageFiles.length) {
-    let position = 0;
-    for (const file of imageFiles) {
-      if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type) || file.size > 10 * 1024 * 1024) throw new Error("Escolhe imagens JPG, PNG ou WEBP até 10 MB.");
-      const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  // A primeira enviada entra na posição 0, portanto é a principal. Uma falha
+  // aqui não pode esconder o artigo já guardado: fica registada e o utilizador
+  // segue para a ficha, onde pode voltar a enviar.
+  const falhasFotos: string[] = [];
+  const tiposAceites = new Set(["image/jpeg", "image/png", "image/webp"]);
+  const enviarFoto = async (file: File, position: number) => {
+    if (!tiposAceites.has(file.type) || file.size > 10 * 1024 * 1024) {
+      falhasFotos.push(file.name || "fotografia");
+      return;
+    }
+    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    try {
       const url = await uploadToR2(`products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`, Buffer.from(await file.arrayBuffer()), file.type);
       const { error } = await supabase.from("product_images").insert({ product_id: productId, url, alt_text: name, position });
-      if (error) throw new Error("Uma fotografia foi enviada, mas não foi associada ao artigo.");
-      position += 1;
+      if (error) throw new Error(error.message);
+    } catch (error) {
+      // O erro real fica no registo do Worker (wrangler tail / painel).
+      console.error("[saveShopProduct] fotografia", file.name, error);
+      falhasFotos.push(file.name || "fotografia");
     }
+  };
+  const imageFiles = form.getAll("images").filter((file): file is File => file instanceof File && file.size > 0);
+  if (imageFiles.length) {
+    for (let position = 0; position < imageFiles.length; position += 1) await enviarFoto(imageFiles[position], position);
   } else {
     const image = form.get("image");
-    if (image instanceof File && image.size > 0) {
-      if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(image.type) || image.size > 10 * 1024 * 1024) throw new Error("Escolhe uma imagem JPG, PNG ou WEBP até 10 MB.");
-      const ext = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg";
-      const url = await uploadToR2(`products/${productId}/${Date.now()}.${ext}`, Buffer.from(await image.arrayBuffer()), image.type);
-      const { error } = await supabase.from("product_images").insert({ product_id: productId, url, alt_text: text(form, "name", 160), position: 0 });
-      if (error) throw new Error("A fotografia foi enviada, mas não foi associada ao artigo.");
-    }
+    if (image instanceof File && image.size > 0) await enviarFoto(image, 0);
   }
 
   revalidatePath("/loja"); revalidatePath(`/produto/${slug}`); revalidatePath("/admin/loja/produtos");
-  redirect("/admin/loja/produtos");
+  if (falhasFotos.length) {
+    revalidatePath(`/admin/loja/produtos/${productId}`);
+    return `/admin/loja/produtos/${productId}?aviso=fotos`;
+  }
+  return "/admin/loja/produtos";
+}
+
+export async function saveShopProduct(form: FormData): Promise<{ error: string }> {
+  let destino: string;
+  try {
+    destino = await guardarArtigo(form);
+  } catch (error) {
+    if (error instanceof ErroArtigo) return { error: error.message };
+    console.error("[saveShopProduct]", error);
+    return { error: "Não foi possível guardar o artigo. Tenta novamente." };
+  }
+  redirect(destino);
 }
 
 export async function deactivateShopProduct(form: FormData) {
@@ -370,21 +407,45 @@ function r2KeyFromUrl(url: string) {
   } catch { return ""; }
 }
 
-export async function uploadProductImage(form: FormData) {
-  const { supabase } = await adminClient();
+export async function uploadProductImage(form: FormData): Promise<{ error?: string }> {
+  try {
+    return await enviarFotografiaArtigo(form);
+  } catch (error) {
+    if (error instanceof ErroArtigo) return { error: error.message };
+    console.error("[uploadProductImage]", error);
+    return { error: "Não foi possível enviar a fotografia. Tenta novamente." };
+  }
+}
+
+// Envia uma fotografia para o R2 e associa-a ao artigo (mensagens de erro
+// devolvidas como valor — ver a nota sobre o #441 em saveShopProduct).
+async function enviarFotografiaArtigo(form: FormData): Promise<{ error?: string }> {
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  try {
+    ({ supabase } = await adminClient());
+  } catch (error) {
+    throw new ErroArtigo(error instanceof Error ? error.message : "Inicia sessão para continuar.");
+  }
   const productId = text(form, "product_id", 64);
   const file = form.get("image");
-  if (!productId || !(file instanceof File) || file.size === 0) throw new Error("Escolhe uma fotografia para adicionar.");
-  if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type) || file.size > 10 * 1024 * 1024) throw new Error("Escolhe uma imagem JPG, PNG ou WEBP até 10 MB.");
+  if (!productId || !(file instanceof File) || file.size === 0) throw new ErroArtigo("Escolhe uma fotografia para adicionar.");
+  if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type) || file.size > 10 * 1024 * 1024) throw new ErroArtigo("Escolhe uma imagem JPG, PNG ou WEBP até 10 MB.");
   const { data: product } = await supabase.from("products").select("slug,name").eq("id", productId).maybeSingle();
-  if (!product) throw new Error("Artigo não encontrado.");
+  if (!product) throw new ErroArtigo("Artigo não encontrado.");
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const url = await uploadToR2(`products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`, Buffer.from(await file.arrayBuffer()), file.type);
+  let url: string;
+  try {
+    url = await uploadToR2(`products/${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`, Buffer.from(await file.arrayBuffer()), file.type);
+  } catch (error) {
+    console.error("[uploadProductImage] R2", error);
+    throw new ErroArtigo("Não foi possível enviar a fotografia para o armazenamento. Tenta novamente.");
+  }
   const { data: images } = await supabase.from("product_images").select("position").eq("product_id", productId);
   const nextPosition = (images ?? []).reduce((max, image) => Math.max(max, Number(image.position ?? 0)), -1) + 1;
   const { error } = await supabase.from("product_images").insert({ product_id: productId, url, alt_text: product.name, position: nextPosition });
-  if (error) throw new Error("A fotografia foi enviada, mas não foi associada ao artigo.");
+  if (error) throw new ErroArtigo("A fotografia foi enviada, mas não foi associada ao artigo.");
   revalidatePath("/loja"); revalidatePath(`/produto/${product.slug}`); revalidatePath("/admin/loja/produtos");
+  return {};
 }
 
 export async function deleteProductImage(form: FormData) {

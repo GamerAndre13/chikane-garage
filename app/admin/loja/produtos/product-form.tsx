@@ -75,7 +75,12 @@ export function ProductForm({ categories, brands, initial = {} }: { categories: 
     const ordered = photos.length ? [photos[coverIndex], ...photos.filter((_, index) => index !== coverIndex)] : [];
     ordered.forEach((photo) => fd.append("images", photo));
     try {
-      await saveShopProduct(fd);
+      const resultado = await saveShopProduct(fd);
+      // Os erros esperados vêm como valor (ver app/actions/shop-admin.ts).
+      if (resultado?.error) {
+        setError(resultado.error);
+        setBusy(false);
+      }
     } catch (err) {
       // O redirect do fim da action também chega como erro: deixa-o passar.
       if (err instanceof Error && typeof (err as { digest?: string }).digest === "string" && (err as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw err;

@@ -40,6 +40,7 @@ partiu nada.
 | ↳ Comprovativo / acompanhamento de pedido (percurso + histórico) | `app/encomenda/[token]/page.tsx` |
 | Conta — encomendas | `app/conta/encomendas/page.tsx` |
 | Página 404 | `app/not-found.tsx` |
+| Erro inesperado (aviso com a referência do erro e «Tentar novamente») | `app/error.tsx` |
 | Imagem de partilha (redes sociais) | `app/opengraph-image.tsx` |
 | **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx` — agrupado por secções no formato Shopify: Painel · Vendas · Catálogo · Conteúdo · Gestão) |
 | ↳ Painel inicial | `app/admin/page.tsx` |
@@ -50,7 +51,7 @@ partiu nada.
 | ↳ Estatísticas | `app/admin/analytics/page.tsx` |
 | ↳ Definições | `app/admin/definicoes/page.tsx` (contactos, redes, fotos — `site_settings`) |
 | ↳ Loja (hub) | `app/admin/loja/page.tsx` — índice de todas as secções abaixo |
-| ↳↳ Produtos | `app/admin/loja/produtos/` — lista em formato Shopify (abas Todos/Produtos/Peças com contagens, filtros de estado, miniatura e etiquetas de `app/admin/loja/badges.tsx`); `novo/` e `[id]/` com o formulário em rail (`product-form.tsx` — campo Tipo: Produto/Peça → compatibilidade só aparece para peças; marca/categoria em combobox escrever+selecionar, criando a que faltar; variantes por eixos ilimitados → tabela de combinações SKU/stock/ajuste) + `product-images-manager.tsx` (fotos com setas ↑↓ e pôr em primeiro); no criar, fotografias multi com pré-visualização |
+| ↳↳ Produtos | `app/admin/loja/produtos/` — lista em formato Shopify (abas Todos/Produtos/Peças com contagens, filtros de estado, miniatura e etiquetas de `app/admin/loja/badges.tsx`); `novo/` e `[id]/` com o formulário em rail (`product-form.tsx` — campo Tipo: Produto/Peça → compatibilidade só aparece para peças; marca/categoria em combobox escrever+selecionar, criando a que faltar; variantes por eixos ilimitados → tabela de combinações SKU/stock/ajuste) + `product-images-manager.tsx` (fotos com setas ↑↓ e pôr em primeiro); no criar, fotografias multi com pré-visualização. Se uma fotografia falhar ao guardar, o artigo fica criado e a ficha abre com um aviso (`?aviso=fotos`) para voltar a enviá-las |
 | ↳↳ Categorias | `app/admin/loja/categorias/page.tsx` |
 | ↳↳ Marcas | `app/admin/loja/marcas/page.tsx` (criar, editar, ativar, apagar) |
 | ↳↳ Stock | `app/admin/loja/stock/page.tsx` |
