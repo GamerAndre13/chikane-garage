@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProductForm } from "@/app/admin/loja/produtos/product-form";
 import { ProductImagesManager } from "@/app/admin/loja/produtos/product-images-manager";
+import { PageHeader } from "@/app/admin/loja/_ui";
 
 export default async function EditarProdutoPage({ params, searchParams }: PageProps<"/admin/loja/produtos/[id]">) {
   const { id } = await params;
@@ -17,5 +17,22 @@ export default async function EditarProdutoPage({ params, searchParams }: PagePr
   ]);
   if (!product) notFound();
   const initial = { ...product, product_variants: variants ?? [] };
-  return <section><Link href="/admin/loja/produtos" className="font-display text-[10px] uppercase tracking-widest text-copper">← Produtos</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Editar artigo</h1>{aviso === "fotos" && <p role="status" className="mt-4 max-w-2xl border border-warning/40 bg-warning/10 p-3 text-xs leading-5 text-warning">O artigo foi guardado, mas não foi possível enviar as fotografias. Volta a adicioná-las em «Fotografias».</p>}<div className="mt-7 grid gap-5 lg:grid-cols-[1fr_340px]"><ProductForm categories={categories ?? []} brands={brands ?? []} initial={initial}/><ProductImagesManager productId={id} images={images ?? []} className="lg:col-start-1"/></div></section>;
+  return (
+    <div>
+      <PageHeader
+        title="Editar artigo"
+        subtitle={product.name}
+        backHref="/admin/loja/produtos"
+        breadcrumbs={[{ label: "Loja", href: "/admin/loja" }, { label: "Produtos", href: "/admin/loja/produtos" }]}
+        actions={[{ label: "Ver na loja", href: `/produto/${product.slug}`, variant: "secondary" }]}
+      />
+      {aviso === "fotos" && <p role="status" className="mb-5 max-w-2xl border border-warning/40 bg-warning/10 p-3 text-xs leading-5 text-warning">O artigo foi guardado, mas não foi possível enviar as fotografias. Volta a adicioná-las em «Fotografias».</p>}
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="space-y-5">
+          <ProductForm categories={categories ?? []} brands={brands ?? []} initial={initial} />
+          <ProductImagesManager productId={id} images={images ?? []} />
+        </div>
+      </div>
+    </div>
+  );
 }

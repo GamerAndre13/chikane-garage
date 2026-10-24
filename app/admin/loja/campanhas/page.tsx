@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { saveCampaign, deleteCampaign } from "@/app/actions/campaigns-admin";
+import { AvisoErro } from "@/app/admin/loja/aviso";
 
 const input = "mt-2 block w-full border border-border bg-background px-3 py-3 text-sm text-foreground";
 
 // Campanhas promocionais: o que aparece na página pública /campanhas.
-export default async function CampanhasLojaPage() {
+export default async function CampanhasLojaPage({ searchParams }: PageProps<"/admin/loja/campanhas">) {
+  const { erro } = await searchParams;
   const supabase = await createClient();
   const { data: campaigns } = await supabase.from("campaigns").select("id,title,description,image_url,button_label,button_href,starts_at,ends_at,is_active,position").order("position").order("created_at", { ascending: false });
   const list = campaigns ?? [];
   const today = new Date().toISOString().slice(0, 10);
   return <section><Link href="/admin/loja" className="font-display text-[10px] uppercase tracking-widest text-copper">← Loja</Link><h1 className="mt-3 font-display text-3xl font-bold uppercase">Campanhas</h1>
     <p className="mt-2 max-w-2xl text-sm text-muted">Campanhas promocionais com foto, texto, datas e botão. Aparecem na página pública <Link href="/campanhas" className="text-copper underline underline-offset-4">/campanhas</Link> enquanto estiverem ativas e dentro do período indicado.</p>
+    <AvisoErro erro={erro}/>
     <form action={saveCampaign} className="mt-7 grid gap-4 border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-7">
       <Field name="title" label="Título" required/>
       <Field name="button_label" label="Texto do botão" placeholder="Ex.: Ver stock"/>

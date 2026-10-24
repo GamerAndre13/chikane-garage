@@ -1,0 +1,53 @@
+ANÁLISE E PENDENTES - Chikane Garage (comercializável)
+Data: 2026-10-24
+Commit base: fc51021 (HEAD atual, com alterações não commitadas nesta sessão)
+Referência inicial loja: a774c5c | Backup: 0296264
+
+1) ANÁLISE COMPLETA
+- Arquitetura: Next 16 App Router, React 19, Tailwind v4, proxy.ts (não middleware), Supabase (RLS), R2 para imagens, OpenNext/Cloudflare Workers (chikane-garage1).
+- Lógica comercial: configurador de viatura nova (sem pagamento online, cria pedido "por aceitar"), loja com variantes/categorias/marcas/portes/cupões, pedidos online com place_order (service_role) e checkout por Stripe/MB WAY.
+- RPCs confirmados em supabase/setup.sql: shipping_quote, validate_coupon (GRANT a anon) e place_order (só service_role). 
+- O "Minified React error #441" ocorre em Server Actions quando lançam erros em produção — as mensagens não chegam ao browser.
+
+2) CORREÇÕES APLICADAS NESTA SESSÃO
+Backoffice / erros (#441):
+- app/actions/shop-admin.ts: introduzidos falhar()/acaoAdmin()/ErroArtigo; todas as ações do backoffice convertem throws em redirect com ?erro=; ações de fotografias (delete/makeFirst/move) passam a devolver {error?}; createShopCategory passa a aceitar parent_id; restantes ações (marcas/cupões/portes/stock/definições/newsletter/devoluções) com tratamento de erros via acaoAdmin.
+- app/actions/campaigns-admin.ts: reescrito com falhar()/acaoCampanha() e redirect ?erro=.
+- app/actions/vehicles-admin.ts: deleteVehicle passa a devolver {error?}.
+- Componentes/avisos: criado app/admin/loja/aviso.tsx (AvisoErro/AvisoOk); banners ?erro= adicionados a marcas/cupões/portes/stock/definições/categorias/newsletter/devoluções/encomendas/[id]/campanhas. Newsletter corrigido (6 colunas, nome separado, "—").
+- app/admin/veiculos/page.tsx: trata result.error de deleteVehicle.
+
+Checkout (visibilidade de totais, display only):
+- app/actions/shop.ts: adicionado quoteCheckout() que calcula subtotal/peso, chama shipping_quote e validate_coupon com cliente anon (mesmos RPC), devolve portes/desconto/total/onRequest (só apresentação). O cálculo final continua a ser feito por place_order.
+- components/shop/checkout-form.tsx: mostra Portes/Desconto/Total reais com debounce por código postal/cupão; "Total" já não mostra só subtotal.
+
+Configurador / ficha de viatura:
+- app/catalogo/[slug]/configurar/page.tsx: filtro alinhado ao servidor (createVehicleQuoteRequest) — aceitam-se artigos com compatibilidade declarada para esta viatura OU pertencentes a categorias de peças (pecas-e-manutencao, jantes-e-pneus, extras-e-acessorios). A marca do artigo sozinha já não basta.
+- app/catalogo/[slug]/page.tsx: secção de peças/acessórios com mesmo critério.
+
+Artigos / categorias / stock:
+- app/admin/loja/produtos/product-form.tsx: low_stock_threshold pré-preenchido com valor existente (initial.low_stock_threshold ?? 3).
+- app/admin/loja/categorias/page.tsx: criar categoria com parent_id (subcategorias).
+- app/admin/loja/page.tsx: "Stock baixo" filtra por stock_mode='managed', produtos ativos e usa o low_stock_threshold de cada artigo (em vez de <=3 fixo e sem filtro).
+- app/admin/loja/stock/page.tsx: mantém aviso de stock baixo com o mesmo critério.
+
+3) PENDENTES (a verificar/corrigir)
+Críticos/funcionais:
+- SUPABASE_SERVICE_ROLE_KEY no Worker chikane-garage1: createPaymentAdminClient() exige-o; sem ele createShopOrder/createVehicleQuoteRequest/createProductQuoteRequest falham por inteiro. Verificar: npx wrangler secret list --name chikane-garage1 (apenas RESEND_API_KEY visível). Se em falta, adicionar com npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --name chikane-garage1.
+- Produto "Jantes Forjadas" (123456, id 578b91b8-37c8-457d-b96c-4923b2687bce): ativo e visível na loja sem fotografia. Perguntar ao dono se deve ser apagado ou passado a rascunho.
+- Campanhas/secção 25 do supabase/setup.sql: se ainda não foi corrido no dashboard Supabase, executar. (Já havia nota no histórico.)
+
+Menores/verificação:
+- Garantir que em produção as mensagens dos erros do backoffice aparecem nos banners ?erro= (sistema #441 corrigido). 
+- Confirmar deploy do Worker após push a main.
+
+4) VALIDAÇÃO
+- npx tsc --noEmit: limpo
+- npx eslint <ficheiros mexidos>: sem erros
+- npm run build: OK (57 rotas, sem erros)
+
+5) NOTAS
+- Só foram alterados layouts/aparência/estrutura visual e correções necessárias para mensagens de erro e apresentação de totais (sem alterar lógica de cálculo no servidor). 
+- SQL apenas documentação; nenhuma alteração a supabase/setup.sql foi feita (mantém-se idempotente).
+- Sem dependências novas adicionadas.
+- Copy/commits devem manter pt-PT.

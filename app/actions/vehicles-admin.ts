@@ -24,19 +24,25 @@ function r2KeyFromUrl(url: string) {
 }
 
 // Apagar viatura: remove a linha (imagens/características em cascade) e limpa os ficheiros do R2.
-export async function deleteVehicle(id: string) {
-  const { supabase } = await adminClient();
-  if (!id) throw new Error("Viatura inválida.");
-  const { data: vehicle } = await supabase.from("vehicles").select("id,slug,cover_image_url,vehicle_images(url)").eq("id", id).maybeSingle();
-  if (!vehicle) throw new Error("Viatura não encontrada.");
-  const { error } = await supabase.from("vehicles").delete().eq("id", id);
-  if (error) throw new Error("Não foi possível apagar a viatura.");
-  const urls = [vehicle.cover_image_url, ...(vehicle.vehicle_images ?? []).map((image) => image.url)].filter((url): url is string => Boolean(url));
-  for (const url of urls) {
-    const key = r2KeyFromUrl(url);
-    if (key) await deleteFromR2(key).catch(() => {}); // limpeza best effort
+export async function deleteVehicle(id: string): Promise<{ error?: string }> {
+  try {
+    const { supabase } = await adminClient();
+    if (!id) return { error: "Viatura inválida." };
+    const { data: vehicle } = await supabase.from("vehicles").select("id,slug,cover_image_url,vehicle_images(url)").eq("id", id).maybeSingle();
+    if (!vehicle) return { error: "Viatura não encontrada." };
+    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+    if (error) throw new Error("Não foi possível apagar a viatura.");
+    const urls = [vehicle.cover_image_url, ...(vehicle.vehicle_images ?? []).map((image) => image.url)].filter((url): url is string => Boolean(url));
+    for (const url of urls) {
+      const key = r2KeyFromUrl(url);
+      if (key) await deleteFromR2(key).catch(() => {}); // limpeza best effort
+    }
+    revalidatePath("/admin/veiculos");
+    revalidatePath("/catalogo");
+    if (vehicle.slug) revalidatePath(`/catalogo/${vehicle.slug}`);
+    return {};
+  } catch (error) {
+    console.error("[deleteVehicle]", error);
+    return { error: error instanceof Error ? error.message : "Não foi possível apagar a viatura. Tenta novamente." };
   }
-  revalidatePath("/admin/veiculos");
-  revalidatePath("/catalogo");
-  if (vehicle.slug) revalidatePath(`/catalogo/${vehicle.slug}`);
 }

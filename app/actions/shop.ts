@@ -139,6 +139,114 @@ async function cancelCreatedOrder(supabase: ReturnType<typeof createPaymentAdmin
 }
 
 // ----------------------------------------------------------------------------
+// Resumo do checkout: portes e desconto reais ANTES de pagar. É só para
+// mostrar — o preço que vale é sempre o que `place_order` calcula no servidor
+// (createShopOrder). Usa os mesmos RPC públicos que ele: `shipping_quote` e
+// `validate_coupon`, com o peso e os preços lidos da base de dados (o browser
+// não manda valores).
+// ----------------------------------------------------------------------------
+export type CheckoutQuote = {
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  onRequest: boolean;
+  zone: string | null;
+  deliveryDaysMin: number | null;
+  deliveryDaysMax: number | null;
+  coupon: { valid: boolean; reason?: string } | null;
+};
+
+export async function quoteCheckout(input: {
+  items: OrderItemInput[];
+  country: string;
+  postalCode: string;
+  couponCode?: string;
+  email?: string;
+}): Promise<{ error?: string; quote?: CheckoutQuote }> {
+  try {
+    const items = Array.isArray(input?.items) ? input.items.slice(0, 50) : [];
+    if (!items.length) return { error: "O carrinho está vazio." };
+    if (!items.every((item) => /^[0-9a-f-]{36}$/i.test(String(item?.variant_id)) && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99)) {
+      return { error: "Confirma as quantidades no carrinho." };
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("product_variants")
+      .select("id,price_delta,weight_grams,is_active,products!inner(id,price,weight_grams,status)")
+      .in("id", items.map((item) => item.variant_id));
+    if (error) return { error: "Não foi possível calcular os portes." };
+
+    type Linha = { id: string; price_delta: number | null; weight_grams: number | null; is_active: boolean; products: { id: string; price: number; weight_grams: number | null; status: string } };
+    const variantes = new Map(((data ?? []) as unknown as Linha[]).map((row) => [row.id, row]));
+
+    let subtotal = 0;
+    let weight = 0;
+    for (const item of items) {
+      const row = variantes.get(item.variant_id);
+      // Variante apagada/inativa ou artigo fora de venda: não há orçamento fiável.
+      if (!row || row.is_active === false || row.products?.status !== "active") return { error: "Um artigo do carrinho já não está disponível." };
+      const unit = Number(row.products.price) + Number(row.price_delta ?? 0);
+      subtotal += unit * item.quantity;
+      // Mesma regra do place_order: peso da variante, senão o do artigo.
+      weight += (Number(row.weight_grams) || Number(row.products.weight_grams) || 0) * item.quantity;
+    }
+    subtotal = Math.round(subtotal * 100) / 100;
+
+    const country = String(input.country ?? "PT").toUpperCase().slice(0, 2) || "PT";
+    const postal = String(input.postalCode ?? "").trim().slice(0, 20);
+    const { data: shipping, error: shippingError } = await supabase.rpc("shipping_quote", {
+      p_country: country,
+      p_postal: postal,
+      p_weight_grams: Math.round(weight),
+      p_subtotal: subtotal,
+    });
+    if (shippingError) return { error: "Não foi possível calcular os portes." };
+
+    const quote = shipping as { found?: boolean; on_request?: boolean; zone?: string; price?: number; delivery_days_min?: number; delivery_days_max?: number } | null;
+    const onRequest = !quote?.found || Boolean(quote?.on_request);
+    let shippingPrice = onRequest ? 0 : Number(quote?.price ?? 0);
+
+    let discount = 0;
+    let coupon: CheckoutQuote["coupon"] = null;
+    const code = String(input.couponCode ?? "").trim().slice(0, 64);
+    if (code) {
+      const { data: validated, error: couponError } = await supabase.rpc("validate_coupon", {
+        p_code: code,
+        p_subtotal: subtotal,
+        p_email: String(input.email ?? "").trim().toLowerCase() || null,
+      });
+      if (couponError) return { error: "Não foi possível validar o cupão." };
+      const couponData = validated as { valid?: boolean; reason?: string; discount?: number; free_shipping?: boolean } | null;
+      coupon = { valid: Boolean(couponData?.valid), reason: couponData?.reason };
+      if (couponData?.valid) {
+        discount = Number(couponData.discount ?? 0);
+        if (couponData.free_shipping) shippingPrice = 0;
+      }
+    }
+
+    const total = Math.round((Math.max(0, subtotal - discount) + shippingPrice) * 100) / 100;
+    return {
+      quote: {
+        subtotal,
+        shipping: shippingPrice,
+        discount,
+        total,
+        onRequest,
+        zone: quote?.zone ?? null,
+        deliveryDaysMin: quote?.delivery_days_min ?? null,
+        deliveryDaysMax: quote?.delivery_days_max ?? null,
+        coupon,
+      },
+    };
+  } catch (error) {
+    console.error("[quoteCheckout]", error);
+    return { error: "Não foi possível calcular os portes." };
+  }
+}
+
+// ----------------------------------------------------------------------------
 // Pedido de encomenda de viatura nova (configurador /catalogo/<slug>/configurar):
 // não há compra direta nem pagamento online. O cliente configura a viatura com
 // os acessórios compatíveis e envia o pedido; a equipa contacta-o para fechar

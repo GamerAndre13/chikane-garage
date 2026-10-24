@@ -2,18 +2,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { euro } from "@/lib/shop";
 import { PaymentBadge, FulfillmentBadge } from "@/app/admin/loja/badges";
+import { PageHeader, Tabs, Table, THead, TBody, TH, TD, EmptyState } from "@/app/admin/loja/_ui";
 
 const ENTREGAR = ["pending_payment", "paid", "preparing"];
 const FECHADAS = ["delivered", "cancelled", "refunded", "returned"];
 
-// Um pedido de encomenda de viatura (configurador) ou de artigo por encomenda
-// fica sempre com payment_method nulo — é isso que distingue, na aba «Por
-// aceitar», os pedidos que esperam resposta da equipa das encomendas pagas
-// online.
-
-// Lista de encomendas no formato Shopify: abas com contagens (Todas / Por
-// entregar / Por pagar / Fechadas), pesquisa, colunas de data, cliente, total
-// e etiquetas coloridas de pagamento e entrega.
+// Lista de encomendas com shell limpo: cabeçalho, abas por estado e tabela intuitiva.
 export default async function EncomendasLojaPage({ searchParams }: PageProps<"/admin/loja/encomendas">) {
   const { q, aba } = await searchParams;
   const term = String(q ?? "").trim().slice(0, 80);
@@ -59,93 +53,89 @@ export default async function EncomendasLojaPage({ searchParams }: PageProps<"/a
   const orders = (data ?? []) as unknown as { id: string; order_number: string; customer_name: string | null; customer_email: string | null; status: string; payment_status: string | null; payment_method: string | null; total: number; created_at: string }[];
 
   const tabs = [
-    { label: "Todas", value: "", count: todas },
-    { label: "Por aceitar", value: "por-aceitar", count: porAceitar },
-    { label: "Por entregar", value: "por-entregar", count: porEntregar },
-    { label: "Por pagar", value: "por-pagar", count: porPagar },
-    { label: "Fechadas", value: "fechadas", count: fechadas },
+    { label: "Todas", value: "", href: href({ aba: "" }), count: todas },
+    { label: "Por aceitar", value: "por-aceitar", href: href({ aba: "por-aceitar" }), count: porAceitar },
+    { label: "Por entregar", value: "por-entregar", href: href({ aba: "por-entregar" }), count: porEntregar },
+    { label: "Por pagar", value: "por-pagar", href: href({ aba: "por-pagar" }), count: porPagar },
+    { label: "Fechadas", value: "fechadas", href: href({ aba: "fechadas" }), count: fechadas },
   ];
 
   return (
-    <section>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link href="/admin/loja" className="font-display text-[10px] uppercase tracking-widest text-copper">← Loja</Link>
-          <h1 className="mt-3 font-display text-3xl font-bold uppercase">Encomendas</h1>
-        </div>
-        <a href="/api/admin/shop/orders/export" className="border border-border px-5 py-3 font-display text-xs uppercase tracking-widest text-muted hover:border-copper hover:text-copper">Exportar CSV</a>
-      </header>
+    <div>
+      <PageHeader
+        title="Encomendas"
+        subtitle="Acompanhamento de encomendas da loja e pedidos de orçamento do configurador."
+        backHref="/admin/loja"
+        breadcrumbs={[{ label: "Loja", href: "/admin/loja" }]}
+        actions={[{ label: "Exportar CSV", href: "/api/admin/shop/orders/export", variant: "secondary" }]}
+      />
 
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-4">
-        <nav className="flex gap-1 border-b border-border">
-          {tabs.map((tab) => {
-            const ativo = abaAtual === tab.value;
-            return (
-              <Link
-                key={tab.value || "todas"}
-                href={href({ aba: tab.value })}
-                className={`-mb-px border-b-2 px-4 py-2.5 font-display text-xs uppercase tracking-widest transition-colors ${ativo ? "border-copper text-copper" : "border-transparent text-muted hover:text-foreground"}`}
-              >
-                {tab.label} <span className="ml-1 text-[10px] opacity-70">({tab.count})</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <form action="/admin/loja/encomendas" className="flex items-center gap-2">
-          {abaAtual && <input type="hidden" name="aba" value={abaAtual} />}
-          <input
-            type="search"
-            name="q"
-            defaultValue={term}
-            placeholder="Pesquisar nº, cliente ou email…"
-            className="w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground sm:w-64"
-          />
-          <button type="submit" className="border border-border px-3 py-2.5 font-display text-[10px] uppercase tracking-widest text-muted hover:border-copper hover:text-copper">Pesquisar</button>
-        </form>
+      <div className="border border-border bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
+          <Tabs tabs={tabs} active={abaAtual} />
+          <form action="/admin/loja/encomendas" className="flex items-center gap-2">
+            {abaAtual && <input type="hidden" name="aba" value={abaAtual} />}
+            <input
+              type="search"
+              name="q"
+              defaultValue={term}
+              placeholder="Pesquisar nº, cliente ou email…"
+              className="w-full border border-border bg-background px-3 py-2 text-sm text-foreground sm:w-72"
+            />
+            <button type="submit" className="border border-border px-3 py-2 font-display text-[10px] uppercase tracking-widest text-muted transition-colors hover:border-copper hover:text-copper">Pesquisar</button>
+          </form>
+        </div>
+
+        {!orders.length ? (
+          <div className="border-t border-border p-8">
+            <EmptyState
+              title={term || abaAtual ? "Sem resultados" : "Ainda não há encomendas"}
+              description={term || abaAtual ? "Nenhuma encomenda corresponde aos filtros aplicados." : "As encomendas da loja e os pedidos do configurador aparecem aqui."}
+              actionLabel={term || abaAtual ? "Limpar filtros" : undefined}
+              actionHref={term || abaAtual ? "/admin/loja/encomendas" : undefined}
+            />
+          </div>
+        ) : (
+          <div className="border-t border-border">
+            <Table>
+              <THead>
+                <tr>
+                  <TH>Encomenda</TH>
+                  <TH>Data</TH>
+                  <TH>Cliente</TH>
+                  <TH align="right">Total</TH>
+                  <TH>Pagamento</TH>
+                  <TH>Entrega</TH>
+                </tr>
+              </THead>
+              <TBody>
+                {orders.map((order) => {
+                  const data = new Date(order.created_at);
+                  return (
+                    <tr key={order.id} className="group transition-colors hover:bg-surface-mid/40">
+                      <TD>
+                        <Link href={`/admin/loja/encomendas/${order.id}`} className="font-medium text-foreground transition-colors hover:text-copper">#{order.order_number}</Link>
+                      </TD>
+                      <TD className="text-muted">
+                        {data.toLocaleDateString("pt-PT")} · {data.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
+                      </TD>
+                      <TD>
+                        <div className="min-w-0">
+                          <span className="block truncate text-foreground">{order.customer_name || "—"}</span>
+                          {order.customer_email && <span className="block truncate text-xs text-muted">{order.customer_email}</span>}
+                        </div>
+                      </TD>
+                      <TD align="right" className="text-foreground">{euro(order.total)}</TD>
+                      <TD><PaymentBadge status={order.payment_status} /></TD>
+                      <TD><FulfillmentBadge status={order.status} paymentMethod={order.payment_method} /></TD>
+                    </tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </div>
+        )}
       </div>
-
-      {!orders.length ? (
-        <p className="mt-8 border border-border p-8 text-center text-sm text-muted">
-          {term || abaAtual ? <>Nenhuma encomenda corresponde a estes filtros — <Link href="/admin/loja/encomendas" className="text-copper underline">limpar filtros</Link>.</> : <>Ainda não há encomendas na loja.</>}
-        </p>
-      ) : (
-        <div className="mt-6 overflow-x-auto border border-border bg-surface">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
-              <tr className="border-b border-border font-display text-[10px] uppercase tracking-widest text-muted">
-                <th className="px-4 py-3 text-left font-normal">Encomenda</th>
-                <th className="px-4 py-3 text-left font-normal">Data</th>
-                <th className="px-4 py-3 text-left font-normal">Cliente</th>
-                <th className="px-4 py-3 text-right font-normal">Total</th>
-                <th className="px-4 py-3 text-left font-normal">Pagamento</th>
-                <th className="px-4 py-3 text-left font-normal">Entrega</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => {
-                const data = new Date(order.created_at);
-                return (
-                  <tr key={order.id} className="border-b border-border/50 last:border-b-0 hover:bg-surface-mid/40">
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/loja/encomendas/${order.id}`} className="font-medium text-foreground hover:text-copper">#{order.order_number}</Link>
-                    </td>
-                    <td className="px-4 py-3 text-muted">
-                      {data.toLocaleDateString("pt-PT")} <span className="text-xs opacity-70">{data.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="block truncate text-foreground">{order.customer_name || "—"}</span>
-                      {order.customer_email && <span className="block truncate text-xs text-muted">{order.customer_email}</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right text-foreground">{euro(order.total)}</td>
-                    <td className="px-4 py-3"><PaymentBadge status={order.payment_status} /></td>
-                    <td className="px-4 py-3"><FulfillmentBadge status={order.status} paymentMethod={order.payment_method} /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }

@@ -37,17 +37,23 @@ export default async function VehicleConfiguratorPage({ params }: { params: Prom
       const model = (vehicle.model ?? "").trim().toLowerCase();
       const year = vehicle.registration_year ?? null;
       const partCategories = new Set(["pecas-e-manutencao", "jantes-e-pneus", "extras-e-acessorios"]);
-      accessories = (((products ?? []) as unknown as ShopProduct[])
-        .map((product) => {
-          const compatible = brand !== "" && (product.product_compatibility ?? []).some((entry) =>
-            (entry.brand ?? "").trim().toLowerCase() === brand &&
-            (!(entry.model ?? "").trim() || (entry.model ?? "").trim().toLowerCase() === model) &&
-            (year == null || ((entry.year_from ?? 0) <= year && (entry.year_to ?? 9999) >= year)));
-          const brandMatch = brand !== "" && (product.brands?.name ?? "").trim().toLowerCase() === brand;
-          const parts = partCategories.has(product.product_categories?.slug ?? "");
-          return { product, score: (compatible ? 6 : 0) + (brandMatch ? 3 : 0) + (parts ? 2 : 0) + (product.is_featured ? 1 : 0) };
-        })
-        .filter((entry) => entry.score >= 2)
+      // Só entram artigos que o servidor aceita no fim (createVehicleQuoteRequest):
+      // compatibilidade declarada com esta viatura OU categoria de peças. A marca
+      // do artigo, sozinha, não chega — aparecia aqui e era rejeitada ao enviar.
+      const compativel = (product: ShopProduct) => {
+        const declarada = (product.product_compatibility ?? []).some((entry) =>
+          brand !== "" &&
+          (entry.brand ?? "").trim().toLowerCase() === brand &&
+          (!(entry.model ?? "").trim() || (entry.model ?? "").trim().toLowerCase() === model) &&
+          (year == null || ((entry.year_from ?? 0) <= year && (entry.year_to ?? 9999) >= year)));
+        return declarada || partCategories.has(product.product_categories?.slug ?? "");
+      };
+      accessories = ((products ?? []) as unknown as ShopProduct[])
+        .filter(compativel)
+        .map((product) => ({
+          product,
+          score: ((product.product_compatibility ?? []).some((entry) => (entry.brand ?? "").trim().toLowerCase() === brand) ? 6 : 0) + (product.is_featured ? 1 : 0),
+        }))
         .sort((a, b) => b.score - a.score)
         .slice(0, 14)
         .map((entry): ConfiguratorAccessory => ({
@@ -59,7 +65,7 @@ export default async function VehicleConfiguratorPage({ params }: { params: Prom
           image: [...(entry.product.product_images ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? null,
           variants: (entry.product.product_variants ?? []).filter((variant) => variant.is_active !== false).map((variant) => ({ id: variant.id, name: variant.name, price_delta: Number(variant.price_delta ?? 0) })),
         }))
-        .filter((item) => item.variants.length > 0));
+        .filter((item) => item.variants.length > 0);
     }
 
     // Clientes registados: pré-preenchemos o contacto a partir do perfil.

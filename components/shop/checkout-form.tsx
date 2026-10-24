@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createShopOrder } from "@/app/actions/shop";
+import { createShopOrder, quoteCheckout, type CheckoutQuote } from "@/app/actions/shop";
 import { useShopCart } from "@/components/shop/cart-provider";
 
 // Dados já conhecidos de um cliente com sessão (perfil + morada predefinida).
@@ -36,13 +36,53 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
   const loggedIn = Boolean(prefill?.email);
   const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
 
+  // Resumo real (portes + desconto) pedido ao servidor com os mesmos RPC do
+  // pagamento. É só para mostrar: o total cobrado é sempre o que o servidor
+  // calcula em place_order.
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState("");
+  const [quoting, setQuoting] = useState(false);
+  const quoteTimer = useRef<number | null>(null);
+  const quoteRequest = useRef(0);
+
+  function refreshQuote() {
+    if (!hydrated || !lines.length) return;
+    if (quoteTimer.current) window.clearTimeout(quoteTimer.current);
+    const form = formRef.current;
+    const data = form ? new FormData(form) : null;
+    const postal = String(data?.get("shipping_postal_code") ?? "").trim();
+    const country = String(data?.get("shipping_country") ?? "PT");
+    if (!data || postal.length < 4) { setQuote(null); setQuoteError(""); setQuoting(false); return; }
+    setQuoting(true);
+    const request = ++quoteRequest.current;
+    quoteTimer.current = window.setTimeout(async () => {
+      const result = await quoteCheckout({
+        items: lines.map(({ variantId, quantity }) => ({ variant_id: variantId, quantity })),
+        country,
+        postalCode: postal,
+        couponCode: String(data.get("coupon_code") ?? ""),
+        email: String(data.get("customer_email") ?? prefill?.email ?? ""),
+      });
+      if (request !== quoteRequest.current) return; // resposta antiga
+      setQuoting(false);
+      if (result.error) { setQuote(null); setQuoteError(result.error); return; }
+      setQuoteError("");
+      setQuote(result.quote ?? null);
+    }, 450);
+  }
+
+  useEffect(() => () => { if (quoteTimer.current) window.clearTimeout(quoteTimer.current); }, []);
+
   // Validade inicial (contas com sessão podem já ter tudo preenchido).
   useEffect(() => {
     setComplete(Boolean(formRef.current?.checkValidity()));
-  }, []);
+    refreshQuote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, lines]);
 
   function revalidate() {
     setComplete(Boolean(formRef.current?.checkValidity()));
+    refreshQuote();
   }
 
   function submit(formData: FormData) {
@@ -122,8 +162,15 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
       </ul>
       <div className="mt-4 space-y-1 text-sm">
         <div className="flex justify-between gap-4"><span className="text-muted">Subtotal</span><span className="text-foreground">{money(subtotal)}</span></div>
-        <p className="text-[11px] leading-relaxed text-muted">Portes e total final confirmados pelo servidor antes do pagamento. IVA incluído.</p>
-        <div className="flex justify-between gap-4 border-t border-border pt-2 font-display text-base"><span className="uppercase">Total</span><span className="text-copper">{money(subtotal)}</span></div>
+        <div className="flex justify-between gap-4"><span className="text-muted">Portes</span><span className="text-foreground">{quoting ? "A calcular…" : quote ? (quote.onRequest ? "A confirmar" : quote.shipping > 0 ? money(quote.shipping) : "Grátis") : "—"}</span></div>
+        {(quote?.zone || quote?.deliveryDaysMin) && <p className="text-[11px] leading-relaxed text-muted">{quote?.zone}{quote?.deliveryDaysMin ? ` · entrega em ${quote.deliveryDaysMin}–${quote.deliveryDaysMax ?? quote.deliveryDaysMin} dias úteis` : ""}</p>}
+        {quote && quote.discount > 0 && <div className="flex justify-between gap-4 text-success"><span>Desconto</span><span>-{money(quote.discount)}</span></div>}
+        {quote?.coupon && !quote.coupon.valid && <p className="text-[11px] leading-relaxed text-red-light">{quote.coupon.reason ?? "Cupão inválido."}</p>}
+        {quote?.onRequest && <p className="text-[11px] leading-relaxed text-warning">Portes a confirmar: a equipa contacta-te antes de cobrar.</p>}
+        {quoteError && <p className="text-[11px] leading-relaxed text-red-light">{quoteError}</p>}
+        {!quote && !quoteError && <p className="text-[11px] leading-relaxed text-muted">Indica o código postal para ver os portes. IVA incluído.</p>}
+        <div className="flex justify-between gap-4 border-t border-border pt-2 font-display text-base"><span className="uppercase">Total</span><span className="text-copper">{money(quote ? quote.total : subtotal)}</span></div>
+        {!quote && <p className="text-[11px] leading-relaxed text-muted">O total final inclui os portes e é confirmado pelo servidor antes do pagamento.</p>}
       </div>
       <label className="mt-5 block text-xs uppercase tracking-widest text-muted" htmlFor="coupon_code">Cupão de desconto
         <input id="coupon_code" name="coupon_code" autoComplete="off" className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm uppercase text-foreground" placeholder="Código do cupão" />

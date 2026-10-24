@@ -9,7 +9,7 @@ type Opcao = { id: string; name: string };
 type Variante = { name: string; sku: string; stock: string; delta: string };
 type Eixo = { name: string; values: string };
 
-type ProdutoInicial = { id?: string; name?: string; slug?: string; category_id?: string; brand_id?: string; price?: number; compare_at_price?: number | null; short_description?: string; description?: string; sku?: string; weight_grams?: number; stock_mode?: string; status?: string; kind?: string; vat_rate?: number; is_featured?: boolean; is_new?: boolean; product_compatibility?: { brand: string; model: string; year_from?: number | null; year_to?: number | null; notes?: string | null }[]; product_variants?: { name: string; sku?: string | null; stock_quantity?: number | null; price_delta?: number | null }[] };
+type ProdutoInicial = { id?: string; name?: string; slug?: string; category_id?: string; brand_id?: string; price?: number; compare_at_price?: number | null; short_description?: string; description?: string; sku?: string; weight_grams?: number; stock_mode?: string; status?: string; kind?: string; vat_rate?: number; is_featured?: boolean; is_new?: boolean; low_stock_threshold?: number; product_compatibility?: { brand: string; model: string; year_from?: number | null; year_to?: number | null; notes?: string | null }[]; product_variants?: { name: string; sku?: string | null; stock_quantity?: number | null; price_delta?: number | null }[] };
 
 const input = "mt-2 block w-full border border-border bg-background px-3 py-3 text-sm text-foreground";
 const card = "border border-border bg-surface p-5 sm:p-6";
@@ -146,7 +146,7 @@ export function ProductForm({ categories, brands, initial = {} }: { categories: 
       </div>
       <div className={card}><h2 className={cardTitle}>Stock</h2>
         <label className="mt-4 block text-xs uppercase tracking-widest text-muted">Gestão de stock<select name="stock_mode" defaultValue={initial.stock_mode ?? "managed"} className={input}><option value="managed">Stock controlado</option><option value="unlimited">Sem limite</option><option value="on_request">Por encomenda</option></select></label>
-        <Field name="low_stock_threshold" label="Aviso de stock baixo" type="number" defaultValue={3}/>
+        <Field name="low_stock_threshold" label="Aviso de stock baixo" type="number" defaultValue={initial.low_stock_threshold ?? 3}/>
       </div>
       <div className={card}>
         {error && <p role="alert" className="mb-4 border border-red/40 p-3 text-xs leading-5 text-red">{error}</p>}

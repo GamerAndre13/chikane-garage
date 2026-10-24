@@ -266,7 +266,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   } catch { similarVehicles = []; }
 
   // Viaturas novas: peças e acessórios possíveis para este carro — a loja guarda
-  // compatibilidade declarada (product_compatibility), marca e categorias de peças.
+  // compatibilidade declarada (product_compatibility) e categorias de peças. A
+  // marca do artigo, sozinha, não chega: o servidor rejeitava-a no configurador.
   let accessories: ShopProduct[] = [];
   if (vehicle.condition === "new") {
     try {
@@ -287,11 +288,11 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             (entry.brand ?? "").trim().toLowerCase() === brand &&
             (!(entry.model ?? "").trim() || (entry.model ?? "").trim().toLowerCase() === model) &&
             (year == null || ((entry.year_from ?? 0) <= year && (entry.year_to ?? 9999) >= year)));
-          const brandMatch = brand !== "" && (product.brands?.name ?? "").trim().toLowerCase() === brand;
           const parts = partCategories.has(product.product_categories?.slug ?? "");
-          return { product, score: (compatible ? 6 : 0) + (brandMatch ? 3 : 0) + (parts ? 2 : 0) + (product.is_featured ? 1 : 0) };
+          if (!compatible && !parts) return null;
+          return { product, score: (compatible ? 6 : 0) + (product.is_featured ? 1 : 0) };
         })
-        .filter((entry) => entry.score >= 2)
+        .filter((entry): entry is { product: ShopProduct; score: number } => entry !== null)
         .sort((a, b) => b.score - a.score)
         .slice(0, 4)
         .map((entry) => entry.product);

@@ -53,7 +53,9 @@ export default function VeiculosList() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja apagar esta viatura? As fotografias também ficam removidas.")) return;
     try {
-      await deleteVehicle(id);
+      await deleteVehicle(id).then((result) => {
+        if (result?.error) throw new Error(result.error);
+      });
       fetchVehicles();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Não foi possível apagar a viatura.");

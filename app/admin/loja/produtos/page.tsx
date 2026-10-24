@@ -3,10 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { deactivateShopProduct } from "@/app/actions/shop-admin";
 import { euro } from "@/lib/shop";
 import { KindBadge, ProductStatusBadge } from "@/app/admin/loja/badges";
+import { PageHeader, Tabs, Table, THead, TBody, TH, TD, EmptyState } from "@/app/admin/loja/_ui";
 
-// Lista de produtos no formato Shopify: abas de tipo com contagens (Todos /
-// Produtos / Peças), filtros de estado em pastilhas, pesquisa e tabela com
-// miniatura, etiquetas de estado e ação rápida de arquivar.
+// Lista de produtos com shell limpo e intuitivo, inspirado no Medusa.
 export default async function AdminProdutosPage({ searchParams }: PageProps<"/admin/loja/produtos">) {
   const { q, estado, tipo } = await searchParams;
   const term = String(q ?? "").trim().slice(0, 80);
@@ -66,9 +65,9 @@ export default async function AdminProdutosPage({ searchParams }: PageProps<"/ad
   const products = (data ?? []) as unknown as { id: string; slug: string; name: string; price: number; status: string; kind?: string | null; category_id: string | null; stock_mode: string; product_categories: { name: string } | null; product_variants: { stock_quantity: number }[]; product_images: { url: string; position: number | null }[] }[];
 
   const tabs = [
-    { label: "Todos", value: "", count: total },
-    { label: "Produtos", value: "product", count: prodCount },
-    { label: "Peças", value: "part", count: partCount },
+    { label: "Todos", value: "", href: href({ tipo: "" }), count: total },
+    { label: "Produtos", value: "product", href: href({ tipo: "product" }), count: prodCount },
+    { label: "Peças", value: "part", href: href({ tipo: "part" }), count: partCount },
   ];
   const statusFilters = [
     { label: "Todos os estados", value: "" },
@@ -78,121 +77,119 @@ export default async function AdminProdutosPage({ searchParams }: PageProps<"/ad
   ];
 
   return (
-    <section>
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link href="/admin/loja" className="font-display text-[10px] uppercase tracking-widest text-copper">← Loja</Link>
-          <h1 className="mt-3 font-display text-3xl font-bold uppercase">Produtos</h1>
-        </div>
-        <Link href="/admin/loja/produtos/novo" className="bg-copper px-5 py-3 font-display text-xs uppercase tracking-widest text-black">Novo artigo</Link>
-      </header>
+    <div>
+      <PageHeader
+        title="Produtos"
+        subtitle="Artigos, peças, variantes, preços e compatibilidade para a loja."
+        backHref="/admin/loja"
+        breadcrumbs={[{ label: "Loja", href: "/admin/loja" }]}
+        actions={[{ label: "Novo artigo", href: "/admin/loja/produtos/novo", variant: "primary" }]}
+      />
 
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-4">
-        <nav className="flex gap-1 border-b border-border">
-          {tabs.map((tab) => {
-            const ativo = tipoAtual === tab.value;
-            return (
-              <Link
-                key={tab.value || "todos"}
-                href={href({ tipo: tab.value })}
-                className={`-mb-px border-b-2 px-4 py-2.5 font-display text-xs uppercase tracking-widest transition-colors ${ativo ? "border-copper text-copper" : "border-transparent text-muted hover:text-foreground"}`}
-              >
-                {tab.label} <span className="ml-1 text-[10px] opacity-70">({tab.count})</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <form action="/admin/loja/produtos" className="flex items-center gap-2">
-          {estadoAtual && <input type="hidden" name="estado" value={estadoAtual} />}
-          {tipoAtual && <input type="hidden" name="tipo" value={tipoAtual} />}
-          <input
-            type="search"
-            name="q"
-            defaultValue={term}
-            placeholder="Pesquisar artigos…"
-            className="w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground sm:w-64"
-          />
-          <button type="submit" className="border border-border px-3 py-2.5 font-display text-[10px] uppercase tracking-widest text-muted hover:border-copper hover:text-copper">Pesquisar</button>
-        </form>
+      <div className="border border-border bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
+          <Tabs tabs={tabs} active={tipoAtual} />
+          <form action="/admin/loja/produtos" className="flex items-center gap-2">
+            {estadoAtual && <input type="hidden" name="estado" value={estadoAtual} />}
+            {tipoAtual && <input type="hidden" name="tipo" value={tipoAtual} />}
+            <input
+              type="search"
+              name="q"
+              defaultValue={term}
+              placeholder="Pesquisar por nome ou referência…"
+              className="w-full border border-border bg-background px-3 py-2 text-sm text-foreground sm:w-72"
+            />
+            <button type="submit" className="border border-border px-3 py-2 font-display text-[10px] uppercase tracking-widest text-muted transition-colors hover:border-copper hover:text-copper">Pesquisar</button>
+          </form>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-2.5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-1">
+            {statusFilters.map((filter) => {
+              const ativo = estadoAtual === filter.value;
+              return (
+                <Link
+                  key={filter.value || "todos"}
+                  href={href({ estado: filter.value })}
+                  className={`px-2.5 py-1.5 text-xs transition-colors ${ativo ? "bg-copper/15 text-copper" : "text-muted hover:text-foreground"}`}
+                >
+                  {filter.label}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted">{total} artigo{total === 1 ? "" : "s"}</p>
+        </div>
+
+        {!products.length ? (
+          <div className="border-t border-border p-8">
+            <EmptyState
+              title={term || estadoAtual || tipoAtual ? "Sem resultados" : "Ainda não há artigos"}
+              description={term || estadoAtual || tipoAtual ? "Nenhum artigo corresponde aos filtros aplicados." : "Começa por criar o primeiro artigo para a loja."}
+              actionLabel={term || estadoAtual || tipoAtual ? "Limpar filtros" : "Novo artigo"}
+              actionHref={term || estadoAtual || tipoAtual ? "/admin/loja/produtos" : "/admin/loja/produtos/novo"}
+            />
+          </div>
+        ) : (
+          <div className="border-t border-border">
+            <Table>
+              <THead>
+                <tr>
+                  <TH>Artigo</TH>
+                  <TH>Tipo</TH>
+                  <TH>Categoria</TH>
+                  <TH align="right">Preço</TH>
+                  <TH>Stock</TH>
+                  <TH>Estado</TH>
+                  <TH align="right">Ações</TH>
+                </tr>
+              </THead>
+              <TBody>
+                {products.map((product) => {
+                  const image = [...(product.product_images ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
+                  const emStock = (product.product_variants ?? []).reduce((sum, variant) => sum + (variant.stock_quantity ?? 0), 0);
+                  const stockLabel = product.stock_mode === "unlimited" ? "Sem limite" : product.stock_mode === "on_request" ? "Por encomenda" : `${emStock} un`;
+                  const isPart = idsPecas.includes(product.category_id ?? "");
+                  return (
+                    <tr key={product.id} className="group transition-colors hover:bg-surface-mid/40">
+                      <TD>
+                        <div className="flex items-center gap-3">
+                          <span className="h-10 w-10 shrink-0 overflow-hidden border border-border bg-surface-mid">
+                            {image
+                              ? // eslint-disable-next-line @next/next/no-img-element
+                                <img src={image.url} alt="" className="h-full w-full object-cover" />
+                              : <span className="flex h-full items-center justify-center text-[8px] uppercase tracking-widest text-muted">—</span>}
+                          </span>
+                          <div className="min-w-0">
+                            <Link href={`/admin/loja/produtos/${product.id}`} className="block truncate text-foreground transition-colors hover:text-copper">{product.name}</Link>
+                            <span className="block truncate text-xs text-muted">/{product.slug}</span>
+                          </div>
+                        </div>
+                      </TD>
+                      <TD><KindBadge kind={product.kind} categoryIsPart={isPart} /></TD>
+                      <TD className="text-muted">{product.product_categories?.name ?? "—"}</TD>
+                      <TD align="right" className="text-foreground">{euro(product.price)}</TD>
+                      <TD className={product.stock_mode !== "unlimited" && product.stock_mode !== "on_request" && emStock === 0 ? "text-red-light" : "text-muted"}>{stockLabel}</TD>
+                      <TD><ProductStatusBadge status={product.status} /></TD>
+                      <TD align="right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                          <Link href={`/admin/loja/produtos/${product.id}`} className="border border-border px-2.5 py-1 text-[10px] uppercase tracking-widest text-muted transition-colors hover:border-copper hover:text-copper">Editar</Link>
+                          {product.status !== "archived" && (
+                            <form action={deactivateShopProduct}>
+                              <input type="hidden" name="id" value={product.id} />
+                              <button type="submit" className="border border-border px-2.5 py-1 text-[10px] uppercase tracking-widest text-muted transition-colors hover:border-copper hover:text-copper">Arquivar</button>
+                            </form>
+                          )}
+                        </div>
+                      </TD>
+                    </tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </div>
+        )}
       </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {statusFilters.map((filter) => {
-            const ativo = estadoAtual === filter.value;
-            return (
-              <Link
-                key={filter.value || "todos"}
-                href={href({ estado: filter.value })}
-                className={`border px-3 py-1.5 font-display text-[10px] uppercase tracking-widest transition-colors ${ativo ? "border-copper bg-copper/10 text-copper" : "border-border text-muted hover:border-copper/50 hover:text-foreground"}`}
-              >
-                {filter.label}
-              </Link>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted">{total} artigo{total === 1 ? "" : "s"}</p>
-      </div>
-
-      {!products.length ? (
-        <p className="mt-8 border border-border p-8 text-center text-sm text-muted">
-          {term || estadoAtual || tipoAtual ? <>Nenhum artigo corresponde a estes filtros — <Link href="/admin/loja/produtos" className="text-copper underline">limpar filtros</Link>.</> : <>Ainda não há artigos. Cria o primeiro em <Link href="/admin/loja/produtos/novo" className="text-copper underline">Novo artigo</Link>.</>}
-        </p>
-      ) : (
-        <div className="mt-6 overflow-x-auto border border-border bg-surface">
-          <table className="w-full min-w-[880px] text-sm">
-            <thead>
-              <tr className="border-b border-border font-display text-[10px] uppercase tracking-widest text-muted">
-                <th className="px-4 py-3 text-left font-normal">Artigo</th>
-                <th className="px-4 py-3 text-left font-normal">Tipo</th>
-                <th className="px-4 py-3 text-left font-normal">Categoria</th>
-                <th className="px-4 py-3 text-right font-normal">Preço</th>
-                <th className="px-4 py-3 text-left font-normal">Stock</th>
-                <th className="px-4 py-3 text-left font-normal">Estado</th>
-                <th className="px-4 py-3 text-right font-normal">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => {
-                const image = [...(product.product_images ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
-                const emStock = (product.product_variants ?? []).reduce((sum, variant) => sum + (variant.stock_quantity ?? 0), 0);
-                const stockLabel = product.stock_mode === "unlimited" ? "Sem limite" : product.stock_mode === "on_request" ? "Por encomenda" : `${emStock} un`;
-                return (
-                  <tr key={product.id} className="border-b border-border/50 last:border-b-0 hover:bg-surface-mid/40">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <span className="h-11 w-11 shrink-0 overflow-hidden border border-border bg-surface-mid">
-                          {image
-                            // eslint-disable-next-line @next/next/no-img-element -- miniatura do artigo (R2/SVG local) sem dimensões conhecidas
-                            ? <img src={image.url} alt="" className="h-full w-full object-cover" />
-                            : <span className="flex h-full items-center justify-center font-display text-[8px] uppercase tracking-widest text-muted">—</span>}
-                        </span>
-                        <span className="min-w-0">
-                          <Link href={`/admin/loja/produtos/${product.id}`} className="block truncate font-medium text-foreground hover:text-copper">{product.name}</Link>
-                          <span className="block truncate text-xs text-muted">/{product.slug}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3"><KindBadge kind={product.kind} categoryIsPart={idsPecas.includes(product.category_id ?? "")} /></td>
-                    <td className="px-4 py-3 text-muted">{product.product_categories?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-foreground">{euro(product.price)}</td>
-                    <td className={`px-4 py-3 ${product.stock_mode !== "unlimited" && product.stock_mode !== "on_request" && emStock === 0 ? "text-red-light" : "text-muted"}`}>{stockLabel}</td>
-                    <td className="px-4 py-3"><ProductStatusBadge status={product.status} /></td>
-                    <td className="px-4 py-3 text-right">
-                      {product.status !== "archived" && (
-                        <form action={deactivateShopProduct} className="inline">
-                          <input type="hidden" name="id" value={product.id} />
-                          <button type="submit" className="border border-border px-2.5 py-1.5 font-display text-[10px] uppercase tracking-widest text-muted hover:border-copper hover:text-copper">Arquivar</button>
-                        </form>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }
