@@ -3,7 +3,7 @@ import { createShopCoupon, updateShopCoupon, deleteShopCoupon } from "@/app/acti
 import { AvisoErro } from "@/app/admin/loja/aviso";
 import { PageHeader, Card, EmptyState } from "@/app/admin/loja/_ui";
 
-export default async function CupoesLojaPage({ searchParams }: PageProps<"/admin/loja/cupoes">) {
+export default async function CupoesLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("coupons").select("id,code,description,discount_type,discount_value,min_order_total,uses_count,max_uses,starts_at,ends_at,is_active").order("created_at", { ascending: false });

@@ -5,7 +5,7 @@ import { PageHeader, Card, EmptyState } from "@/app/admin/loja/_ui";
 
 const input = "mt-2 block w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground";
 
-export default async function MarcasLojaPage({ searchParams }: PageProps<"/admin/loja/marcas">) {
+export default async function MarcasLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const [{ data: brands }, { data: products }] = await Promise.all([

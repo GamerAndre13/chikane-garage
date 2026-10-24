@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { pickFromPool } from "@/lib/avatar-pool";
-import { useShopCart } from "@/components/shop/cart-provider";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -17,8 +16,6 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  // Só a contagem do carrinho — o estado completo vive no CartProvider.
-  const { count, hydrated: cartHydrated } = useShopCart();
   const navClass = (href: string) => {
     const active = pathname === href || pathname.startsWith(`${href}/`);
     return `group relative py-2 font-display text-xs font-medium uppercase tracking-[0.2em] transition-colors ${active ? "text-copper group-hover/nav:text-silver hover:!text-copper" : "text-silver hover:text-copper"} after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:scale-x-0 after:bg-copper after:transition-transform after:duration-300 ${active ? "after:scale-x-100 group-hover/nav:after:scale-x-0 hover:after:scale-x-100" : "hover:after:scale-x-100"}`;
@@ -134,9 +131,6 @@ export function Header() {
           <Link href="/novos" className={navClass("/novos")}>
             Novos
           </Link>
-          <Link href="/loja" className={navClass("/loja")}>
-            Loja
-          </Link>
           <Link href="/campanhas" className={navClass("/campanhas")}>
             Campanhas
           </Link>
@@ -148,28 +142,7 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* ml-auto empurra os controlos para a direita no telemóvel (onde a nav
-            está escondida); a partir de md a nav já tem ml-auto e o espaçamento
-            volta a ser o ml-6. */}
         <div className="ml-auto flex items-center gap-3 md:ml-6">
-          {/* Carrinho da loja: o contador só aparece quando há artigos. */}
-          <Link
-            href="/carrinho"
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center border border-border text-silver transition-colors hover:border-copper hover:text-copper"
-            title="Carrinho"
-            aria-label={cartHydrated && count > 0 ? `Carrinho, ${count} artigos` : "Carrinho"}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="9" cy="21" r="1" />
-              <circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </svg>
-            {cartHydrated && count > 0 && (
-              <span className="absolute -right-2 -top-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-copper px-1 text-[10px] font-semibold leading-none text-white">
-                {count}
-              </span>
-            )}
-          </Link>
           {user ? (
             <>
               {isAdmin && (
@@ -279,9 +252,6 @@ export function Header() {
               <Link href="/novos" className={navClass("/novos")} onClick={() => setMobileOpen(false)}>
                 Novos
               </Link>
-              <Link href="/loja" className={navClass("/loja")} onClick={() => setMobileOpen(false)}>
-                Loja
-              </Link>
               <Link href="/campanhas" className={navClass("/campanhas")} onClick={() => setMobileOpen(false)}>
                 Campanhas
               </Link>
@@ -290,10 +260,6 @@ export function Header() {
               </Link>
               <Link href="/contacto" className={navClass("/contacto")} onClick={() => setMobileOpen(false)}>
                 Contacto
-              </Link>
-
-              <Link href="/carrinho" className={`${navClass("/carrinho")} mt-3 w-fit`} onClick={() => setMobileOpen(false)}>
-                Carrinho{cartHydrated && count > 0 ? ` (${count})` : ""}
               </Link>
             </nav>
 

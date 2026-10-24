@@ -7,7 +7,7 @@ import { PageHeader, Card, EmptyState } from "@/app/admin/loja/_ui";
 const input = "mt-2 block w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground";
 const statusLabel: Record<string, string> = { requested: "Pedida", approved: "Aprovada", received: "Recebida", refunded: "Reembolsada", rejected: "Rejeitada" };
 
-export default async function DevolucoesLojaPage({ searchParams }: PageProps<"/admin/loja/devolucoes">) {
+export default async function DevolucoesLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("return_requests").select("id,order_id,email,reason,fault,status,refund_total,return_tracking,admin_note,created_at,orders(order_number,total,status)").order("created_at", { ascending: false }).limit(200);

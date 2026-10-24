@@ -4,7 +4,7 @@ import { adjustShopStock } from "@/app/actions/shop-admin";
 import { AvisoErro } from "@/app/admin/loja/aviso";
 import { PageHeader, Card, EmptyState } from "@/app/admin/loja/_ui";
 
-export default async function StockLojaPage({ searchParams }: PageProps<"/admin/loja/stock">) {
+export default async function StockLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("product_variants").select("id,name,sku,stock_quantity,is_active,products!inner(id,name,stock_mode,low_stock_threshold)").eq("is_active", true).order("name");

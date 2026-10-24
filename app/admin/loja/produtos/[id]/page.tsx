@@ -4,7 +4,7 @@ import { ProductForm } from "@/app/admin/loja/produtos/product-form";
 import { ProductImagesManager } from "@/app/admin/loja/produtos/product-images-manager";
 import { PageHeader } from "@/app/admin/loja/_ui";
 
-export default async function EditarProdutoPage({ params, searchParams }: PageProps<"/admin/loja/produtos/[id]">) {
+export default async function EditarProdutoPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aviso?: string }> }) {
   const { id } = await params;
   const { aviso } = await searchParams;
   const supabase = await createClient();

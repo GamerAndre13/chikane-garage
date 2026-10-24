@@ -6,7 +6,7 @@ import { KindBadge, ProductStatusBadge } from "@/app/admin/loja/badges";
 import { PageHeader, Tabs, Table, THead, TBody, TH, TD, EmptyState } from "@/app/admin/loja/_ui";
 
 // Lista de produtos com shell limpo e intuitivo, inspirado no Medusa.
-export default async function AdminProdutosPage({ searchParams }: PageProps<"/admin/loja/produtos">) {
+export default async function AdminProdutosPage({ searchParams }: { searchParams: Promise<{ q?: string; estado?: string; tipo?: string }> }) {
   const { q, estado, tipo } = await searchParams;
   const term = String(q ?? "").trim().slice(0, 80);
   const safe = term.replace(/[%,()]/g, " ");

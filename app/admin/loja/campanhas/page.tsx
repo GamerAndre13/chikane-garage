@@ -6,7 +6,7 @@ import { AvisoErro } from "@/app/admin/loja/aviso";
 const input = "mt-2 block w-full border border-border bg-background px-3 py-3 text-sm text-foreground";
 
 // Campanhas promocionais: o que aparece na página pública /campanhas.
-export default async function CampanhasLojaPage({ searchParams }: PageProps<"/admin/loja/campanhas">) {
+export default async function CampanhasLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data: campaigns } = await supabase.from("campaigns").select("id,title,description,image_url,button_label,button_href,starts_at,ends_at,is_active,position").order("position").order("created_at", { ascending: false });

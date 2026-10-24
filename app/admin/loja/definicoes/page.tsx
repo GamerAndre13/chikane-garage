@@ -5,7 +5,7 @@ import { PageHeader, Card } from "@/app/admin/loja/_ui";
 
 const input = "mt-2 block w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground";
 
-export default async function DefinicoesLojaPage({ searchParams }: PageProps<"/admin/loja/definicoes">) {
+export default async function DefinicoesLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("shop_settings").select("*").eq("id", 1).maybeSingle();

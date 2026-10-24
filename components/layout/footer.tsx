@@ -8,11 +8,9 @@ import { mapsUrl } from "@/lib/maps";
 const NAV_LINKS = [
   { label: "Novos", href: "/novos" },
   { label: "Usados", href: "/usados" },
-  { label: "Catálogo", href: "/catalogo" },
-  { label: "Loja", href: "/loja" },
+  { label: "Campanhas", href: "/campanhas" },
   { label: "Sobre Nós", href: "/sobre" },
   { label: "Contacto", href: "/contacto" },
-  { label: "Envios e devoluções", href: "/envios-e-devolucoes" },
   { label: "Perguntas frequentes", href: "/faq" },
   { label: "A minha conta", href: "/conta" },
 ];

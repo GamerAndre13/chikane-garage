@@ -8,7 +8,7 @@ const ENTREGAR = ["pending_payment", "paid", "preparing"];
 const FECHADAS = ["delivered", "cancelled", "refunded", "returned"];
 
 // Lista de encomendas com shell limpo: cabeçalho, abas por estado e tabela intuitiva.
-export default async function EncomendasLojaPage({ searchParams }: PageProps<"/admin/loja/encomendas">) {
+export default async function EncomendasLojaPage({ searchParams }: { searchParams: Promise<{ q?: string; aba?: string }> }) {
   const { q, aba } = await searchParams;
   const term = String(q ?? "").trim().slice(0, 80);
   const safe = term.replace(/[%,()]/g, " ");

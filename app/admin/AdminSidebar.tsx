@@ -4,8 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Navegação do backoffice agrupada por secções, no formato Shopify
-// (Painel · Vendas · Catálogo · Conteúdo · Gestão).
+// Navegação do backoffice agrupada por secções
 const groups = [
   {
     title: "Painel",
@@ -17,8 +16,6 @@ const groups = [
   {
     title: "Vendas",
     links: [
-      { href: "/admin/loja/encomendas", label: "Encomendas" },
-      { href: "/admin/loja/devolucoes", label: "Devoluções" },
       { href: "/admin/pedidos", label: "Pedidos" },
     ],
   },
@@ -26,8 +23,6 @@ const groups = [
     title: "Catálogo",
     links: [
       { href: "/admin/veiculos", label: "Viaturas" },
-      { href: "/admin/loja/produtos", label: "Produtos" },
-      { href: "/admin/loja", label: "Loja" },
     ],
   },
   {
@@ -35,7 +30,6 @@ const groups = [
     links: [
       { href: "/admin/conteudo", label: "Conteúdo" },
       { href: "/admin/loja/campanhas", label: "Campanhas" },
-      { href: "/admin/loja/newsletter", label: "Newsletter" },
     ],
   },
   {
@@ -47,16 +41,8 @@ const groups = [
   },
 ];
 
-const allLinks = groups.flatMap((group) => group.links);
-
-// Destaca a aba aberta: o hub da loja (/admin/loja) só fica ativo quando
-// nenhum link específico da loja corresponde ao endereço.
 const isActiveLink = (pathname: string, href: string) => {
   if (href === "/admin") return pathname === "/admin";
-  if (href === "/admin/loja") {
-    if (!pathname.startsWith("/admin/loja")) return false;
-    return !allLinks.some((link) => link.href !== "/admin/loja" && pathname.startsWith(link.href));
-  }
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 

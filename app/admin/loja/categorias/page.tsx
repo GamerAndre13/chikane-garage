@@ -5,7 +5,7 @@ import { PageHeader, Card, EmptyState, Table, THead, TBody, TH, TD } from "@/app
 
 const input = "mt-2 block w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground";
 
-export default async function CategoriasLojaPage({ searchParams }: PageProps<"/admin/loja/categorias">) {
+export default async function CategoriasLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data: categories } = await supabase.from("product_categories").select("id,name,slug,description,position,is_active,parent_id").order("position");

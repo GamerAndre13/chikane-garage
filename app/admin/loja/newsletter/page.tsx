@@ -3,7 +3,7 @@ import { toggleNewsletterSubscriber, deleteNewsletterSubscriber } from "@/app/ac
 import { AvisoErro } from "@/app/admin/loja/aviso";
 import { PageHeader, Card, EmptyState } from "@/app/admin/loja/_ui";
 
-export default async function NewsletterLojaPage({ searchParams }: PageProps<"/admin/loja/newsletter">) {
+export default async function NewsletterLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("newsletter_subscribers").select("id,email,name,source,status,created_at").order("created_at", { ascending: false }).limit(2000);

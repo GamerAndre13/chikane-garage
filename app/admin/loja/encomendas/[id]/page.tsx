@@ -28,7 +28,7 @@ const nextStatusLabel: Record<string, string> = {
 // Ficha de encomenda no formato Shopify: cabeçalho com nº e etiquetas de
 // pagamento/entrega, coluna principal com artigos, totais e histórico, e rail
 // direito com a atualização do percurso, pagamento, cliente e entrega.
-export default async function EncomendaDetalhePage({ params, searchParams }: PageProps<"/admin/loja/encomendas/[id]">) {
+export default async function EncomendaDetalhePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ erro?: string }> }) {
   const { id } = await params;
   const { erro } = await searchParams;
   const supabase = await createClient();

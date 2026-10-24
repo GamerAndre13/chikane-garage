@@ -8,7 +8,7 @@ type Zone = { id: string; name: string; country_codes: string; postal_code_from:
 
 const euro = (value: number) => Number(value).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
 
-export default async function PortesLojaPage({ searchParams }: PageProps<"/admin/loja/portes">) {
+export default async function PortesLojaPage({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("shipping_zones").select("id,name,country_codes,postal_code_from,postal_code_to,position,is_active,shipping_rates(id,name,weight_from_grams,weight_to_grams,price,delivery_days_min,delivery_days_max,is_active,position)").order("position");
