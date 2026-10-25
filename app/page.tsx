@@ -9,8 +9,6 @@ import { Reveal } from "@/components/ui/reveal";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import type { SiteSettings } from "@/lib/site-settings";
-import { getShopProducts } from "@/lib/shop";
-import { ProductCard } from "@/components/shop/product-card";
 
 export const metadata = {
   title: "Chikane Garage — Viaturas de performance e acessórios",
@@ -79,7 +77,7 @@ export default async function HomePage() {
   // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com mais
   // de 7 dias são arquivadas antes da leitura.
   await Promise.all([expireReservations(), archiveSoldVehicles()]);
-  const [vehiclesRes, spotlightRes, contentRes, settingsRes, shopProducts] = await Promise.all([
+  const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
@@ -93,7 +91,6 @@ export default async function HomePage() {
       .limit(1),
     supabase.from("site_content").select("section_key, body"),
     supabase.from("site_settings").select("photo_home_hero, photo_home_history, phone, email, address, location, location_url, social_instagram, social_facebook, social_youtube, social_tiktok").limit(1).maybeSingle(),
-    getShopProducts({ featured: true, limit: 4 }),
   ]);
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
@@ -187,7 +184,7 @@ export default async function HomePage() {
             <Link href="/novos" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">
               Ver Novos
             </Link>
-            <Link href="/loja" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">Loja</Link>
+            <Link href="/usados" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">Ver Catálogo</Link>
           </div>
         </div>
       </section>
@@ -368,7 +365,6 @@ export default async function HomePage() {
             <div><p className="kicker">Loja Chikane</p><h2 className="mt-3 max-w-3xl font-display text-3xl font-bold uppercase leading-[0.95] text-foreground sm:text-5xl">A garagem também se leva contigo</h2></div>
             <Link href="/loja" className="font-display text-xs uppercase tracking-widest text-copper hover:text-copper-light">Explorar a loja</Link>
           </div>
-          {shopProducts.length ? <div className="mt-9 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">{shopProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div> : <p className="mt-7 max-w-2xl text-sm leading-relaxed text-muted">Acessórios, produtos de cuidado e merchandising da garagem serão apresentados aqui.</p>}
         </div>
       </section>
 
