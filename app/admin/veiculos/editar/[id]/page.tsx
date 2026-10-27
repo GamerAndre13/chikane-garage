@@ -8,6 +8,60 @@ import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehicleGallery, type VehicleGalleryHandle } from "@/components/ui/vehicle-gallery";
 import { VehicleAccessoriesBrowser } from "@/components/admin/vehicle-accessories-browser";
 
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
+interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
+
+interface VehicleExtraCatalogItem {
+  id: string;
+  name: string;
+  price: number;
+  position: number;
+  is_active: boolean;
+}
+
+interface VehicleExtraItem {
+  id: string;
+  catalog_extra_id: string | null;
+  name: string;
+  price: number;
+}
+
+interface VehicleExtraCatalogItem {
+  id: string;
+  name: string;
+  price: number;
+  position: number;
+  is_active: boolean;
+}
+
+interface VehicleExtraItem {
+  id: string;
+  catalog_extra_id: string | null;
+  name: string;
+  price: number;
+}
+
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
 const STATUS_OPTIONS = [

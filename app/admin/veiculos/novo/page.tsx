@@ -8,6 +8,14 @@ import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehiclePhotoPicker } from "@/components/ui/vehicle-photo-picker";
 import { uploadVehicleImages } from "@/app/actions/upload";
 
+interface VehicleExtraCatalogItem {
+  id: string;
+  name: string;
+  price: number;
+  position: number;
+  is_active: boolean;
+}
+
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
 const STATUS_OPTIONS = [
@@ -125,6 +133,8 @@ export default function NovoVeiculo() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [extraCatalog, setExtraCatalog] = useState<VehicleExtraCatalogItem[]>([]);
+  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
   const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
@@ -141,6 +151,19 @@ export default function NovoVeiculo() {
       setMultiple({ origin_country: "PT", legalization_date: "" });
     }
   }, [form.origin, setMultiple]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("vehicle_extra_catalog").select("id,name,price,position,is_active").eq("is_active", true).order("position", { ascending: true }).order("name", { ascending: true });
+      setExtraCatalog((data || []) as VehicleExtraCatalogItem[]);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!(form.condition === "new" && form.sale_type === "on_order")) {
+      setSelectedExtras([]);
+    }
+  }, [form.condition, form.sale_type]);
 
   // Quando muda a marca, limpa modelo e specs
   const handleBrandChange = useCallback((brand: string) => {
@@ -241,16 +264,28 @@ export default function NovoVeiculo() {
         }
       }
 
+      if (form.condition === "new" && form.sale_type === "on_order" && selectedExtras.length) {
+        const extrasToInsert = extraCatalog
+          .filter((ex) => selectedExtras.includes(ex.id))
+          .map((ex) => ({ vehicle_id: vehicle.id, catalog_extra_id: ex.id, name: ex.name, price: Number(ex.price) || 0 }));
+        if (extrasToInsert.length) {
+          const { error: extrasErr } = await supabase.from("vehicle_extras").insert(extrasToInsert);
+          if (extrasErr) {
+            alert("A viatura foi criada, mas os extras n\u00e3o foram guardados: " + extrasErr.message);
+            router.push(`/admin/veiculos/editar/${vehicle.id}`);
+            return;
+          }
+        }
+      }
+
       if (photos.length) {
         const formData = new FormData();
         formData.append("vehicleId", vehicle.id);
-        // A capa passa a ser definida pela própria action (evita uma segunda
-        // Server Action + leitura à BD depois do upload).
         formData.append("coverIndex", String(coverPhotoIndex));
         photos.forEach((photo) => formData.append("files", photo));
         const upload = await uploadVehicleImages(formData);
         if (upload.error || !upload.urls?.length) {
-          alert(`A viatura foi criada, mas as fotografias não foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
+          alert(`A viatura foi criada, mas as fotografias n\u00e3o foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
@@ -337,6 +372,29 @@ export default function NovoVeiculo() {
         {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
 
         <VehiclePhotoPicker onChange={(files, coverIndex) => { setPhotos(files); setCoverPhotoIndex(coverIndex); }} />
+        {form.condition === "new" && form.sale_type === "on_order" && extraCatalog.length > 0 && (
+          <div style={{ marginTop: "1rem" }}>
+            <label style={labelStyle}>Extras opcionais (por encomenda)</label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "0.5rem", padding: "0.75rem", border: "1px solid var(--border)", borderRadius: "0.375rem", backgroundColor: "var(--background-alt)" }}>
+              {extraCatalog.map((ex) => (
+                <label key={ex.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--foreground)", fontSize: "0.875rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedExtras.includes(ex.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedExtras((prev) => [...prev, ex.id]);
+                      else setSelectedExtras((prev) => prev.filter((id) => id !== ex.id));
+                    }}
+                  />
+                  <span style={{ flex: 1 }}>{ex.name}</span>
+                  <span style={{ color: "var(--muted)" }}>{Number(ex.price || 0).toLocaleString("pt-PT")} €</span>
+                </label>
+              ))}
+            </div>
+            <p style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted)" }}>Cria/edita o catálogo em /admin/veiculos/extras</p>
+          </div>
+        )}
+
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
         <div style={{ marginTop: "0.75rem" }}>
           <label style={labelStyle}>Descrição</label>
