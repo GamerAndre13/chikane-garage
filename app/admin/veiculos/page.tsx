@@ -147,13 +147,22 @@ export default function VeiculosList() {
         <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
           Viaturas
         </h1>
-        <Link
-          href="/admin/veiculos/novo"
-          className="px-4 py-2 rounded text-sm font-medium transition-colors"
-          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
-        >
-          + Nova Viatura
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/veiculos/extras"
+            className="px-4 py-2 rounded text-sm border transition-colors"
+            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+          >
+            Extras (catálogo)
+          </Link>
+          <Link
+            href="/admin/veiculos/novo"
+            className="px-4 py-2 rounded text-sm font-medium transition-colors"
+            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
+          >
+            + Nova Viatura
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3 items-center">
