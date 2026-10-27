@@ -4,7 +4,7 @@
 > definido, o que se pode e não se pode fazer, e onde está cada coisa.
 > Só depois de o ler é que se abre código.
 >
-> **Estado:** em vigor · **Última atualização:** 15/10/2026
+> **Estado:** em vigor · **Última atualização:** 27/10/2026
 
 ---
 
@@ -33,21 +33,18 @@ Depois, conforme a tarefa:
 
 ## 2. O que o dono tem em mente
 
-O **Chikane Garage** é um stand de **carros** (usados e novos) com uma **loja**
-de peças, acessórios e merchandising. O que o dono quer, por palavras dele:
+O **Chikane Garage** é um stand de **carros** (usados e novos). Neste momento o
+foco é **apenas o catálogo de viaturas**, com backoffice para gestão.
+
+O que o dono quer, por palavras dele:
 
 1. **Tudo completo e profissional** — acabado a sério, não uma maqueta.
 2. **Sem abdicar da performance** — o site não pode ficar mais lento.
 3. **Sem complicação** — simples de explicar, simples de manter.
-4. **Comercializável** — o mesmo produto tem de poder ser vendido a outro stand.
-   Já existe o cliente: a **Benimoto** (stand de **motos**, duas lojas, em
-   `docs/PRODUTO_E_MARCA.md`, secção 7).
-5. **A Chikane (carros) é e continua a ser o principal.** Nada pode partir o que
-   já está em produção.
-
-**A ideia-chave**: um carro e uma moto são a mesma coisa para o sistema. Mudar de
-stand é mudar **dados e apresentação**, nunca a estrutura
-(`docs/COMPATIBILIDADE_STANDS.md`).
+4. **Foco no catálogo** — gestão de viaturas, imagens, contactos, reservas,
+   marcação de test-drive, favoritos e newsletter.
+5. **A Chikane continua a ser o principal.** Nada pode partir o que já está em
+   produção.
 
 ---
 
@@ -88,22 +85,12 @@ Detalhe completo em `docs/REGRAS_PARA_IA.md`. Em resumo:
 
 | O que | Estado |
 |---|---|
-| Site Chikane em produção (catálogo, conta, pedidos/test-drive, backoffice, newsletter) | ✅ funciona |
-| Decisões da loja (24) | ✅ fechadas — `docs/PLANO_LOJA.md` |
-| Fases 0–5 | ✅ definidas — `docs/FASES.md` |
-| Plano detalhado da Fase 1 | ✅ escrito — `docs/PLANO_ETAPA_1.md` |
-| Modelo de dados da loja (23 tabelas) | ✅ escrito — `docs/MODELO_DADOS_LOJA.md` |
-| SQL da loja | 🟡 rascunho validado, **por aplicar** — `docs/rascunho/ETAPA_1_LOJA.sql` |
-| SQL dos tipos de veículo e lojas | 🟡 rascunho validado, **por aplicar** — `docs/rascunho/ETAPA_2_TIPOS_E_LOCAIS.sql` |
-| Compatibilidade carros/motos | ✅ definida — `docs/COMPATIBILIDADE_STANDS.md` |
-| Produto, marca e caso Benimoto | ✅ escrito — `docs/PRODUTO_E_MARCA.md` |
-| Emails e textos legais | ✅ base escrita — `docs/TEXTOS_LOJA.md` |
-| Layouts finais (Lovable) | ❌ por chegar |
-| Contas de pagamento (cartão + MB Way) | ❌ só o dono |
-| Loja no site | ❌ **nada implementado** |
-
-**Nada da loja foi aplicado.** Os ficheiros `docs/rascunho/*.sql` **não se
-correm** — são para revisão e para juntar ao `setup.sql` quando autorizado.
+| Site Chikane em produção (catálogo, conta, pedidos/test-drive, reservas, favoritos, newsletter, backoffice) | ✅ funciona |
+| Base de dados viaturas (otimizada) | ✅ aplicada — `supabase/setup.sql` |
+| Campanhas na home | ✅ funciona |
+| CMS (conteúdo e definições do site) | ✅ funciona |
+| Imagens no Cloudflare R2 | ✅ funciona |
+| Loja online | ❌ removida / não ativa |
 
 ---
 
