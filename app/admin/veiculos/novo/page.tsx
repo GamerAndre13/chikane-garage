@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehiclePhotoPicker } from "@/components/ui/vehicle-photo-picker";
-import { VehicleAccessoriesBrowser } from "@/components/admin/vehicle-accessories-browser";
 import { uploadVehicleImages } from "@/app/actions/upload";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
@@ -105,8 +104,11 @@ const labelStyle = {
   color: "var(--muted)",
 } as const;
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div><label style={labelStyle}>{label}</label>{children}</div>
+const Field = ({ label, children, required, error }: { label: string; children: React.ReactNode; required?: boolean; error?: boolean }) => (
+  <div>
+    <label style={labelStyle}>{label}{required ? " *" : ""}</label>
+    <div style={error ? { outline: "1px solid #dc2626", borderRadius: "0.375rem" } : undefined}>{children}</div>
+  </div>
 );
 
 const CheckField = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
@@ -122,10 +124,23 @@ export default function NovoVeiculo() {
   const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
 
   const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
   const modelNames = useMemo(() => Object.keys(models).sort(), [models]);
+
+  useEffect(() => {
+    if (form.condition === "used") {
+      setMultiple({ sale_type: "stock" });
+    }
+  }, [form.condition, setMultiple]);
+
+  useEffect(() => {
+    if (form.origin === "national") {
+      setMultiple({ origin_country: "PT", legalization_date: "" });
+    }
+  }, [form.origin, setMultiple]);
 
   // Quando muda a marca, limpa modelo e specs
   const handleBrandChange = useCallback((brand: string) => {
@@ -155,10 +170,27 @@ export default function NovoVeiculo() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (form.condition === "used") {
+      if (!form.brand || !form.model || !form.registration_year || !form.mileage_km || !form.price) {
+        setSaving(false);
+        return;
+      }
+    } else {
+      if (!form.brand || !form.model || !form.registration_year || !form.price) {
+        setSaving(false);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const { features, ...vehicleForm } = form;
       const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
+      const originCountry = form.origin === "national" ? "PT" : form.origin_country || null;
+      const legalizationDate = form.origin === "national" ? null : form.legalization_date || null;
+
       const { data: vehicle, error } = await supabase.from("vehicles").insert({
         ...vehicleForm,
         slug,
@@ -176,16 +208,17 @@ export default function NovoVeiculo() {
         last_service_date: form.last_service_date || null,
         tires_condition: form.tires_condition || null,
         reference_code: form.reference_code || null,
+        origin_country: originCountry,
         coc_confirmed: form.coc_confirmed === "true",
         isv_paid: form.isv_paid === "true",
-        legalization_date: form.legalization_date || null,
+        legalization_date: legalizationDate,
         financing_available: form.financing_available === "true",
         trade_in_accepted: form.trade_in_accepted === "true",
         video_url: form.video_url || null,
-        price: form.price ? parseFloat(form.price) : null,
+        price: form.price !== "" && form.price !== null ? parseFloat(String(form.price)) : null,
         warranty_months: form.condition === "used" && form.warranty_months ? parseInt(form.warranty_months) : null,
         condition: form.condition,
-        sale_type: form.sale_type,
+        sale_type: form.condition === "used" ? "stock" : form.sale_type,
         brand_warranty_months: form.brand_warranty_months ? parseInt(form.brand_warranty_months) : null,
         delivery_estimate_days: form.delivery_estimate_days ? parseInt(form.delivery_estimate_days) : null,
         is_featured: form.is_featured === "true",
@@ -238,21 +271,17 @@ export default function NovoVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Condição"><select style={selectStyle} value={form.condition} onChange={handleChange("condition")}><option value="used">Usado</option><option value="new">Novo</option></select></Field>
-          <Field label="Disponibilidade"><select style={selectStyle} value={form.sale_type} onChange={handleChange("sale_type")}><option value="stock">Em stock</option><option value="on_order">Por encomenda</option></select></Field>
-          <Field label="Marca *">
-            <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
-              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </Field>
-          <Field label="Modelo *">
+          {form.condition === "new" && <Field label="Disponibilidade"><select style={selectStyle} value={form.sale_type} onChange={handleChange("sale_type")}><option value="stock">Em stock</option><option value="on_order">Por encomenda</option></select></Field>}
+          <Field label="Marca" required error={submitted && !form.brand}><select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>{brands.map((b) => <option key={b} value={b}>{b}</option>)}</select></Field>
+          <Field label="Modelo" required error={submitted && !form.model}>
             <>
-              <input required list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
+              <input list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
               <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
           <Field label="Referência interna"><input style={inputStyle} placeholder="ex: CH-2024-018" value={form.reference_code} onChange={handleChange("reference_code")} /></Field>
-          <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
+          <Field label="Ano Registo" required error={submitted && !form.registration_year}><input type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
 
@@ -272,7 +301,7 @@ export default function NovoVeiculo() {
         {/* Veículo */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          {form.condition !== "new" && <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>}
+          {form.condition !== "new" && <Field label="Quilometragem" required error={submitted && !form.mileage_km}><input type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>}
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
@@ -287,16 +316,16 @@ export default function NovoVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
+          {form.origin !== "national" && <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>}
           <CheckField id="coc_confirmed" label="CoC (certificado comunitário) confirmado" checked={form.coc_confirmed === "true"} onChange={handleCheckboxChange("coc_confirmed")} />
           <CheckField id="isv_paid" label="ISV liquidado" checked={form.isv_paid === "true"} onChange={handleCheckboxChange("isv_paid")} />
-          <Field label="Data de legalização"><input type="date" style={inputStyle} value={form.legalization_date} onChange={handleChange("legalization_date")} /></Field>
+          {form.origin !== "national" && <Field label="Data de legalização"><input type="date" style={inputStyle} value={form.legalization_date} onChange={handleChange("legalization_date")} /></Field>}
         </div>
 
         {/* Preço & Status */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
+          <Field label="Preço (€)" required error={submitted && !form.price}><input type="number" step="any" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
           {form.condition === "used" ? <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field> : <>
             <Field label="Garantia da marca (meses)"><input type="number" min="0" style={inputStyle} value={form.brand_warranty_months} onChange={handleChange("brand_warranty_months")} /></Field>
             {form.sale_type === "on_order" && <Field label="Prazo estimado (dias)"><input type="number" min="1" style={inputStyle} value={form.delivery_estimate_days} onChange={handleChange("delivery_estimate_days")} /></Field>}
@@ -306,7 +335,6 @@ export default function NovoVeiculo() {
           <CheckField id="trade_in_accepted" label="Aceita retoma" checked={form.trade_in_accepted === "true"} onChange={handleCheckboxChange("trade_in_accepted")} />
         </div>
         {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
-        {form.condition === "new" && <VehicleAccessoriesBrowser brand={form.brand} model={form.model} registrationYear={form.registration_year} />}
 
         <VehiclePhotoPicker onChange={(files, coverIndex) => { setPhotos(files); setCoverPhotoIndex(coverIndex); }} />
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
