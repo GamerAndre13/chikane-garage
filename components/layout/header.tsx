@@ -119,7 +119,7 @@ export function Header() {
             Home
           </Link>
           <Link href="/catalogo" className={navClass("/catalogo")}>
-            Catálogo
+            Usados
           </Link>
           <Link href="/novos" className={navClass("/novos")}>
             Novos
@@ -209,7 +209,7 @@ export function Header() {
               Início
             </Link>
             <Link href="/catalogo" className={`${navClass("/catalogo")} w-fit`} onClick={() => setMobileOpen(false)}>
-              Catálogo
+              Usados
             </Link>
             <Link href="/novos" className={`${navClass("/novos")} w-fit`} onClick={() => setMobileOpen(false)}>
               Novos

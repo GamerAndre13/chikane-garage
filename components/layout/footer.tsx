@@ -6,7 +6,7 @@ import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@
 import { mapsUrl } from "@/lib/maps";
 
 const NAV_LINKS = [
-  { label: "Catálogo", href: "/catalogo" },
+  { label: "Usados", href: "/catalogo" },
   { label: "Novos", href: "/novos" },
   { label: "Sobre Nós", href: "/sobre" },
   { label: "Contacto", href: "/contacto" },

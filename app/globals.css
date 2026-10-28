@@ -192,6 +192,82 @@ html {
   100% { transform: translateX(100%); }
 }
 
+/* ── Checkboxes e rádios com estilo próprio ──
+   Substituem o quadrado nativo em todo o site (páginas públicas e backoffice).
+   O :where() mantém a especificidade a zero, para que as classes do Tailwind
+   possam continuar a ajustar tamanho/esconder quando for preciso. */
+:where(input[type="checkbox"], input[type="radio"]) {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  border: 1.5px solid var(--border);
+  background-color: var(--background-alt);
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+:where(input[type="checkbox"]) {
+  border-radius: 0.3rem;
+}
+
+:where(input[type="radio"]) {
+  border-radius: 999px;
+}
+
+:where(input[type="checkbox"]):hover,
+:where(input[type="radio"]):hover {
+  border-color: var(--copper);
+}
+
+:where(input[type="checkbox"]):checked,
+:where(input[type="radio"]):checked {
+  border-color: var(--copper);
+  background-color: var(--copper);
+  box-shadow: 0 0 0 2px rgba(244, 119, 36, 0.15);
+}
+
+/* Visto desenhado em CSS (sem imagem), escuro sobre o cobre. */
+:where(input[type="checkbox"])::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 0.3rem;
+  height: 0.55rem;
+  border: solid #120f0c;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg) scale(0);
+  transition: transform 120ms ease-out;
+}
+
+:where(input[type="checkbox"]):checked::after {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1);
+}
+
+:where(input[type="radio"])::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: #120f0c;
+  transform: scale(0);
+  transition: transform 120ms ease-out;
+}
+
+:where(input[type="radio"]):checked::after {
+  transform: scale(1);
+}
+
+:where(input[type="checkbox"]:disabled, input[type="radio"]:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Scrollbar discreta (desktop) ── */
 @media (pointer: fine) {
   ::-webkit-scrollbar {

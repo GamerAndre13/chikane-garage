@@ -10,12 +10,14 @@ import {
   createVehicleExtraVariant,
   updateVehicleExtraVariant,
   deleteVehicleExtraVariant,
+  uploadVehicleExtraImage,
 } from "./actions";
 
 interface ExtraCatalog {
   id: string;
   name: string;
   description: string | null;
+  image_url: string | null;
   price: number;
   position: number;
   is_active: boolean;
@@ -30,6 +32,76 @@ interface ExtraVariant {
   is_active: boolean;
 }
 
+const fieldLabel = "mb-1 block text-[11px] uppercase tracking-[0.12em]";
+const inputClass = "w-full rounded border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-copper";
+
+// Campo de fotografia reutilizado na criação e na edição de cada extra.
+// O upload é feito para o R2 e a URL pública fica guardada em image_url.
+function ExtraImageField({
+  value,
+  onChange,
+  label = "Fotografia do extra",
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  label?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await uploadVehicleExtraImage(formData);
+      if (result.error) setError(result.error);
+      else if (result.url) onChange(result.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar a imagem.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <span className={fieldLabel} style={{ color: "var(--muted)" }}>{label}</span>
+      <div className="flex items-center gap-3">
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element -- URL vem do R2 (domínio configurável)
+          <img src={value} alt="" className="h-14 w-20 rounded border object-cover" style={{ borderColor: "var(--border)" }} />
+        ) : (
+          <div className="flex h-14 w-20 items-center justify-center rounded border text-center text-[10px]" style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
+            Sem foto
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <label className="cursor-pointer rounded border px-3 py-1.5 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+            {uploading ? "A carregar..." : value ? "Trocar foto" : "Escolher foto"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              className="sr-only"
+              disabled={uploading}
+              onChange={(e) => { void handleFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
+            />
+          </label>
+          {value && (
+            <button type="button" onClick={() => onChange("")} className="text-left text-[11px]" style={{ color: "#ef4444" }}>
+              Remover foto
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>JPG, PNG, WEBP ou AVIF · máx. 5 MB</p>
+      {error && <p className="mt-1 text-[11px]" style={{ color: "#ef4444" }}>{error}</p>}
+    </div>
+  );
+}
+
 export default function VehicleExtrasCatalogPage() {
   const [items, setItems] = useState<ExtraCatalog[]>([]);
   const [variants, setVariants] = useState<ExtraVariant[]>([]);
@@ -37,9 +109,16 @@ export default function VehicleExtrasCatalogPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [newVariant, setNewVariant] = useState({ name: "", price: "0", position: "0" });
+  const [newVariant, setNewVariant] = useState({ name: "", price: "", position: "" });
 
-  const [newItem, setNewItem] = useState({ name: "", description: "", price: "0", position: "0", is_active: true });
+  // Preço e ordem começam vazios (e identificados) para não aparecerem
+  // dois "0" sem contexto ao criar um extra.
+  const [newItem, setNewItem] = useState({ name: "", description: "", image_url: "", price: "", position: "", is_active: true });
+  // Variantes que serão criadas logo a seguir ao extra.
+  const [draftVariants, setDraftVariants] = useState<{ name: string; price: string }[]>([]);
+  // Fotografias em edição (por id do extra), para não escrever no formulário
+  // controlado de cada linha da lista.
+  const [images, setImages] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const [catalogRes, variantsRes] = await Promise.all([
@@ -68,6 +147,8 @@ export default function VehicleExtrasCatalogPage() {
     };
   }, []);
 
+  const imageFor = (item: ExtraCatalog) => images[item.id] ?? item.image_url ?? "";
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -76,11 +157,24 @@ export default function VehicleExtrasCatalogPage() {
       const formData = new FormData();
       formData.append("name", newItem.name);
       formData.append("description", newItem.description);
+      formData.append("image_url", newItem.image_url);
       formData.append("price", newItem.price);
       formData.append("position", newItem.position);
       if (newItem.is_active) formData.append("is_active", "on");
-      await createVehicleExtraCatalog(formData);
-      setNewItem({ name: "", description: "", price: "0", position: String(items.length + 1), is_active: true });
+
+      const created = await createVehicleExtraCatalog(formData);
+
+      // Variantes escritas no próprio formulário de criação.
+      const pending = draftVariants.filter((variant) => variant.name.trim());
+      for (const variant of pending) {
+        const variantData = new FormData();
+        variantData.append("name", variant.name.trim());
+        variantData.append("price", variant.price);
+        await createVehicleExtraVariant(created.id, variantData);
+      }
+
+      setNewItem({ name: "", description: "", image_url: "", price: "", position: "", is_active: true });
+      setDraftVariants([]);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar extra.");
@@ -94,6 +188,7 @@ export default function VehicleExtrasCatalogPage() {
     setError(null);
     try {
       const formData = new FormData(form);
+      formData.set("image_url", imageFor(item));
       if ((form.elements.namedItem("is_active") as HTMLInputElement)?.checked) formData.append("is_active", "on");
       else formData.delete("is_active");
       await updateVehicleExtraCatalog(item.id, formData);
@@ -129,7 +224,7 @@ export default function VehicleExtrasCatalogPage() {
       formData.append("price", newVariant.price);
       formData.append("position", newVariant.position);
       await createVehicleExtraVariant(extraId, formData);
-      setNewVariant({ name: "", price: "0", position: "0" });
+      setNewVariant({ name: "", price: "", position: "" });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar variante.");
@@ -175,7 +270,7 @@ export default function VehicleExtrasCatalogPage() {
             Extras do catálogo
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-            Criados uma vez e reutilizados nas viaturas novas. Cada extra pode ter variantes com preço próprio.
+            Criados uma vez e reutilizados nas viaturas novas. Cada extra pode ter fotografia e variantes com preço próprio.
           </p>
         </div>
         <Link href="/admin/veiculos" className="px-4 py-2 rounded text-sm border" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
@@ -190,19 +285,74 @@ export default function VehicleExtrasCatalogPage() {
       )}
 
       <div className="mb-6 p-4 border rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-        <h2 className="text-sm uppercase tracking-wide mb-3" style={{ color: "var(--foreground)" }}>Adicionar novo extra</h2>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <input required value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder='Nome (ex.: Jantes 19")' className="px-3 py-2 text-sm border rounded bg-background md:col-span-2" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-          <input value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} placeholder="Preço (€)" className="px-3 py-2 text-sm border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-          <input value={newItem.position} onChange={(e) => setNewItem({ ...newItem, position: e.target.value })} placeholder="Ordem" className="px-3 py-2 text-sm border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
-            <input type="checkbox" checked={newItem.is_active} onChange={(e) => setNewItem({ ...newItem, is_active: e.target.checked })} />
-            Ativo
-          </label>
-          <input value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Descrição (opcional)" className="px-3 py-2 text-sm border rounded bg-background md:col-span-4" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-          <button disabled={saving} className="px-4 py-2 rounded text-sm" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}>
-            {saving ? "A guardar..." : "+ Adicionar"}
-          </button>
+        <h2 className="text-sm uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>Adicionar novo extra</h2>
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="md:col-span-2">
+              <label htmlFor="extra-nome" className={fieldLabel} style={{ color: "var(--muted)" }}>Nome do extra *</label>
+              <input id="extra-nome" required value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder='Ex.: Jantes de liga leve' className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <div>
+              <label htmlFor="extra-preco" className={fieldLabel} style={{ color: "var(--muted)" }}>Preço base (€)</label>
+              <input id="extra-preco" inputMode="decimal" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} placeholder="0,00" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>0 = incluído no preço da viatura</p>
+            </div>
+            <div>
+              <label htmlFor="extra-ordem" className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem de apresentação</label>
+              <input id="extra-ordem" inputMode="numeric" value={newItem.position} onChange={(e) => setNewItem({ ...newItem, position: e.target.value })} placeholder="1" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>Número menor aparece primeiro</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label htmlFor="extra-descricao" className={fieldLabel} style={{ color: "var(--muted)" }}>Descrição</label>
+              <input id="extra-descricao" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Texto curto que aparece no configurador" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <ExtraImageField value={newItem.image_url} onChange={(url) => setNewItem({ ...newItem, image_url: url })} />
+          </div>
+
+          <div className="rounded border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--background-alt)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--copper-deep)" }}>Variantes (opcional)</p>
+              <button type="button" onClick={() => setDraftVariants([...draftVariants, { name: "", price: "" }])} className="rounded border px-3 py-1 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+                + Adicionar variante
+              </button>
+            </div>
+            {draftVariants.length === 0 ? (
+              <p className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
+                Sem variantes o cliente escolhe apenas o extra. Ex.: jantes 19&quot;, 20&quot; e 21&quot; com preços diferentes.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {draftVariants.map((variant, index) => (
+                  <div key={index} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_140px_auto]">
+                    <div>
+                      <label htmlFor={`nova-variante-nome-${index}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome da variante</label>
+                      <input id={`nova-variante-nome-${index}`} value={variant.name} onChange={(e) => setDraftVariants(draftVariants.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} placeholder='Ex.: 20"' className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    </div>
+                    <div>
+                      <label htmlFor={`nova-variante-preco-${index}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
+                      <input id={`nova-variante-preco-${index}`} inputMode="decimal" value={variant.price} onChange={(e) => setDraftVariants(draftVariants.map((row, i) => i === index ? { ...row, price: e.target.value } : row))} placeholder="0,00" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    </div>
+                    <button type="button" onClick={() => setDraftVariants(draftVariants.filter((_, i) => i !== index))} className="pb-2 text-xs" style={{ color: "#ef4444" }}>
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
+              <input type="checkbox" checked={newItem.is_active} onChange={(e) => setNewItem({ ...newItem, is_active: e.target.checked })} />
+              Ativo no configurador
+            </label>
+            <button disabled={saving} className="px-4 py-2 rounded text-sm" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "A guardar..." : "+ Adicionar extra"}
+            </button>
+          </div>
         </form>
       </div>
 
@@ -219,24 +369,38 @@ export default function VehicleExtrasCatalogPage() {
               <div key={item.id} className="border rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
                 <form
                   onSubmit={(e) => { e.preventDefault(); handleUpdate(item, e.currentTarget); }}
-                  className="grid grid-cols-1 items-start gap-2 p-3 sm:grid-cols-[70px_1fr_110px_80px_auto]"
+                  className="grid grid-cols-1 items-start gap-3 p-3 sm:grid-cols-[70px_1fr_110px_80px_auto]"
                 >
-                  <input name="position" defaultValue={item.position} aria-label="Ordem" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                  <div>
+                    <label htmlFor={`ordem-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
+                    <input id={`ordem-${item.id}`} name="position" defaultValue={item.position} className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                  </div>
                   <div className="space-y-1">
-                    <input name="name" defaultValue={item.name} required aria-label="Nome do extra" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    <label htmlFor={`nome-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome do extra</label>
+                    <input id={`nome-${item.id}`} name="name" defaultValue={item.name} required className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
                     <input name="description" defaultValue={item.description || ""} placeholder="Descrição" aria-label="Descrição" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
                   </div>
-                  <input name="price" defaultValue={item.price} aria-label="Preço" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                  <label className="flex items-center gap-2 text-xs" style={{ color: "var(--foreground)" }}>
+                  <div>
+                    <label htmlFor={`preco-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
+                    <input id={`preco-${item.id}`} name="price" defaultValue={item.price} inputMode="decimal" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                  </div>
+                  <label className="flex items-center gap-2 pt-4 text-xs" style={{ color: "var(--foreground)" }}>
                     <input name="is_active" type="checkbox" defaultChecked={item.is_active} />
                     Ativo
                   </label>
-                  <div className="whitespace-nowrap text-right">
+                  <div className="whitespace-nowrap pt-4 text-right">
                     <button type="button" onClick={() => setExpanded(open ? null : item.id)} className="mr-3 text-xs" style={{ color: "var(--silver)" }}>
                       {open ? "Fechar" : `Variantes (${itemVariants.length})`}
                     </button>
                     <button disabled={saving} className="mr-3 text-xs" style={{ color: "var(--copper-deep)" }}>{saving ? "..." : "Guardar"}</button>
                     <button type="button" onClick={() => handleDelete(item.id)} disabled={saving} className="text-xs" style={{ color: "#ef4444" }}>Apagar</button>
+                  </div>
+                  <div className="sm:col-span-5">
+                    <ExtraImageField
+                      label="Fotografia"
+                      value={imageFor(item)}
+                      onChange={(url) => setImages((prev) => ({ ...prev, [item.id]: url }))}
+                    />
                   </div>
                 </form>
 
@@ -248,7 +412,7 @@ export default function VehicleExtrasCatalogPage() {
                       {itemVariants.map((variant) => (
                         <form key={variant.id} onSubmit={(e) => { e.preventDefault(); handleUpdateVariant(variant, e.currentTarget); }} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_90px_80px_auto]">
                           <input name="name" defaultValue={variant.name} required aria-label="Nome da variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                          <input name="price" defaultValue={variant.price} aria-label="Preço da variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                          <input name="price" defaultValue={variant.price} aria-label="Preço da variante" inputMode="decimal" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
                           <input name="position" defaultValue={variant.position} aria-label="Ordem da variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
                           <label className="flex items-center gap-2 text-xs" style={{ color: "var(--foreground)" }}>
                             <input name="is_active" type="checkbox" defaultChecked={variant.is_active} />
@@ -262,10 +426,19 @@ export default function VehicleExtrasCatalogPage() {
                       ))}
                     </div>
 
-                    <form onSubmit={(e) => handleCreateVariant(item.id, e)} className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_90px_auto]">
-                      <input required value={newVariant.name} onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })} placeholder="Nova variante (ex.: 20 polegadas)" aria-label="Nova variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                      <input value={newVariant.price} onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })} placeholder="Preço (€)" aria-label="Preço da nova variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                      <input value={newVariant.position} onChange={(e) => setNewVariant({ ...newVariant, position: e.target.value })} placeholder="Ordem" aria-label="Ordem da nova variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    <form onSubmit={(e) => handleCreateVariant(item.id, e)} className="mt-4 grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_120px_90px_auto]">
+                      <div>
+                        <label htmlFor={`variante-nome-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nova variante</label>
+                        <input id={`variante-nome-${item.id}`} required value={newVariant.name} onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })} placeholder='Ex.: 20"' className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      </div>
+                      <div>
+                        <label htmlFor={`variante-preco-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
+                        <input id={`variante-preco-${item.id}`} inputMode="decimal" value={newVariant.price} onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })} placeholder="0,00" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      </div>
+                      <div>
+                        <label htmlFor={`variante-ordem-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
+                        <input id={`variante-ordem-${item.id}`} inputMode="numeric" value={newVariant.position} onChange={(e) => setNewVariant({ ...newVariant, position: e.target.value })} placeholder="0" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      </div>
                       <button disabled={saving} className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}>+ Variante</button>
                     </form>
                   </div>

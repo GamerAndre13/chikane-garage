@@ -17,6 +17,7 @@ export type ConfiguratorExtra = {
   id: string;
   name: string;
   description?: string | null;
+  image_url?: string | null;
   price: number;
   variants: ConfiguratorVariant[];
 };
@@ -166,72 +167,109 @@ export function VehicleProposalConfigurator({ vehicleId, vehicleSlug, vehicleNam
   return (
     <>
       <section id="configurador" className="mt-16 border-t border-border pt-10">
-        <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Configurador</p>
-        <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Escolhe os teus extras</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/70">
-          Seleciona os extras que queres nesta configuração. O total atualiza à medida das tuas escolhas e no fim podes gerar uma proposta com todos os valores detalhados.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Configurador · passo 1 de 2</p>
+            <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Escolhe os teus extras</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/70">
+              Seleciona os extras que queres nesta configuração. O total atualiza à medida das tuas escolhas e no fim podes gerar uma proposta com todos os valores detalhados.
+            </p>
+          </div>
+          <p className="border border-white/10 bg-surface px-4 py-2 font-display text-[11px] uppercase tracking-[0.18em] text-white/60">
+            {chosen.length} de {extras.length} selecionados
+          </p>
+        </div>
 
-        <div className="mt-7 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-3">
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1.45fr_1fr]">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-copper font-display text-xs font-bold text-black">1</span>
+              <p className="font-display text-xs uppercase tracking-[0.2em] text-white/70">Extras disponíveis</p>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+
             {extras.length === 0 ? (
-              <p className="border border-white/10 bg-surface px-5 py-6 text-sm text-white/60">
+              <p className="mt-4 border border-white/10 bg-surface px-5 py-6 text-sm text-white/60">
                 Esta configuração ainda não tem extras opcionais. Gera a proposta com o preço base e falamos contigo sobre as opções disponíveis.
               </p>
             ) : (
-              extras.map((extra) => {
-                const picked = selection[extra.id];
-                const active = Boolean(picked);
-                const currentPrice = picked?.variantId
-                  ? extra.variants.find((item) => item.id === picked.variantId)?.price ?? extra.price
-                  : extra.price;
-                return (
-                  <div
-                    key={extra.id}
-                    className={`border px-5 py-4 transition-colors ${active ? "border-copper/70 bg-copper/5" : "border-white/10 bg-surface"}`}
-                  >
-                    <label className="flex cursor-pointer items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => toggleExtra(extra)}
-                        className="mt-1 h-4 w-4 shrink-0 accent-[var(--copper)]"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-baseline justify-between gap-2">
-                          <span className="font-display text-sm uppercase tracking-wide text-white">{extra.name}</span>
-                          <span className="font-display text-sm text-copper">{euro(Number(currentPrice) || 0)}</span>
-                        </span>
-                        {extra.description && <span className="mt-1 block text-xs leading-5 text-white/60">{extra.description}</span>}
-                      </span>
-                    </label>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {extras.map((extra) => {
+                  const picked = selection[extra.id];
+                  const active = Boolean(picked);
+                  const currentPrice = picked?.variantId
+                    ? extra.variants.find((item) => item.id === picked.variantId)?.price ?? extra.price
+                    : extra.price;
+                  return (
+                    <article
+                      key={extra.id}
+                      className={`group flex h-full flex-col overflow-hidden border transition-colors ${active ? "border-copper/70 bg-copper/5" : "border-white/10 bg-surface hover:border-white/25"}`}
+                    >
+                      {extra.image_url ? (
+                        <div className="relative aspect-[16/9] overflow-hidden bg-black">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- fotografia vem do R2 (domínio configurável) */}
+                          <img
+                            src={extra.image_url}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                          />
+                          {active && (
+                            <span className="absolute right-2 top-2 bg-copper px-2 py-0.5 font-display text-[9px] uppercase tracking-[0.16em] text-black">
+                              Incluído
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
 
-                    {active && extra.variants.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
-                        {extra.variants.map((variant) => {
-                          const selectedVariant = picked?.variantId === variant.id;
-                          return (
-                            <button
-                              key={variant.id}
-                              type="button"
-                              onClick={() => pickVariant(extra.id, variant.id)}
-                              aria-pressed={selectedVariant}
-                              className={`border px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em] transition-colors ${selectedVariant ? "border-copper bg-copper text-black" : "border-white/15 text-silver hover:border-copper hover:text-copper"}`}
-                            >
-                              {variant.name} · {euro(Number(variant.price) || 0)}
-                            </button>
-                          );
-                        })}
+                      <div className="flex flex-1 flex-col p-4">
+                        <label className="flex cursor-pointer items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={active}
+                            onChange={() => toggleExtra(extra)}
+                            className="mt-0.5"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-baseline justify-between gap-2">
+                              <span className="font-display text-sm uppercase tracking-wide text-white">{extra.name}</span>
+                              <span className="font-display text-sm text-copper">{euro(Number(currentPrice) || 0)}</span>
+                            </span>
+                            {extra.description && <span className="mt-1 block text-xs leading-5 text-white/60">{extra.description}</span>}
+                          </span>
+                        </label>
+
+                        {active && extra.variants.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
+                            {extra.variants.map((variant) => {
+                              const selectedVariant = picked?.variantId === variant.id;
+                              return (
+                                <button
+                                  key={variant.id}
+                                  type="button"
+                                  onClick={() => pickVariant(extra.id, variant.id)}
+                                  aria-pressed={selectedVariant}
+                                  className={`border px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em] transition-colors ${selectedVariant ? "border-copper bg-copper text-black" : "border-white/15 text-silver hover:border-copper hover:text-copper"}`}
+                                >
+                                  {variant.name} · {euro(Number(variant.price) || 0)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })
+                    </article>
+                  );
+                })}
+              </div>
             )}
           </div>
 
           <aside className="h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 lg:sticky lg:top-24">
-            <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Resumo</p>
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-copper font-display text-xs font-bold text-copper">2</span>
+              <p className="font-display text-xs uppercase tracking-[0.2em] text-white/70">Resumo da configuração</p>
+            </div>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="text-white/60">Viatura</dt>
@@ -243,6 +281,7 @@ export function VehicleProposalConfigurator({ vehicleId, vehicleSlug, vehicleNam
                   <dd className="text-right whitespace-nowrap text-white/80">{euro(Number(item.price) || 0)}</dd>
                 </div>
               ))}
+              {chosen.length === 0 && <p className="text-[11px] leading-5 text-white/40">Ainda sem extras — seleciona os que queres à esquerda.</p>}
               <div className="flex items-baseline justify-between gap-3 border-t border-white/10 pt-3">
                 <dt className="font-display text-xs uppercase tracking-[0.16em] text-white/60">Extras</dt>
                 <dd className="text-right font-display text-white">{euro(extrasTotal)}</dd>

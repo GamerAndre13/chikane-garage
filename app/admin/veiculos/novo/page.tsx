@@ -14,6 +14,7 @@ interface ExtraCatalogItem {
   id: string;
   name: string;
   price: number;
+  image_url: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -118,7 +119,7 @@ export default function NovoVeiculo() {
     (async () => {
       const { data } = await supabase
         .from("vehicle_extra_catalog")
-        .select("id, name, price")
+        .select("id, name, price, image_url")
         .eq("is_active", true)
         .order("position", { ascending: true })
         .order("name", { ascending: true });
@@ -155,6 +156,23 @@ export default function NovoVeiculo() {
     }
   }, [setMultiple, models]);
 
+  // A primeira decisão do formulário é usado vs. novo: esconde os campos que
+  // não fazem sentido numa viatura por encomenda (0 km, sem donos anteriores)
+  // e limpa os extras selecionados quando passa a usado.
+  const handleSaleTypeChange = useCallback((value: string) => {
+    if (value === "new") {
+      setSelectedExtras([]);
+      setMultiple({ sale_type: value, mileage_km: "0", previous_owners: "0", service_book: "full_dealer" });
+    } else {
+      setMultiple({ sale_type: value, mileage_km: "", previous_owners: "1", service_book: "full_dealer" });
+    }
+  }, [setMultiple]);
+
+  // Nacional → o país de origem fica fixo em Portugal e o campo desaparece.
+  const handleOriginChange = useCallback((value: string) => {
+    setMultiple({ origin: value, origin_country: value === "national" ? "Portugal" : "DE" });
+  }, [setMultiple]);
+
   const generateSlug = (brand: string, model: string, trim: string, year: string) => {
     return `${brand}-${model}-${trim}-${year}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   };
@@ -174,8 +192,10 @@ export default function NovoVeiculo() {
         torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
         combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
         co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
-        mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
-        previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
+        mileage_km: form.sale_type === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
+        previous_owners: form.sale_type === "new" ? 0 : form.previous_owners ? parseInt(form.previous_owners) : null,
+        // Viatura nacional: o país de origem é sempre Portugal.
+        origin_country: form.origin === "national" ? "Portugal" : form.origin_country || null,
         price: form.price ? parseFloat(form.price) : null,
         warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
         is_featured: form.is_featured === "true",
@@ -244,6 +264,46 @@ export default function NovoVeiculo() {
     <div>
       <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>Nova Viatura</h1>
       <form onSubmit={handleSubmit} style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
+        {/* Primeira pergunta: usada ou nova */}
+        <fieldset style={{ border: "none", padding: 0, margin: 0, marginBottom: "1.5rem" }}>
+          <legend className="text-xs uppercase tracking-widest" style={{ color: "var(--copper-deep)", marginBottom: "0.5rem" }}>1. Esta viatura é…</legend>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem" }}>
+            {SALE_TYPE_OPTIONS.map((option) => {
+              const active = form.sale_type === option.value;
+              return (
+                <label
+                  key={option.value}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    padding: "0.9rem 1rem",
+                    borderRadius: "0.5rem",
+                    cursor: "pointer",
+                    border: `1px solid ${active ? "var(--copper)" : "var(--border)"}`,
+                    backgroundColor: active ? "rgba(244,119,36,0.09)" : "var(--background-alt)",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="sale_type"
+                    checked={active}
+                    onChange={() => handleSaleTypeChange(option.value)}
+                  />
+                  <span>
+                    <span style={{ display: "block", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.875rem", color: active ? "var(--copper)" : "var(--foreground)" }}>
+                      {option.label}
+                    </span>
+                    <span style={{ display: "block", fontSize: "0.75rem", color: "var(--muted)" }}>
+                      {option.value === "new" ? "Por encomenda, 0 km, configurável com extras" : "Já matriculada, com histórico e quilometragem"}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
         {/* Identificação */}
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
@@ -279,19 +339,33 @@ export default function NovoVeiculo() {
         {/* Veículo */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
+          {/* Quilometragem, donos e caderneta só existem em viaturas usadas. */}
+          {form.sale_type === "used" && (
+            <>
+              <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
+            </>
+          )}
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
-          <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
-          <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          {form.sale_type === "used" && (
+            <>
+              <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
+              <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+            </>
+          )}
         </div>
 
         {/* Origem */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
+          <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={(e) => handleOriginChange(e.target.value)}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          {/* Nacional → país de origem fixo em Portugal (campo escondido). */}
+          {form.origin === "imported" ? (
+            <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
+          ) : (
+            <Field label="País Origem"><input readOnly style={{ ...inputStyle, color: "var(--muted)" }} value="Portugal" /></Field>
+          )}
         </div>
 
         {/* Preço & Status */}
@@ -299,7 +373,6 @@ export default function NovoVeiculo() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
-          <Field label="Tipo de venda"><select style={selectStyle} value={form.sale_type} onChange={(e) => { handleChange("sale_type")(e); if (e.target.value !== "new") setSelectedExtras([]); }}>{SALE_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
@@ -319,7 +392,19 @@ export default function NovoVeiculo() {
                 {extraCatalog.map((extra) => {
                   const checked = selectedExtras.includes(extra.id);
                   return (
-                    <label key={extra.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "var(--foreground)" }}>
+                    <label
+                      key={extra.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.625rem",
+                        padding: "0.5rem 0.75rem",
+                        borderRadius: "0.5rem",
+                        cursor: "pointer",
+                        border: `1px solid ${checked ? "var(--copper)" : "var(--border)"}`,
+                        backgroundColor: checked ? "rgba(244,119,36,0.09)" : "var(--background-alt)",
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={checked}
@@ -329,8 +414,16 @@ export default function NovoVeiculo() {
                           )
                         }
                       />
-                      {extra.name}
-                      {extra.price ? <span style={{ color: "var(--muted)" }}>({extra.price.toLocaleString("pt-PT")} €)</span> : null}
+                      {extra.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- fotografia vem do R2 (domínio configurável)
+                        <img src={extra.image_url} alt="" style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.25rem", objectFit: "cover", flex: "none" }} />
+                      ) : null}
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: "0.8125rem", color: "var(--foreground)" }}>{extra.name}</span>
+                        <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--muted)" }}>
+                          {extra.price ? `${extra.price.toLocaleString("pt-PT")} €` : "Incluído"}
+                        </span>
+                      </span>
                     </label>
                   );
                 })}

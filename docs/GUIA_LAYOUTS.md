@@ -29,7 +29,7 @@ partiu nada.
 | **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx`) |
 | ↳ Painel inicial | `app/admin/page.tsx` |
 | ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/`) |
-| ↳ Extras (catálogo + variantes) | `app/admin/veiculos/extras/page.tsx` |
+| ↳ Extras (catálogo, fotografia e variantes) | `app/admin/veiculos/extras/page.tsx` |
 | ↳ Pedidos | `app/admin/pedidos/page.tsx` |
 | ↳ Propostas (viaturas novas) | `app/admin/propostas/page.tsx` (+ `[id]/`) |
 | ↳ Contas | `app/admin/contas/page.tsx` |
@@ -44,7 +44,7 @@ partiu nada.
 | Rodapé | `components/layout/footer.tsx` | Contactos, redes, newsletter |
 | Botão de cookies | `components/layout/cookie-settings-button.tsx` | Reabrir preferências |
 | Grelha do catálogo | `components/ui/catalog-browser.tsx` | Cartões + filtros |
-| Configurador + proposta (viaturas novas) | `components/ui/vehicle-proposal-configurator.tsx` | Extras, total e pedido de proposta |
+| Configurador + proposta (viaturas novas) | `components/ui/vehicle-proposal-configurator.tsx` | Extras com fotografia, total e pedido de proposta |
 | Cartão de viatura (galeria) | `components/ui/vehicle-card-gallery.tsx` | Fotografia em cartão |
 | Galeria da ficha | `components/ui/vehicle-detail-gallery.tsx` | Galeria grande |
 | Galeria (genérica) | `components/ui/vehicle-gallery.tsx` | Lista de fotos |

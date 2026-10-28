@@ -253,23 +253,37 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
       const rows = (extraRows || []) as { catalog_extra_id: string | null; name: string; price: number | null }[];
       const catalogIds = rows.map((row) => row.catalog_extra_id).filter((value): value is string => Boolean(value));
       let variantRows: { id: string; extra_id: string; name: string; price: number | null; position: number | null }[] = [];
+      // Descrição e fotografia vivem no catálogo partilhado (vehicle_extra_catalog).
+      let catalogRows: { id: string; description: string | null; image_url: string | null }[] = [];
       if (catalogIds.length) {
-        const { data } = await supabase
-          .from("vehicle_extra_variants")
-          .select("id, extra_id, name, price, position")
-          .in("extra_id", catalogIds)
-          .eq("is_active", true)
-          .order("position", { ascending: true });
-        variantRows = (data || []) as typeof variantRows;
+        const [variantsRes, catalogRes] = await Promise.all([
+          supabase
+            .from("vehicle_extra_variants")
+            .select("id, extra_id, name, price, position")
+            .in("extra_id", catalogIds)
+            .eq("is_active", true)
+            .order("position", { ascending: true }),
+          supabase
+            .from("vehicle_extra_catalog")
+            .select("id, description, image_url")
+            .in("id", catalogIds),
+        ]);
+        variantRows = (variantsRes.data || []) as typeof variantRows;
+        catalogRows = (catalogRes.data || []) as typeof catalogRows;
       }
-      configuratorExtras = rows.map((row, index) => ({
-        id: row.catalog_extra_id || `${vehicle.id}-${index}`,
-        name: row.name,
-        price: Number(row.price) || 0,
-        variants: variantRows
-          .filter((variant) => variant.extra_id === row.catalog_extra_id)
-          .map((variant) => ({ id: variant.id, name: variant.name, price: Number(variant.price) || 0 })),
-      }));
+      configuratorExtras = rows.map((row, index) => {
+        const catalog = catalogRows.find((item) => item.id === row.catalog_extra_id);
+        return {
+          id: row.catalog_extra_id || `${vehicle.id}-${index}`,
+          name: row.name,
+          description: catalog?.description ?? null,
+          image_url: catalog?.image_url ?? null,
+          price: Number(row.price) || 0,
+          variants: variantRows
+            .filter((variant) => variant.extra_id === row.catalog_extra_id)
+            .map((variant) => ({ id: variant.id, name: variant.name, price: Number(variant.price) || 0 })),
+        };
+      });
     } catch {
       configuratorExtras = [];
     }
@@ -323,7 +337,14 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             </p>
           )}
 
-          {vehicle.status !== "sold" && (
+          {vehicle.status !== "sold" && vehicle.sale_type === "new" && (
+            <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <a href="#configurador" className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Configurar</a>
+              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Pedir informações</Link>
+            </div>
+          )}
+
+          {vehicle.status !== "sold" && vehicle.sale_type !== "new" && (
             <div className={`mt-7 grid grid-cols-1 gap-3 ${vehicle.status === "available" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               {vehicle.status === "available" && (
                 <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
