@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 // Notificação das propostas de viaturas novas.
-// Envia para os emails configurados em /admin/definicoes e (opcionalmente)
-// para a lista da newsletter. A proposta é sempre guardada na BD pelo cliente
-// antes deste pedido — uma falha de email nunca a invalida.
+// Envia para os emails configurados em /admin/definicoes e para o cliente.
+// A proposta é sempre guardada na BD pelo cliente antes deste pedido — uma
+// falha de email nunca a invalida.
 
 const FROM = "Chikane Garage <propostas@chikanegarage.blog>";
 
@@ -55,29 +54,6 @@ function splitEmails(raw?: string | null): string[] {
     .filter((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
 }
 
-// A lista da newsletter só é legível com a chave de serviço (RLS de admin).
-// Usada exclusivamente para recolher os destinatários desta cópia.
-async function newsletterEmails(): Promise<string[]> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) return [];
-  try {
-    const admin = createSupabaseClient(url, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data, error } = await admin.rpc("proposal_newsletter_emails");
-    if (error) {
-      console.error("Erro ao ler lista da newsletter:", error.message);
-      return [];
-    }
-    const rows = (data || []) as { email?: string | null }[];
-    return rows.map((row) => String(row.email || "").trim()).filter(Boolean);
-  } catch (error) {
-    console.error("Erro ao ler lista da newsletter:", error);
-    return [];
-  }
-}
-
 function extrasHtml(extras: ProposalExtra[]): string {
   if (!extras.length) return "<p style='color:#888;margin:0;'>Sem extras selecionados.</p>";
   return `<ul style="margin:0;padding-left:18px;color:#ccc;font-size:14px;line-height:1.7;">
@@ -101,12 +77,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Definições do site (leitura pública) — emails a notificar.
-    let settings: { email?: string | null; proposal_notify_emails?: string | null; proposal_auto_send_list?: boolean | null } | null = null;
+    let settings: { email?: string | null; proposal_notify_emails?: string | null } | null = null;
     try {
       const supabase = await createClient();
       const { data } = await supabase
         .from("site_settings")
-        .select("email, proposal_notify_emails, proposal_auto_send_list")
+        .select("email, proposal_notify_emails")
         .limit(1)
         .maybeSingle();
       settings = data || null;
@@ -192,25 +168,7 @@ export async function POST(request: NextRequest) {
       if (result.error) errors.push(`interna: ${result.error.message}`);
     }
 
-    // 2. Cópia para a lista da newsletter (opcional)
-    if (settings?.proposal_auto_send_list) {
-      const list = await newsletterEmails();
-      const recipients = list.filter((email) => !owners.includes(email));
-      if (recipients.length) {
-        // Resend aceita até 50 destinatários por envio — divide em lotes.
-        for (let index = 0; index < recipients.length; index += 50) {
-          const result = await resend.emails.send({
-            from: FROM,
-            to: recipients.slice(index, index + 50),
-            subject: `Proposta configurada · ${payload.vehicle_name || "Viatura nova"}`,
-            html: internalHtml,
-          });
-          if (result.error) errors.push(`lista: ${result.error.message}`);
-        }
-      }
-    }
-
-    // 3. Confirmação ao cliente
+    // 2. Confirmação ao cliente
     const confirmation = await resend.emails.send({
       from: FROM,
       to: String(payload.email),

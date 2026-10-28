@@ -30,7 +30,6 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_sale_type_status ON public.vehicles(sale
 -- 2. ADICIONAR CAMPOS A SITE_SETTINGS PARA PROPOSTAS
 -- ------------------------------------------------------------
 ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS proposal_notify_emails TEXT DEFAULT '';
-ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS proposal_auto_send_list BOOLEAN DEFAULT false;
 
 -- ------------------------------------------------------------
 -- 3. CRIAR TABELA DE PROPOSTAS
@@ -109,26 +108,8 @@ GRANT INSERT ON public.sale_proposals TO anon, authenticated;
 GRANT SELECT, UPDATE ON public.sale_proposals TO authenticated;
 
 -- ------------------------------------------------------------
--- 7. LISTA DE EMAILS DA NEWSLETTER PARA CÓPIA DAS PROPOSTAS
+-- 7. RECARREGAR O ESQUEMA
 -- ------------------------------------------------------------
--- Devolve apenas os emails ativos. Executável só pelo service_role (usado
--- exclusivamente pela rota /api/proposals/notify para a cópia opcional).
-CREATE OR REPLACE FUNCTION public.proposal_newsletter_emails()
-RETURNS TABLE (email TEXT)
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT n.email
-  FROM public.newsletter_subscribers n
-  WHERE n.status = 'active'
-    AND n.email <> '';
-$$;
-
-REVOKE ALL ON FUNCTION public.proposal_newsletter_emails() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.proposal_newsletter_emails() FROM anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.proposal_newsletter_emails() TO service_role;
-
 NOTIFY pgrst, 'reload schema';
 
 SELECT '✅ MIGRAÇÃO 021 CONCLUÍDA - sale_type, sale_proposals e definições adicionados' AS resultado;

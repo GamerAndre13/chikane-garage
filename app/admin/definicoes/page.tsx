@@ -9,7 +9,7 @@ import type { SiteSettings } from "@/lib/site-settings";
 
 type SettingsRow = SiteSettings & { id: string };
 
-type FieldDef = { key: string; label: string; hint: string; full?: boolean; photo?: boolean; checkbox?: boolean };
+type FieldDef = { key: string; label: string; hint: string; full?: boolean; photo?: boolean };
 
 const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
   {
@@ -76,7 +76,6 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
       "Configuração do configurador de viaturas novas. As propostas enviadas pelos clientes ficam sempre guardadas em /admin/propostas.",
     fields: [
       { key: "proposal_notify_emails", label: "Emails a notificar", hint: "Um ou vários emails separados por vírgula. Cada proposta nova é enviada para esta lista.", full: true },
-      { key: "proposal_auto_send_list", label: "Enviar também para a lista da newsletter", hint: "Se ativo, todos os subscritores ativos da newsletter recebem uma cópia da proposta.", checkbox: true },
     ],
   },
 ];
@@ -117,7 +116,6 @@ export default function DefinicoesPage() {
           td_slots: row.td_slots ?? "",
           td_days: row.td_days ?? "",
           proposal_notify_emails: row.proposal_notify_emails ?? "",
-          proposal_auto_send_list: row.proposal_auto_send_list ? "true" : "false",
         });
       }
       setLoading(false);
@@ -154,8 +152,6 @@ export default function DefinicoesPage() {
       ...payloadRaw,
       td_duration_minutes:
         typeof rawDuration === "string" && rawDuration.trim() === "" ? 60 : Number(rawDuration ?? 60),
-      // Checkbox do formulário guarda "true"/"false" — a BD espera BOOLEAN.
-      proposal_auto_send_list: payloadRaw.proposal_auto_send_list === "true",
     };
     let saveError: PostgrestError | null = null;
 
@@ -268,16 +264,7 @@ export default function DefinicoesPage() {
               <div key={field.key} style={field.full || field.photo ? { gridColumn: "1 / -1" } : undefined}>
                 <label style={labelStyle}>{field.label}</label>
 
-                {field.checkbox ? (
-                  <label className="flex cursor-pointer items-center gap-2" style={{ color: "var(--foreground)", fontSize: "0.875rem" }}>
-                    <input
-                      type="checkbox"
-                      checked={form[field.key] === "true"}
-                      onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.checked ? "true" : "false" }))}
-                    />
-                    {field.label}
-                  </label>
-                ) : field.photo ? (
+                {field.photo ? (
                   <div>
                     <div className="flex items-center gap-3">
                       <div
