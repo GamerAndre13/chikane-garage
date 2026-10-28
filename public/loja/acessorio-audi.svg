@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
-  <title id="title">Acessório Audi — demonstração</title>
-  <desc id="desc">Ilustração de demonstração de uma proteção de bagageira num fundo escuro.</desc>
-  <defs><linearGradient id="bg" x2="0" y2="1"><stop stop-color="#202020"/><stop offset="1" stop-color="#090909"/></linearGradient><linearGradient id="liner" x2="0" y2="1"><stop stop-color="#343434"/><stop offset="1" stop-color="#131313"/></linearGradient></defs>
-  <rect width="800" height="600" fill="url(#bg)"/><path d="M0 470h800" stroke="#f47724" stroke-opacity=".45" stroke-width="2"/>
-  <path d="m183 360 75-195q12-32 46-32h194q34 0 47 32l72 195q8 22-11 34l-63 39H257l-63-39q-19-12-11-34Z" fill="url(#liner)" stroke="#aaa" stroke-width="4"/>
-  <path d="M240 356h320M285 214h230M267 290h266" fill="none" stroke="#f47724" stroke-opacity=".75" stroke-width="4"/><path d="m245 409 60 31h190l60-31" fill="none" stroke="#777" stroke-width="3"/>
-  <text x="400" y="535" fill="#dedbd5" font-family="Arial,sans-serif" font-size="18" letter-spacing="6" text-anchor="middle">IMAGEM DE DEMONSTRAÇÃO</text>
-</svg>
