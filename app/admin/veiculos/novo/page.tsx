@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
@@ -8,21 +8,24 @@ import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehiclePhotoPicker } from "@/components/ui/vehicle-photo-picker";
 import { uploadVehicleImages } from "@/app/actions/upload";
 
-interface VehicleExtraCatalogItem {
+const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
+
+interface ExtraCatalogItem {
   id: string;
   name: string;
   price: number;
-  position: number;
-  is_active: boolean;
 }
-
-const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
 const STATUS_OPTIONS = [
   { value: "available", label: "Disponível" },
   { value: "reserved", label: "Reservada" },
   { value: "sold", label: "Vendida" },
   { value: "archived", label: "Arquivada" },
+] as const;
+
+const SALE_TYPE_OPTIONS = [
+  { value: "used", label: "Usado" },
+  { value: "new", label: "Novo (por encomenda)" },
 ] as const;
 
 const FUEL_OPTIONS = [
@@ -45,12 +48,6 @@ const ORIGIN_OPTIONS = [
 ] as const;
 
 const initialForm = {
-  condition: "used",
-  sale_type: "stock",
-  reference_code: "",
-  brand_warranty_months: "",
-  delivery_estimate_days: "",
-  config_summary: "",
   brand: "BMW",
   model: "",
   trim: "",
@@ -71,24 +68,15 @@ const initialForm = {
   mileage_km: "",
   previous_owners: "1",
   service_book: "full_dealer",
-  accident_history: "false",
-  accident_details: "",
-  last_service_date: "",
-  tires_condition: "",
   origin: "imported",
   origin_country: "DE",
-  coc_confirmed: "false",
-  isv_paid: "false",
-  legalization_date: "",
   price: "",
   warranty_months: "6",
-  financing_available: "false",
-  trade_in_accepted: "false",
   cover_image_url: "",
-  video_url: "",
   description: "",
   is_featured: "false",
   status: "available",
+  sale_type: "used",
 };
 
 const inputStyle = {
@@ -112,18 +100,8 @@ const labelStyle = {
   color: "var(--muted)",
 } as const;
 
-const Field = ({ label, children, required, error }: { label: string; children: React.ReactNode; required?: boolean; error?: boolean }) => (
-  <div>
-    <label style={labelStyle}>{label}{required ? " *" : ""}</label>
-    <div style={error ? { outline: "1px solid #dc2626", borderRadius: "0.375rem" } : undefined}>{children}</div>
-  </div>
-);
-
-const CheckField = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "end", paddingBottom: "0.4rem" }}>
-    <input type="checkbox" id={id} checked={checked} onChange={onChange} />
-    <label htmlFor={id} style={{ color: "var(--foreground)", fontSize: "0.875rem", marginBottom: 0 }}>{label}</label>
-  </div>
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div><label style={labelStyle}>{label}</label>{children}</div>
 );
 
 export default function NovoVeiculo() {
@@ -132,38 +110,28 @@ export default function NovoVeiculo() {
   const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-  const [extraCatalog, setExtraCatalog] = useState<VehicleExtraCatalogItem[]>([]);
+  const [extraCatalog, setExtraCatalog] = useState<ExtraCatalogItem[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+
+  // Catálogo de extras partilhado — gerido em /admin/veiculos/extras.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("vehicle_extra_catalog")
+        .select("id, name, price")
+        .eq("is_active", true)
+        .order("position", { ascending: true })
+        .order("name", { ascending: true });
+      setExtraCatalog((data || []) as ExtraCatalogItem[]);
+    })();
+  }, []);
+
+  // Extras só fazem sentido em viaturas novas por encomenda — a limpeza é
+  // feita no próprio onChange do "Tipo de venda" (sem efeito de sincronização).
 
   const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
   const modelNames = useMemo(() => Object.keys(models).sort(), [models]);
-
-  useEffect(() => {
-    if (form.condition === "used") {
-      setMultiple({ sale_type: "stock" });
-    }
-  }, [form.condition, setMultiple]);
-
-  useEffect(() => {
-    if (form.origin === "national") {
-      setMultiple({ origin_country: "PT", legalization_date: "" });
-    }
-  }, [form.origin, setMultiple]);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("vehicle_extra_catalog").select("id,name,price,position,is_active").eq("is_active", true).order("position", { ascending: true }).order("name", { ascending: true });
-      setExtraCatalog((data || []) as VehicleExtraCatalogItem[]);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!(form.condition === "new" && form.sale_type === "on_order")) {
-      setSelectedExtras([]);
-    }
-  }, [form.condition, form.sale_type]);
 
   // Quando muda a marca, limpa modelo e specs
   const handleBrandChange = useCallback((brand: string) => {
@@ -193,27 +161,10 @@ export default function NovoVeiculo() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-
-    if (form.condition === "used") {
-      if (!form.brand || !form.model || !form.registration_year || !form.mileage_km || !form.price) {
-        setSaving(false);
-        return;
-      }
-    } else {
-      if (!form.brand || !form.model || !form.registration_year || !form.price) {
-        setSaving(false);
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       const { features, ...vehicleForm } = form;
       const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
-      const originCountry = form.origin === "national" ? "PT" : form.origin_country || null;
-      const legalizationDate = form.origin === "national" ? null : form.legalization_date || null;
-
       const { data: vehicle, error } = await supabase.from("vehicles").insert({
         ...vehicleForm,
         slug,
@@ -223,27 +174,10 @@ export default function NovoVeiculo() {
         torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
         combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
         co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
-        mileage_km: form.condition === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
-        previous_owners: form.condition === "new" ? null : form.previous_owners ? parseInt(form.previous_owners) : null,
-        service_book: form.condition === "new" ? null : form.service_book,
-        accident_history: form.accident_history === "true",
-        accident_details: form.accident_details || null,
-        last_service_date: form.last_service_date || null,
-        tires_condition: form.tires_condition || null,
-        reference_code: form.reference_code || null,
-        origin_country: originCountry,
-        coc_confirmed: form.coc_confirmed === "true",
-        isv_paid: form.isv_paid === "true",
-        legalization_date: legalizationDate,
-        financing_available: form.financing_available === "true",
-        trade_in_accepted: form.trade_in_accepted === "true",
-        video_url: form.video_url || null,
-        price: form.price !== "" && form.price !== null ? parseFloat(String(form.price)) : null,
-        warranty_months: form.condition === "used" && form.warranty_months ? parseInt(form.warranty_months) : null,
-        condition: form.condition,
-        sale_type: form.condition === "used" ? "stock" : form.sale_type,
-        brand_warranty_months: form.brand_warranty_months ? parseInt(form.brand_warranty_months) : null,
-        delivery_estimate_days: form.delivery_estimate_days ? parseInt(form.delivery_estimate_days) : null,
+        mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
+        previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
+        price: form.price ? parseFloat(form.price) : null,
+        warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
         is_featured: form.is_featured === "true",
         status: form.status,
         sold_at: form.status === "sold" ? new Date().toISOString() : null,
@@ -258,34 +192,42 @@ export default function NovoVeiculo() {
       if (featureLabels.length) {
         const { error: featureError } = await supabase.from("vehicle_features").insert(featureLabels.map((label) => ({ vehicle_id: vehicle.id, label })));
         if (featureError) {
-          alert("A viatura foi criada, mas os extras não foram guardados: " + featureError.message);
+          alert("A viatura foi criada, mas o equipamento não foi guardado: " + featureError.message);
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
       }
 
-      if (form.condition === "new" && form.sale_type === "on_order" && selectedExtras.length) {
-        const extrasToInsert = extraCatalog
-          .filter((ex) => selectedExtras.includes(ex.id))
-          .map((ex) => ({ vehicle_id: vehicle.id, catalog_extra_id: ex.id, name: ex.name, price: Number(ex.price) || 0 }));
-        if (extrasToInsert.length) {
-          const { error: extrasErr } = await supabase.from("vehicle_extras").insert(extrasToInsert);
-          if (extrasErr) {
-            alert("A viatura foi criada, mas os extras n\u00e3o foram guardados: " + extrasErr.message);
-            router.push(`/admin/veiculos/editar/${vehicle.id}`);
-            return;
-          }
+      // Extras escolhidos do catálogo (apenas viaturas novas por encomenda).
+      if (form.sale_type === "new" && selectedExtras.length) {
+        const { error: extrasError } = await supabase.from("vehicle_extras").insert(
+          selectedExtras.map((catalogId) => {
+            const extra = extraCatalog.find((item) => item.id === catalogId);
+            return {
+              vehicle_id: vehicle.id,
+              catalog_extra_id: catalogId,
+              name: extra?.name || "Extra",
+              price: extra?.price ?? 0,
+            };
+          })
+        );
+        if (extrasError) {
+          alert("A viatura foi criada, mas os extras não foram guardados: " + extrasError.message);
+          router.push(`/admin/veiculos/editar/${vehicle.id}`);
+          return;
         }
       }
 
       if (photos.length) {
         const formData = new FormData();
         formData.append("vehicleId", vehicle.id);
+        // A capa passa a ser definida pela própria action (evita uma segunda
+        // Server Action + leitura à BD depois do upload).
         formData.append("coverIndex", String(coverPhotoIndex));
         photos.forEach((photo) => formData.append("files", photo));
         const upload = await uploadVehicleImages(formData);
         if (upload.error || !upload.urls?.length) {
-          alert(`A viatura foi criada, mas as fotografias n\u00e3o foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
+          alert(`A viatura foi criada, mas as fotografias não foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
@@ -305,18 +247,19 @@ export default function NovoVeiculo() {
         {/* Identificação */}
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Condição"><select style={selectStyle} value={form.condition} onChange={handleChange("condition")}><option value="used">Usado</option><option value="new">Novo</option></select></Field>
-          {form.condition === "new" && <Field label="Disponibilidade"><select style={selectStyle} value={form.sale_type} onChange={handleChange("sale_type")}><option value="stock">Em stock</option><option value="on_order">Por encomenda</option></select></Field>}
-          <Field label="Marca" required error={submitted && !form.brand}><select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>{brands.map((b) => <option key={b} value={b}>{b}</option>)}</select></Field>
-          <Field label="Modelo" required error={submitted && !form.model}>
+          <Field label="Marca *">
+            <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
+              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </Field>
+          <Field label="Modelo *">
             <>
-              <input list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
+              <input required list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
               <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
-          <Field label="Referência interna"><input style={inputStyle} placeholder="ex: CH-2024-018" value={form.reference_code} onChange={handleChange("reference_code")} /></Field>
-          <Field label="Ano Registo" required error={submitted && !form.registration_year}><input type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
+          <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
 
@@ -336,62 +279,63 @@ export default function NovoVeiculo() {
         {/* Veículo */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          {form.condition !== "new" && <Field label="Quilometragem" required error={submitted && !form.mileage_km}><input type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>}
+          <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
-          {form.condition !== "new" && <><Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field><Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field></>}
-          <CheckField id="accident_history" label="Histórico de acidentes" checked={form.accident_history === "true"} onChange={handleCheckboxChange("accident_history")} />
-          {form.accident_history === "true" && <Field label="Detalhes do acidente"><input style={inputStyle} value={form.accident_details} onChange={handleChange("accident_details")} /></Field>}
-          <Field label="Data da última revisão"><input type="date" style={inputStyle} value={form.last_service_date} onChange={handleChange("last_service_date")} /></Field>
-          <Field label="Estado dos pneus"><input style={inputStyle} placeholder="ex: Novos (2024)" value={form.tires_condition} onChange={handleChange("tires_condition")} /></Field>
+          <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
+          <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
         {/* Origem */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          {form.origin !== "national" && <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>}
-          <CheckField id="coc_confirmed" label="CoC (certificado comunitário) confirmado" checked={form.coc_confirmed === "true"} onChange={handleCheckboxChange("coc_confirmed")} />
-          <CheckField id="isv_paid" label="ISV liquidado" checked={form.isv_paid === "true"} onChange={handleCheckboxChange("isv_paid")} />
-          {form.origin !== "national" && <Field label="Data de legalização"><input type="date" style={inputStyle} value={form.legalization_date} onChange={handleChange("legalization_date")} /></Field>}
+          <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
         </div>
 
         {/* Preço & Status */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Preço (€)" required error={submitted && !form.price}><input type="number" step="any" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
-          {form.condition === "used" ? <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field> : <>
-            <Field label="Garantia da marca (meses)"><input type="number" min="0" style={inputStyle} value={form.brand_warranty_months} onChange={handleChange("brand_warranty_months")} /></Field>
-            {form.sale_type === "on_order" && <Field label="Prazo estimado (dias)"><input type="number" min="1" style={inputStyle} value={form.delivery_estimate_days} onChange={handleChange("delivery_estimate_days")} /></Field>}
-          </>}
+          <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
+          <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
+          <Field label="Tipo de venda"><select style={selectStyle} value={form.sale_type} onChange={(e) => { handleChange("sale_type")(e); if (e.target.value !== "new") setSelectedExtras([]); }}>{SALE_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          <CheckField id="financing_available" label="Aceita financiamento" checked={form.financing_available === "true"} onChange={handleCheckboxChange("financing_available")} />
-          <CheckField id="trade_in_accepted" label="Aceita retoma" checked={form.trade_in_accepted === "true"} onChange={handleCheckboxChange("trade_in_accepted")} />
         </div>
-        {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
 
         <VehiclePhotoPicker onChange={(files, coverIndex) => { setPhotos(files); setCoverPhotoIndex(coverIndex); }} />
-        {form.condition === "new" && form.sale_type === "on_order" && extraCatalog.length > 0 && (
-          <div style={{ marginTop: "1rem" }}>
-            <label style={labelStyle}>Extras opcionais (por encomenda)</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "0.5rem", padding: "0.75rem", border: "1px solid var(--border)", borderRadius: "0.375rem", backgroundColor: "var(--background-alt)" }}>
-              {extraCatalog.map((ex) => (
-                <label key={ex.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--foreground)", fontSize: "0.875rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedExtras.includes(ex.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedExtras((prev) => [...prev, ex.id]);
-                      else setSelectedExtras((prev) => prev.filter((id) => id !== ex.id));
-                    }}
-                  />
-                  <span style={{ flex: 1 }}>{ex.name}</span>
-                  <span style={{ color: "var(--muted)" }}>{Number(ex.price || 0).toLocaleString("pt-PT")} €</span>
-                </label>
-              ))}
-            </div>
-            <p style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted)" }}>Cria/edita o catálogo em /admin/veiculos/extras</p>
+
+        {/* Extras configuráveis — só fazem sentido em viaturas novas */}
+        {form.sale_type === "new" && (
+          <div style={{ marginTop: "1rem", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "0.75rem" }}>
+            <label style={labelStyle}>Extras configuráveis (catálogo)</label>
+            <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
+              Geridos em <strong>Viaturas → Extras</strong>. O cliente escolhe as variantes na ficha da viatura.
+            </p>
+            {extraCatalog.length === 0 ? (
+              <p style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Ainda não existem extras no catálogo.</p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }}>
+                {extraCatalog.map((extra) => {
+                  const checked = selectedExtras.includes(extra.id);
+                  return (
+                    <label key={extra.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "var(--foreground)" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          setSelectedExtras((prev) =>
+                            e.target.checked ? [...prev, extra.id] : prev.filter((id) => id !== extra.id)
+                          )
+                        }
+                      />
+                      {extra.name}
+                      {extra.price ? <span style={{ color: "var(--muted)" }}>({extra.price.toLocaleString("pt-PT")} €)</span> : null}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -399,10 +343,6 @@ export default function NovoVeiculo() {
         <div style={{ marginTop: "0.75rem" }}>
           <label style={labelStyle}>Descrição</label>
           <textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} />
-        </div>
-        <div style={{ marginTop: "0.75rem" }}>
-          <label style={labelStyle}>Vídeo (URL do YouTube ou Vimeo)</label>
-          <input style={inputStyle} placeholder="https://www.youtube.com/watch?v=..." value={form.video_url} onChange={handleChange("video_url")} />
         </div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />

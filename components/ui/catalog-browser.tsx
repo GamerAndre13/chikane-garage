@@ -10,10 +10,10 @@ import { Reveal } from "@/components/ui/reveal";
 type Vehicle = {
   id: string; slug: string; brand?: string | null; model?: string | null; trim?: string | null;
   registration_year?: number | null; mileage_km?: number | null; power_hp?: number | null;
-  condition?: string | null; sale_type?: string | null; brand_warranty_months?: number | null; delivery_estimate_days?: number | null;
   fuel_type?: string | null; transmission?: string | null; exterior_color?: string | null;
   body_style?: string | null; price?: number | null; status?: string | null; cover_image_url?: string | null;
   description?: string | null;
+  sale_type?: string | null;
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
 };
 
@@ -98,7 +98,7 @@ function SelectField({ label, value, onChange, disabled, placeholder, options }:
   return <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><select className={`${control} cursor-pointer`} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
 }
 
-export function CatalogBrowser({ vehicles, hideMileageYear = false }: { vehicles: Vehicle[]; hideMileageYear?: boolean }) {
+export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
   const searchParams = useSearchParams();
   const param = (key: string): string => searchParams.get(key) ?? all;
 
@@ -113,16 +113,12 @@ export function CatalogBrowser({ vehicles, hideMileageYear = false }: { vehicles
   const [bodyStyle, setBodyStyle] = useState(() => param("estilo"));
   const [minPower, setMinPower] = useState(() => param("cv_a"));
   const [maxPower, setMaxPower] = useState(() => param("cv_b"));
-  // Na página Novos (hideMileageYear) os filtros de primeiro registo e
-  // quilometragem não existem: os estados ficam sempre "all" e não vão para o URL.
-  const [minYear, setMinYear] = useState(() => (hideMileageYear ? all : param("ano_a")));
-  const [maxYear, setMaxYear] = useState(() => (hideMileageYear ? all : param("ano_b")));
+  const [minYear, setMinYear] = useState(() => param("ano_a"));
+  const [maxYear, setMaxYear] = useState(() => param("ano_b"));
   const [minPrice, setMinPrice] = useState(() => param("preco_a"));
   const [maxPrice, setMaxPrice] = useState(() => param("preco_b"));
-  const [minMileage, setMinMileage] = useState(() => (hideMileageYear ? all : param("km_a")));
-  const [maxMileage, setMaxMileage] = useState(() => (hideMileageYear ? all : param("km_b")));
-  // Ordenação da lista (?ordenar=…): por omissão a ordem do servidor (mais recentes).
-  const [sort, setSort] = useState(() => param("ordenar"));
+  const [minMileage, setMinMileage] = useState(() => param("km_a"));
+  const [maxMileage, setMaxMileage] = useState(() => param("km_b"));
 
   // Mantém o URL sincronizado com os filtros sem recarregar a página.
   // replaceState não cria entradas no histórico: "voltar atrás" volta à página
@@ -140,20 +136,15 @@ export function CatalogBrowser({ vehicles, hideMileageYear = false }: { vehicles
     setParam("estilo", bodyStyle);
     setParam("cv_a", minPower);
     setParam("cv_b", maxPower);
-    if (!hideMileageYear) {
-      setParam("ano_a", minYear);
-      setParam("ano_b", maxYear);
-    }
+    setParam("ano_a", minYear);
+    setParam("ano_b", maxYear);
     setParam("preco_a", minPrice);
     setParam("preco_b", maxPrice);
-    if (!hideMileageYear) {
-      setParam("km_a", minMileage);
-      setParam("km_b", maxMileage);
-    }
-    setParam("ordenar", sort);
+    setParam("km_a", minMileage);
+    setParam("km_b", maxMileage);
     const qs = params.toString();
     window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage, sort, hideMileageYear]);
+  }, [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
 
   const brands = useMemo(() => unique(vehicles.map((v) => v.brand)) as string[], [vehicles]);
   const models = useMemo(() => unique(vehicles.filter((v) => brand === all || v.brand === brand).map((v) => v.model)) as string[], [vehicles, brand]);
@@ -182,11 +173,11 @@ export function CatalogBrowser({ vehicles, hideMileageYear = false }: { vehicles
       return [];
     };
     const numericMatch = (value: number | null | undefined, lower: string, upper: string) => lower === all && upper === all || value != null && (lower === all || value >= Number(lower)) && (upper === all || value <= Number(upper));
-    const list = vehicles.filter((v) => {
+    return vehicles.filter((v) => {
       const partes = [
         v.brand, v.model, v.trim, v.registration_year, v.mileage_km, v.power_hp,
         v.fuel_type, ...fuelAliases(v), v.transmission, v.exterior_color, v.body_style,
-        v.status, statusLabel(v.status)?.label, v.price, v.description, v.condition, v.sale_type,
+        v.status, statusLabel(v.status)?.label, v.price, v.description,
       ];
       if (v.status === "available") partes.push("disponíveis", "disponiveis", "em garagem", "disponível", "disponivel");
       if (v.status === "reserved") partes.push("reservada", "reservadas");
@@ -199,19 +190,7 @@ export function CatalogBrowser({ vehicles, hideMileageYear = false }: { vehicles
       });
       return matchesQuery && (brand === all || v.brand === brand) && (model === all || v.model === model) && (fuel === all || v.fuel_type === fuel) && (color === all || v.exterior_color === color) && (bodyStyle === all || v.body_style === bodyStyle) && numericMatch(v.registration_year, minYear, maxYear) && numericMatch(v.price, minPrice, maxPrice) && numericMatch(v.mileage_km, minMileage, maxMileage) && numericMatch(v.power_hp, minPower, maxPower);
     });
-    // Ordenação escolhida pelo visitante; por omissão mantém a ordem do
-    // servidor (mais recentes primeiro). Viaturas sem valor vão para o fim.
-    const missing = (direction: 1 | -1) => (direction === 1 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
-    const by = (pick: (v: Vehicle) => number | null | undefined, direction: 1 | -1) =>
-      [...list].sort((a, b) => ((pick(a) ?? missing(direction)) * direction) - ((pick(b) ?? missing(direction)) * direction));
-    if (sort === "preco_asc") return by((v) => v.price, 1);
-    if (sort === "preco_desc") return by((v) => v.price, -1);
-    if (sort === "ano_desc") return by((v) => v.registration_year, -1);
-    if (sort === "ano_asc") return by((v) => v.registration_year, 1);
-    if (sort === "km_asc") return by((v) => v.mileage_km, 1);
-    if (sort === "km_desc") return by((v) => v.mileage_km, -1);
-    return list;
-  }, [vehicles, query, brand, model, fuel, color, bodyStyle, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage, minPower, maxPower, sort]);
+  }, [vehicles, query, brand, model, fuel, color, bodyStyle, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage, minPower, maxPower]);
 
   const clear = () => { setQuery(""); setBrand(all); setModel(all); setFuel(all); setColor(all); setBodyStyle(all); setMinPower(all); setMaxPower(all); setMinYear(all); setMaxYear(all); setMinPrice(all); setMaxPrice(all); setMinMileage(all); setMaxMileage(all); };
   const optionLabel = (value: string) => value.replaceAll("_", " ").replace(/^./, (first) => first.toLocaleUpperCase("pt-PT"));
@@ -240,13 +219,12 @@ export function CatalogBrowser({ vehicles, hideMileageYear = false }: { vehicles
           <SelectField label="Estilo" value={bodyStyle} onChange={setBodyStyle} placeholder="Todos os estilos" options={bodyStyles.map((value) => ({ value, label: optionLabel(value) }))} />
           <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
           <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
-          {/* Na página Novos não faz sentido: tudo é 0 km e do ano corrente. */}
-          {!hideMileageYear && <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} year />}
-          {!hideMileageYear && <RangeFilter label="Quilometragem" values={mileages} min={minMileage} max={maxMileage} onMin={setMinMileage} onMax={setMaxMileage} step={1000} unit="km" />}
+          <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} year />
+          <RangeFilter label="Quilometragem" values={mileages} min={minMileage} max={maxMileage} onMin={setMinMileage} onMax={setMaxMileage} step={1000} unit="km" />
         </div>
       </aside>
-    <section aria-live="polite"><div className="mb-5 flex flex-wrap items-center gap-4"><span className="h-px flex-1 bg-white/10"/><label className="flex items-center gap-2"><span className="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">Ordenar</span><select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Ordenar viaturas" className={`${control} w-auto cursor-pointer py-2 pr-8`}><option value={all}>Mais recentes</option><option value="preco_asc">Preço · crescente</option><option value="preco_desc">Preço · decrescente</option><option value="ano_desc">Ano · mais recente</option><option value="ano_asc">Ano · mais antigo</option><option value="km_asc">Quilómetros · menos</option><option value="km_desc">Quilómetros · mais</option></select></label></div>
-        {filtered.length === 0 ? <div className="border border-white/10 bg-surface-oxide px-6 py-20 text-center"><p className="font-display text-xl uppercase tracking-wide text-white">Nenhuma viatura encontrada</p><p className="mt-2 text-sm text-white/60">Altera os filtros ou tenta outra pesquisa.</p><button type="button" onClick={clear} className="mt-6 border border-copper px-5 py-3 font-display text-xs uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-white">Limpar filtros</button></div> : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((v, index) => { const status = statusLabel(v.status); return <Reveal key={v.id} className="h-full" delay={Math.min(index * 55, 330)}><article className="card-lift group h-full overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={photosFor(v)} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id}/></div>{v.condition === "new" && <span className="absolute left-3 top-3 z-20 bg-copper px-3 py-1 font-display text-[10px] uppercase tracking-[0.15em] text-black">Novo</span>}{status && <span className="absolute bottom-3 left-3 z-20 border border-current bg-black/80 px-3 py-1 font-display text-[10px] uppercase tracking-[0.15em]" style={{color:status.color}}>{status.label}</span>}</VehicleCardGallery><Link href={`/catalogo/${v.slug}`} className="block p-4 sm:p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper"><p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/60">{v.brand || ""} <span className="text-copper">·</span> {v.registration_year || ""}</p><h3 className="mt-2 font-display text-xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>{v.trim && <p className="mt-1 font-display text-[10px] uppercase tracking-[0.15em] text-copper">{v.trim}</p>}<div className="mt-4 grid grid-cols-2 gap-y-2 border-y border-white/10 py-3 text-xs"><span className="text-white/60">Quilometragem</span><span className="text-right tabular-nums text-white/80">{v.mileage_km != null ? `${v.mileage_km.toLocaleString("pt-PT")} km` : "—"}</span>{v.condition === "new" && <><span className="text-white/60">Venda</span><span className="text-right text-white/80">{v.sale_type === "on_order" ? "Por encomenda" : "Em stock"}</span></>}<span className="text-white/60">Potência</span><span className="text-right tabular-nums text-white/80">{v.power_hp != null ? `${v.power_hp} cv` : "—"}</span><span className="text-white/60">Combustível</span><span className="text-right text-white/80">{v.fuel_type || "—"}</span></div><div className="mt-4 flex items-end justify-between"><span className="font-display text-xl font-semibold tabular-nums text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] uppercase tracking-[0.13em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div></Link></article></Reveal>; })}</div>}
+      <section aria-live="polite"><div className="mb-5 flex items-center gap-4"><span className="h-px flex-1 bg-white/10"/><p className="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">{filtered.length} viaturas <span className="text-copper">em garagem</span></p></div>
+        {filtered.length === 0 ? <div className="border border-white/10 bg-surface-oxide px-6 py-20 text-center"><p className="font-display text-xl uppercase tracking-wide text-white">Nenhuma viatura encontrada</p><p className="mt-2 text-sm text-white/60">Altera os filtros ou tenta outra pesquisa.</p><button type="button" onClick={clear} className="mt-6 border border-copper px-5 py-3 font-display text-xs uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-white">Limpar filtros</button></div> : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((v, index) => { const status = statusLabel(v.status); return <Reveal key={v.id} className="h-full" delay={Math.min(index * 55, 330)}><article className="card-lift group h-full overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={photosFor(v)} href={`/catalogo/${v.slug}`} title={`${v.brand ?? ""} ${v.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={v.id}/></div>{v.sale_type === "new" && <span className="absolute left-3 top-3 z-20 border border-copper bg-black/80 px-3 py-1 font-display text-[10px] uppercase tracking-[0.15em] text-copper">Novo</span>}{status && <span className="absolute bottom-3 left-3 z-20 border border-current bg-black/80 px-3 py-1 font-display text-[10px] uppercase tracking-[0.15em]" style={{color:status.color}}>{status.label}</span>}</VehicleCardGallery><Link href={`/catalogo/${v.slug}`} className="block p-4 sm:p-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-copper"><p className="font-display text-[10px] uppercase tracking-[0.18em] text-white/60">{v.brand || ""} <span className="text-copper">·</span> {v.registration_year || ""}</p><h3 className="mt-2 font-display text-xl font-semibold uppercase tracking-wide text-white">{v.model}</h3>{v.trim && <p className="mt-1 font-display text-[10px] uppercase tracking-[0.15em] text-copper">{v.trim}</p>}<div className="mt-4 grid grid-cols-2 gap-y-2 border-y border-white/10 py-3 text-xs"><span className="text-white/60">Quilometragem</span><span className="text-right tabular-nums text-white/80">{v.mileage_km != null ? `${v.mileage_km.toLocaleString("pt-PT")} km` : "—"}</span><span className="text-white/60">Potência</span><span className="text-right tabular-nums text-white/80">{v.power_hp != null ? `${v.power_hp} cv` : "—"}</span><span className="text-white/60">Combustível</span><span className="text-right text-white/80">{v.fuel_type || "—"}</span></div><div className="mt-4 flex items-end justify-between"><span className="font-display text-xl font-semibold tabular-nums text-white">{v.price != null ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</span><span className="font-display text-[10px] uppercase tracking-[0.13em] text-copper transition-colors group-hover:text-white">Ver viatura ↗</span></div></Link></article></Reveal>; })}</div>}
       </section>
     </div>
   </>;

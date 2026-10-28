@@ -5,8 +5,6 @@ partiu nada.
 
 > ⚠️ **Antes de mexer:** lê as [regras para IA/programadores](REGRAS_PARA_IA.md).
 > A regra nº 1 é: **não se altera a lógica**, só layouts, estilo e textos visuais.
-> Se é a primeira vez neste projeto, começa por
-> [as instruções para IA](INSTRUCOES_PARA_IA.md).
 
 ---
 
@@ -18,51 +16,25 @@ partiu nada.
 | Estilos globais, cores e utilitários | `app/globals.css` |
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
-| **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` (pedidos de test-drive e de informação num painel inline no local — `components/ui/vehicle-request-panel.tsx`, sem sair da ficha) |
-| ↳ Compra online / configurador (viatura nova 0 km + extras → pedido de encomenda) | `app/catalogo/[slug]/configurar/page.tsx` (+ `components/shop/vehicle-configurator.tsx` — checkout dark estilo BMW: «1 · Extras incluídos na compra» por secções da categoria, com seleção múltipla nos extras e escolha única nas jantes (máx. 4 modelos, variantes = tamanhos); «2 · Entrega» (stand grátis / casa +350 €) e «3 · Os seus dados»; painel lateral com fotografia grande, ano · km · Novo, custos e botão «Enviar pedido» (o pedido fica «Por aceitar» no backoffice, sem cobrança). Cartões de extras 3 por linha em `lg`; registos de teste em `supabase/configurador_demo.sql`) |
+| **Novos** (viaturas novas por encomenda) | `app/novos/page.tsx` |
+| **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
 | **Conta** (entrar / registar) | `app/conta/page.tsx` |
 | **Perfil** (dados, favoritos, pedidos) | `app/conta/perfil/page.tsx` |
 | Termos e condições | `app/termos-e-condicoes/page.tsx` |
 | Política de privacidade | `app/politica-de-privacidade/page.tsx` |
-| Envios e devoluções | `app/envios-e-devolucoes/page.tsx` |
-| Perguntas frequentes | `app/faq/page.tsx` |
-| Livro de Reclamações | `app/livro-reclamacoes/page.tsx` |
-| **Viaturas novas** | `app/novos/page.tsx` (+ `components/ui/vehicle-condition-catalog.tsx`) |
-| **Viaturas usadas** | `app/usados/page.tsx` (idem) |
-| **Loja (catálogo)** | `app/loja/page.tsx` |
-| ↳ Categoria da loja | `app/loja/[categoria]/page.tsx` |
-| ↳ Ficha de artigo | `app/produto/[slug]/page.tsx` (artigos "só por encomenda" → `components/shop/product-quote-request.tsx`, pedido de compra sem pagamento) |
-| **Campanhas** (promosções ativas) | `app/campanhas/page.tsx` (cartões de `campaigns` ativas e dentro das datas — secção 25 do `supabase/setup.sql`) |
-| **Carrinho** (só artigos da loja — viaturas não entram no carrinho) | `app/carrinho/page.tsx` (+ `components/shop/cart-view.tsx`) |
-| **Checkout** | `app/checkout/page.tsx` (+ `components/shop/checkout-form.tsx` — nome/contacto vêm da morada e do perfil; cliente com sessão tem os campos pré-preenchidos; cupão debaixo do total; pagamento só abre com todos os campos completos) |
-| ↳ Comprovativo / acompanhamento de pedido (percurso + histórico) | `app/encomenda/[token]/page.tsx` |
-| Conta — encomendas | `app/conta/encomendas/page.tsx` |
 | Página 404 | `app/not-found.tsx` |
-| Erro inesperado (aviso com a referência do erro e «Tentar novamente») | `app/error.tsx` |
 | Imagem de partilha (redes sociais) | `app/opengraph-image.tsx` |
-| **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx` — agrupado por secções no formato Shopify: Painel · Vendas · Catálogo · Conteúdo · Gestão) |
+| **Backoffice** | `app/admin/` (layout em `app/admin/layout.tsx`, menu em `app/admin/AdminSidebar.tsx`) |
 | ↳ Painel inicial | `app/admin/page.tsx` |
-| ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/` — forms novos/editar incluem painel `components/admin/vehicle-accessories-browser.tsx` com as peças compatíveis da loja) |
-| ↳ Conteúdo do site (CMS de textos) | `app/admin/conteudo/page.tsx` (client; edita `site_content`) |
+| ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/`) |
+| ↳ Extras (catálogo + variantes) | `app/admin/veiculos/extras/page.tsx` |
 | ↳ Pedidos | `app/admin/pedidos/page.tsx` |
+| ↳ Propostas (viaturas novas) | `app/admin/propostas/page.tsx` (+ `[id]/`) |
 | ↳ Contas | `app/admin/contas/page.tsx` |
 | ↳ Estatísticas | `app/admin/analytics/page.tsx` |
-| ↳ Definições | `app/admin/definicoes/page.tsx` (contactos, redes, fotos — `site_settings`) |
-| ↳ Loja (hub) | `app/admin/loja/page.tsx` — índice de todas as secções abaixo |
-| ↳↳ Produtos | `app/admin/loja/produtos/` — lista em formato Shopify (abas Todos/Produtos/Peças com contagens, filtros de estado, miniatura e etiquetas de `app/admin/loja/badges.tsx`); `novo/` e `[id]/` com o formulário em rail (`product-form.tsx` — campo Tipo: Produto/Peça → compatibilidade só aparece para peças; marca/categoria em combobox escrever+selecionar, criando a que faltar; variantes por eixos ilimitados → tabela de combinações SKU/stock/ajuste) + `product-images-manager.tsx` (fotos com setas ↑↓ e pôr em primeiro); no criar, fotografias multi com pré-visualização. Se uma fotografia falhar ao guardar, o artigo fica criado e a ficha abre com um aviso (`?aviso=fotos`) para voltar a enviá-las |
-| ↳↳ Categorias | `app/admin/loja/categorias/page.tsx` |
-| ↳↳ Marcas | `app/admin/loja/marcas/page.tsx` (criar, editar, ativar, apagar) |
-| ↳↳ Stock | `app/admin/loja/stock/page.tsx` |
-| ↳↳ Encomendas | `app/admin/loja/encomendas/` — lista em formato Shopify (abas Todas/**Por aceitar**/Por entregar/Por pagar/Fechadas, pesquisa + CSV, etiquetas de pagamento/entrega); `[id]/` detalhe com artigos, histórico em timeline e rail de atualização/pagamento/cliente/entrega. «Por aceitar» = `payment_method` nulo + `status = pending_payment` (pedidos do configurador e artigos por encomenda); o painel `/admin/loja` mostra um aviso com a contagem. Nos produtos, a classificação peça/produto também olha à categoria (peças, jantes/pneus, extras/acessórios → «Peça») |
-| ↳↳ Devoluções | `app/admin/loja/devolucoes/page.tsx` (estados, reembolso, notas) |
-| ↳↳ Cupões | `app/admin/loja/cupoes/page.tsx` (criar, editar, ativar, apagar) |
-| ↳↳ Portes | `app/admin/loja/portes/page.tsx` (zonas + escalões por peso) |
-| ↳↳ Clientes | `app/admin/loja/clientes/page.tsx` |
-| ↳↳ Newsletter | `app/admin/loja/newsletter/page.tsx` (subscritores + CSV) |
-| ↳↳ Campanhas | `app/admin/loja/campanhas/page.tsx` (criar/editar campanhas com foto, datas de início/fim e estado calculado — tabela `campaigns`) |
-| ↳↳ Definições da loja | `app/admin/loja/definicoes/page.tsx` (`shop_settings`) |
+| ↳ Definições | `app/admin/definicoes/page.tsx` |
 
 ### Componentes reutilizáveis
 
@@ -72,6 +44,7 @@ partiu nada.
 | Rodapé | `components/layout/footer.tsx` | Contactos, redes, newsletter |
 | Botão de cookies | `components/layout/cookie-settings-button.tsx` | Reabrir preferências |
 | Grelha do catálogo | `components/ui/catalog-browser.tsx` | Cartões + filtros |
+| Configurador + proposta (viaturas novas) | `components/ui/vehicle-proposal-configurator.tsx` | Extras, total e pedido de proposta |
 | Cartão de viatura (galeria) | `components/ui/vehicle-card-gallery.tsx` | Fotografia em cartão |
 | Galeria da ficha | `components/ui/vehicle-detail-gallery.tsx` | Galeria grande |
 | Galeria (genérica) | `components/ui/vehicle-gallery.tsx` | Lista de fotos |
@@ -79,13 +52,11 @@ partiu nada.
 | Botão de favorito | `components/ui/favorite-button.tsx` | Coração nos cartões |
 | Lista de favoritos | `components/ui/favorites-list.tsx` | Favoritos no perfil |
 | Meus pedidos | `components/ui/my-requests.tsx` | Pedidos no perfil |
-| Escolher fotografias | `components/ui/vehicle-photo-picker.tsx` | Upload no backoffice (aceita `label` para o rótulo — viatura ou artigo) |
-| Pedido inline na ficha | `components/ui/vehicle-request-panel.tsx` | Test-drive e pedidos de informação sem sair da ficha |
+| Escolher fotografias | `components/ui/vehicle-photo-picker.tsx` | Upload no backoffice |
 | Animação ao aparecer | `components/ui/reveal.tsx` | Efeito de entrada |
 | Linhas decorativas | `components/ui/vgpu-speed-lines.tsx` | Detalhe gráfico |
 | Formulário de newsletter | `components/newsletter-form.tsx` | Rodapé |
 | Aviso de cookies | `components/cookie-consent.tsx` | Banner + Analytics |
-| Etiquetas de estado (loja) | `app/admin/loja/badges.tsx` | Pastilhas de pagamento/entrega/estado/tipo no backoffice |
 
 ---
 
@@ -208,4 +179,4 @@ Voltar ao [README](../README.md) · Ver [pôr o site no ar](COLOCAR_NO_AR.md) ·
 Ver [variáveis de ambiente](VARIAVEIS_AMBIENTE.md) ·
 Ver [regras para IA](REGRAS_PARA_IA.md)
 
-*Última atualização: 2026-10-22.*
+*Última atualização: 2026-10-14.*

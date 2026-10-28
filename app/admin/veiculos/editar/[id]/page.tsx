@@ -6,69 +6,25 @@ import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
 import { VehicleGallery, type VehicleGalleryHandle } from "@/components/ui/vehicle-gallery";
-import { VehicleAccessoriesBrowser } from "@/components/admin/vehicle-accessories-browser";
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem { id: string; name: string; price: number; position: number; is_active: boolean; }
-interface VehicleExtraItem { id: string; catalog_extra_id: string | null; name: string; price: number; }
-
-interface VehicleExtraCatalogItem {
-  id: string;
-  name: string;
-  price: number;
-  position: number;
-  is_active: boolean;
-}
-
-interface VehicleExtraItem {
-  id: string;
-  catalog_extra_id: string | null;
-  name: string;
-  price: number;
-}
-
-interface VehicleExtraCatalogItem {
-  id: string;
-  name: string;
-  price: number;
-  position: number;
-  is_active: boolean;
-}
-
-interface VehicleExtraItem {
-  id: string;
-  catalog_extra_id: string | null;
-  name: string;
-  price: number;
-}
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
+
+interface ExtraCatalogItem {
+  id: string;
+  name: string;
+  price: number;
+}
 
 const STATUS_OPTIONS = [
   { value: "available", label: "Disponível" },
   { value: "reserved", label: "Reservada" },
   { value: "sold", label: "Vendida" },
   { value: "archived", label: "Arquivada" },
+] as const;
+
+const SALE_TYPE_OPTIONS = [
+  { value: "used", label: "Usado" },
+  { value: "new", label: "Novo (por encomenda)" },
 ] as const;
 
 const FUEL_OPTIONS = [
@@ -91,13 +47,6 @@ const ORIGIN_OPTIONS = [
 ] as const;
 
 const initialForm = {
-  condition: "used",
-  sale_type: "stock",
-  slug: "",
-  reference_code: "",
-  brand_warranty_months: "",
-  delivery_estimate_days: "",
-  config_summary: "",
   brand: "",
   model: "",
   trim: "",
@@ -118,25 +67,16 @@ const initialForm = {
   mileage_km: "",
   previous_owners: "1",
   service_book: "full_dealer",
-  accident_history: "false",
-  accident_details: "",
-  last_service_date: "",
-  tires_condition: "",
   origin: "imported",
   origin_country: "DE",
-  coc_confirmed: "false",
-  isv_paid: "false",
-  legalization_date: "",
   price: "",
   warranty_months: "6",
-  financing_available: "false",
-  trade_in_accepted: "false",
   cover_image_url: "",
-  video_url: "",
   description: "",
   is_featured: "false",
   status: "available",
   sold_at: "",
+  sale_type: "used",
 };
 
 // Converte um timestamp ISO (BD) para o formato do input datetime-local
@@ -173,13 +113,6 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
   <div><label style={labelStyle}>{label}</label>{children}</div>
 );
 
-const CheckField = ({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "end", paddingBottom: "0.4rem" }}>
-    <input type="checkbox" id={id} checked={checked} onChange={onChange} />
-    <label htmlFor={id} style={{ color: "var(--foreground)", fontSize: "0.875rem", marginBottom: 0 }}>{label}</label>
-  </div>
-);
-
 export default function EditarVeiculo() {
   const router = useRouter();
   const params = useParams();
@@ -188,6 +121,21 @@ export default function EditarVeiculo() {
   const galleryRef = useRef<VehicleGalleryHandle>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [extraCatalog, setExtraCatalog] = useState<ExtraCatalogItem[]>([]);
+  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+
+  // Catálogo de extras partilhado — gerido em /admin/veiculos/extras.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("vehicle_extra_catalog")
+        .select("id, name, price")
+        .eq("is_active", true)
+        .order("position", { ascending: true })
+        .order("name", { ascending: true });
+      setExtraCatalog((data || []) as ExtraCatalogItem[]);
+    })();
+  }, []);
 
   const brands = useMemo(() => Object.keys(CATALOG).sort((a, b) => a.localeCompare(b, "pt")), []);
   const models = useMemo(() => CATALOG[form.brand]?.models || {}, [form.brand]);
@@ -199,15 +147,14 @@ export default function EditarVeiculo() {
       const { data } = await supabase.from("vehicles").select("*").eq("id", id).single();
       if (data) {
         const { data: featureRows } = await supabase.from("vehicle_features").select("label").eq("vehicle_id", id).order("label");
+        const { data: extraRows } = await supabase.from("vehicle_extras").select("catalog_extra_id").eq("vehicle_id", id);
+        setSelectedExtras(
+          ((extraRows || []) as { catalog_extra_id: string | null }[])
+            .map((row) => row.catalog_extra_id)
+            .filter((value): value is string => Boolean(value))
+        );
         setMultiple({
           brand: data.brand || "BMW",
-          condition: data.condition || "used",
-          sale_type: data.sale_type || "stock",
-          slug: data.slug || "",
-          reference_code: data.reference_code || "",
-          brand_warranty_months: data.brand_warranty_months?.toString() || "",
-          delivery_estimate_days: data.delivery_estimate_days?.toString() || "",
-          config_summary: data.config_summary || "",
           model: data.model || "",
           trim: data.trim || "",
           registration_year: data.registration_year?.toString() || "",
@@ -227,25 +174,16 @@ export default function EditarVeiculo() {
           mileage_km: data.mileage_km?.toString() || "",
           previous_owners: data.previous_owners?.toString() || "1",
           service_book: data.service_book || "full_dealer",
-          accident_history: data.accident_history ? "true" : "false",
-          accident_details: data.accident_details || "",
-          last_service_date: data.last_service_date || "",
-          tires_condition: data.tires_condition || "",
           origin: data.origin || "imported",
           origin_country: data.origin_country || "DE",
-          coc_confirmed: data.coc_confirmed ? "true" : "false",
-          isv_paid: data.isv_paid ? "true" : "false",
-          legalization_date: data.legalization_date || "",
           price: data.price?.toString() || "",
           warranty_months: data.warranty_months?.toString() || "6",
-          financing_available: data.financing_available ? "true" : "false",
-          trade_in_accepted: data.trade_in_accepted ? "true" : "false",
           cover_image_url: data.cover_image_url || "",
-          video_url: data.video_url || "",
           description: data.description || "",
           is_featured: data.is_featured ? "true" : "false",
           status: data.status || "available",
           sold_at: (data.status === "sold" || data.status === "archived") && data.sold_at ? toLocalInput(data.sold_at) : "",
+          sale_type: data.sale_type || "used",
         });
       }
       setLoading(false);
@@ -295,8 +233,7 @@ export default function EditarVeiculo() {
     e.preventDefault();
     setSaving(true);
     const { features, ...vehicleForm } = form;
-    // Slug editável: vazio = gera a partir de marca/modelo/versão/ano.
-    const slug = (form.slug.trim() ? form.slug : generateSlug(form.brand, form.model, form.trim, form.registration_year)).toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
     const { error } = await supabase.from("vehicles").update({
       ...vehicleForm,
       slug,
@@ -306,26 +243,10 @@ export default function EditarVeiculo() {
       torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
       combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
       co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
-      mileage_km: form.condition === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
-      previous_owners: form.condition === "new" ? null : form.previous_owners ? parseInt(form.previous_owners) : null,
-      service_book: form.condition === "new" ? null : form.service_book,
-      accident_history: form.accident_history === "true",
-      accident_details: form.accident_details || null,
-      last_service_date: form.last_service_date || null,
-      tires_condition: form.tires_condition || null,
-      reference_code: form.reference_code || null,
-      coc_confirmed: form.coc_confirmed === "true",
-      isv_paid: form.isv_paid === "true",
-      legalization_date: form.legalization_date || null,
-      financing_available: form.financing_available === "true",
-      trade_in_accepted: form.trade_in_accepted === "true",
-      video_url: form.video_url || null,
+      mileage_km: form.mileage_km ? parseInt(form.mileage_km) : null,
+      previous_owners: form.previous_owners ? parseInt(form.previous_owners) : null,
       price: form.price ? parseFloat(form.price) : null,
-      warranty_months: form.condition === "used" && form.warranty_months ? parseInt(form.warranty_months) : null,
-      condition: form.condition,
-      sale_type: form.sale_type,
-      brand_warranty_months: form.brand_warranty_months ? parseInt(form.brand_warranty_months) : null,
-      delivery_estimate_days: form.delivery_estimate_days ? parseInt(form.delivery_estimate_days) : null,
+      warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
       is_featured: form.is_featured === "true",
       status: form.status,
       // Data de venda: usa a escolhida no formulário; se faltar, assume "agora".
@@ -336,14 +257,13 @@ export default function EditarVeiculo() {
     }).eq("id", id);
     if (error) {
       setSaving(false);
-      const duplicate = error.message.includes("slug") || error.message.includes("duplicate key");
-      alert("Erro ao guardar: " + (duplicate ? "Este endereço (slug) já está a ser usado por outra viatura — muda-o." : error.message));
+      alert("Erro ao guardar: " + error.message);
       return;
     }
     const { error: deleteFeaturesError } = await supabase.from("vehicle_features").delete().eq("vehicle_id", id);
     if (deleteFeaturesError) {
       setSaving(false);
-      alert("Os dados da viatura foram guardados, mas não foi possível atualizar os extras: " + deleteFeaturesError.message);
+      alert("Os dados da viatura foram guardados, mas o equipamento não foi atualizado: " + deleteFeaturesError.message);
       return;
     }
     const featureLabels = features.split("\n").map((label) => label.trim()).filter(Boolean);
@@ -351,7 +271,32 @@ export default function EditarVeiculo() {
       const { error: featureError } = await supabase.from("vehicle_features").insert(featureLabels.map((label) => ({ vehicle_id: id, label })));
       if (featureError) {
         setSaving(false);
-        alert("Os dados da viatura foram guardados, mas os extras não foram inseridos: " + featureError.message);
+        alert("Os dados da viatura foram guardados, mas o equipamento não foi inserido: " + featureError.message);
+        return;
+      }
+    }
+    // Extras do catálogo: sincroniza (apaga e reinsere) apenas em viaturas novas.
+    const { error: deleteExtrasError } = await supabase.from("vehicle_extras").delete().eq("vehicle_id", id);
+    if (deleteExtrasError) {
+      setSaving(false);
+      alert("Os dados da viatura foram guardados, mas não foi possível atualizar os extras: " + deleteExtrasError.message);
+      return;
+    }
+    if (form.sale_type === "new" && selectedExtras.length) {
+      const { error: extrasError } = await supabase.from("vehicle_extras").insert(
+        selectedExtras.map((catalogId) => {
+          const extra = extraCatalog.find((item) => item.id === catalogId);
+          return {
+            vehicle_id: id,
+            catalog_extra_id: catalogId,
+            name: extra?.name || "Extra",
+            price: extra?.price ?? 0,
+          };
+        })
+      );
+      if (extrasError) {
+        setSaving(false);
+        alert("Os dados da viatura foram guardados, mas os extras não foram inseridos: " + extrasError.message);
         return;
       }
     }
@@ -369,8 +314,6 @@ export default function EditarVeiculo() {
       <form onSubmit={handleSubmit} style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Condição"><select style={selectStyle} value={form.condition} onChange={handleChange("condition")}><option value="used">Usado</option><option value="new">Novo</option></select></Field>
-          <Field label="Disponibilidade"><select style={selectStyle} value={form.sale_type} onChange={handleChange("sale_type")}><option value="stock">Em stock</option><option value="on_order">Por encomenda</option></select></Field>
           <Field label="Marca *">
             <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -383,8 +326,6 @@ export default function EditarVeiculo() {
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
-          <Field label="Endereço (slug)"><input style={inputStyle} placeholder="gerado se vazio" value={form.slug} onChange={handleChange("slug")} /><span style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Endereço público da ficha — alterar muda o link.</span></Field>
-          <Field label="Referência interna"><input style={inputStyle} placeholder="ex: CH-2024-018" value={form.reference_code} onChange={handleChange("reference_code")} /></Field>
           <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
@@ -403,56 +344,75 @@ export default function EditarVeiculo() {
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          {form.condition !== "new" && <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>}
+          <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
           <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
-          {form.condition !== "new" && <><Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field><Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field></>}
-          <CheckField id="accident_history" label="Histórico de acidentes" checked={form.accident_history === "true"} onChange={handleCheckboxChange("accident_history")} />
-          {form.accident_history === "true" && <Field label="Detalhes do acidente"><input style={inputStyle} value={form.accident_details} onChange={handleChange("accident_details")} /></Field>}
-          <Field label="Data da última revisão"><input type="date" style={inputStyle} value={form.last_service_date} onChange={handleChange("last_service_date")} /></Field>
-          <Field label="Estado dos pneus"><input style={inputStyle} placeholder="ex: Novos (2024)" value={form.tires_condition} onChange={handleChange("tires_condition")} /></Field>
+          <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
+          <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={handleChange("origin")}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
-          <CheckField id="coc_confirmed" label="CoC (certificado comunitário) confirmado" checked={form.coc_confirmed === "true"} onChange={handleCheckboxChange("coc_confirmed")} />
-          <CheckField id="isv_paid" label="ISV liquidado" checked={form.isv_paid === "true"} onChange={handleCheckboxChange("isv_paid")} />
-          <Field label="Data de legalização"><input type="date" style={inputStyle} value={form.legalization_date} onChange={handleChange("legalization_date")} /></Field>
         </div>
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
-          {form.condition === "used" ? <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field> : <>
-            <Field label="Garantia da marca (meses)"><input type="number" min="0" style={inputStyle} value={form.brand_warranty_months} onChange={handleChange("brand_warranty_months")} /></Field>
-            {form.sale_type === "on_order" && <Field label="Prazo estimado (dias)"><input type="number" min="1" style={inputStyle} value={form.delivery_estimate_days} onChange={handleChange("delivery_estimate_days")} /></Field>}
-          </>}
+          <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
+          <Field label="Tipo de venda"><select style={selectStyle} value={form.sale_type} onChange={handleChange("sale_type")}>{SALE_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={(e) => handleStatusChange(e.target.value)}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          <CheckField id="financing_available" label="Aceita financiamento" checked={form.financing_available === "true"} onChange={handleCheckboxChange("financing_available")} />
-          <CheckField id="trade_in_accepted" label="Aceita retoma" checked={form.trade_in_accepted === "true"} onChange={handleCheckboxChange("trade_in_accepted")} />
           {(form.status === "sold" || form.status === "archived") && (
             <Field label="Data de venda">
               <input type="datetime-local" style={inputStyle} value={form.sold_at} onChange={handleChange("sold_at")} />
             </Field>
           )}
         </div>
-        {form.condition === "new" && <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Configuração / equipamento</label><textarea rows={3} style={{ ...inputStyle, resize: "vertical" as const }} value={form.config_summary} onChange={handleChange("config_summary")} placeholder="Motor, caixa, equipamento e opções de fábrica" /></div>}
-        {form.condition === "new" && <VehicleAccessoriesBrowser brand={form.brand} model={form.model} registrationYear={form.registration_year} />}
 
         {/* Galeria de imagens (R2) */}
         <div style={{ marginTop: "1.5rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>
           <VehicleGallery ref={galleryRef} vehicleId={id} coverImageUrl={form.cover_image_url} onCoverChange={(url) => setMultiple({ cover_image_url: url })} />
+
+        {/* Extras configuráveis — só fazem sentido em viaturas novas */}
+        {form.sale_type === "new" && (
+          <div style={{ marginTop: "1rem", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "0.75rem" }}>
+            <label style={labelStyle}>Extras configuráveis (catálogo)</label>
+            <p style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
+              Geridos em <strong>Viaturas → Extras</strong>. O cliente escolhe as variantes na ficha da viatura.
+            </p>
+            {extraCatalog.length === 0 ? (
+              <p style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Ainda não existem extras no catálogo.</p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }}>
+                {extraCatalog.map((extra) => {
+                  const checked = selectedExtras.includes(extra.id);
+                  return (
+                    <label key={extra.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8125rem", color: "var(--foreground)" }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          setSelectedExtras((prev) =>
+                            e.target.checked ? [...prev, extra.id] : prev.filter((item) => item !== extra.id)
+                          )
+                        }
+                      />
+                      {extra.name}
+                      {extra.price ? <span style={{ color: "var(--muted)" }}>({extra.price.toLocaleString("pt-PT")} €)</span> : null}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         </div>
 
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
         <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Descrição</label><textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} /></div>
-        <div style={{ marginTop: "0.75rem" }}>
-          <label style={labelStyle}>Vídeo (URL do YouTube ou Vimeo)</label>
-          <input style={inputStyle} placeholder="https://www.youtube.com/watch?v=..." value={form.video_url} onChange={handleChange("video_url")} />
-        </div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <input type="checkbox" id="featured" checked={form.is_featured === "true"} onChange={handleCheckboxChange("is_featured")} />
           <label htmlFor="featured" style={{ color: "var(--foreground)", fontSize: "0.875rem" }}>Destaque</label>

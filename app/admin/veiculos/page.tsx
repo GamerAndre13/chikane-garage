@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { deleteVehicle } from "@/app/actions/vehicles-admin";
 
 interface Vehicle {
   id: string;
@@ -13,6 +12,7 @@ interface Vehicle {
   registration_year: number;
   price: number;
   status: string;
+  sale_type?: string | null;
   spotlight?: boolean;
 }
 
@@ -51,15 +51,9 @@ export default function VeiculosList() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja apagar esta viatura? As fotografias também ficam removidas.")) return;
-    try {
-      await deleteVehicle(id).then((result) => {
-        if (result?.error) throw new Error(result.error);
-      });
-      fetchVehicles();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Não foi possível apagar a viatura.");
-    }
+    if (!confirm("Tem certeza que deseja apagar esta viatura?")) return;
+    await supabase.from("vehicles").delete().eq("id", id);
+    fetchVehicles();
   };
 
   // Filtro local (pesquisa + estado) derivado por memo — evita setState em efeito
@@ -147,22 +141,13 @@ export default function VeiculosList() {
         <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
           Viaturas
         </h1>
-        <div className="flex gap-2">
-          <Link
-            href="/admin/veiculos/extras"
-            className="px-4 py-2 rounded text-sm border transition-colors"
-            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
-          >
-            Extras (catálogo)
-          </Link>
-          <Link
-            href="/admin/veiculos/novo"
-            className="px-4 py-2 rounded text-sm font-medium transition-colors"
-            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
-          >
-            + Nova Viatura
-          </Link>
-        </div>
+        <Link
+          href="/admin/veiculos/novo"
+          className="px-4 py-2 rounded text-sm font-medium transition-colors"
+          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
+        >
+          + Nova Viatura
+        </Link>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3 items-center">
@@ -215,6 +200,11 @@ export default function VeiculosList() {
                 <tr key={v.id} className="border-b transition-colors" style={{ borderColor: "var(--border)" }}>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
                     {v.brand} {v.model} {v.trim || ""}
+                    {v.sale_type === "new" && (
+                      <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "rgba(244,119,36,0.15)", color: "var(--copper-deep)", border: "1px solid rgba(244,119,36,0.4)" }}>
+                        Novo
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{v.registration_year}</td>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>

@@ -4,32 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Navegação do backoffice agrupada por secções
-const groups = [
+const navGroups = [
   {
-    title: "Painel",
+    title: "Geral",
     links: [
       { href: "/admin", label: "Dashboard" },
       { href: "/admin/analytics", label: "Analytics" },
     ],
   },
   {
-    title: "Vendas",
-    links: [
-      { href: "/admin/pedidos", label: "Pedidos" },
-    ],
-  },
-  {
     title: "Catálogo",
     links: [
       { href: "/admin/veiculos", label: "Viaturas" },
+      { href: "/admin/veiculos/extras", label: "Extras" },
     ],
   },
   {
-    title: "Conteúdo",
+    title: "Leads & Propostas",
     links: [
-      { href: "/admin/conteudo", label: "Conteúdo" },
-      { href: "/admin/loja/campanhas", label: "Campanhas" },
+      { href: "/admin/pedidos", label: "Pedidos & Reservas" },
+      { href: "/admin/propostas", label: "Propostas" },
     ],
   },
   {
@@ -41,12 +35,7 @@ const groups = [
   },
 ];
 
-const isActiveLink = (pathname: string, href: string) => {
-  if (href === "/admin") return pathname === "/admin";
-  return pathname === href || pathname.startsWith(`${href}/`);
-};
-
-// Permite esconder/mostrar a barra lateral (preferência guardada no browser).
+// Destaca a aba aberta e permite esconder/mostrar a barra lateral.
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -100,24 +89,28 @@ export default function AdminSidebar() {
           «
         </button>
       </div>
-      <nav className="p-3 flex-1">
-        {groups.map((group) => (
-          <div key={group.title} className="mb-3">
-            <p className="px-3 pb-1 pt-4 font-display text-[9px] uppercase tracking-[0.28em] text-muted-deep">{group.title}</p>
-            {group.links.map((link) => {
-              const active = isActiveLink(pathname, link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`block rounded px-3 py-2 text-sm transition-colors ${active ? "bg-surface-raised" : ""} hover:bg-surface-raised hover:text-foreground`}
-                  style={{ color: active ? "var(--foreground)" : "var(--muted)", fontWeight: active ? 600 : 400 }}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
+      <nav className="p-3 flex-1 overflow-y-auto">
+        {navGroups.map((group) => (
+          <div key={group.title} className="mb-4">
+            <p className="px-3 mb-1 text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--muted)" }}>
+              {group.title}
+            </p>
+            <div className="space-y-1">
+              {group.links.map((link) => {
+                const active = pathname === link.href || (link.href !== "/admin" && pathname.startsWith(link.href));
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`block rounded px-3 py-2 text-sm transition-colors ${active ? "bg-surface-raised" : ""} hover:bg-surface-raised hover:text-foreground`}
+                    style={{ color: active ? "var(--foreground)" : "var(--muted)", fontWeight: active ? 600 : 400 }}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         ))}
       </nav>

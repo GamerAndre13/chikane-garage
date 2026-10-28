@@ -6,13 +6,10 @@ import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@
 import { mapsUrl } from "@/lib/maps";
 
 const NAV_LINKS = [
+  { label: "Catálogo", href: "/catalogo" },
   { label: "Novos", href: "/novos" },
-  { label: "Usados", href: "/usados" },
-  { label: "Campanhas", href: "/campanhas" },
   { label: "Sobre Nós", href: "/sobre" },
   { label: "Contacto", href: "/contacto" },
-  { label: "Perguntas frequentes", href: "/faq" },
-  { label: "A minha conta", href: "/conta" },
 ];
 
 export async function Footer() {
@@ -200,9 +197,6 @@ export async function Footer() {
             </Link>
             <Link href="/termos-e-condicoes" className="transition-colors hover:text-foreground">
               Termos &amp; Condições
-            </Link>
-            <Link href="/livro-reclamacoes" className="transition-colors hover:text-foreground">
-              Livro de Reclamações
             </Link>
             <CookieSettingsButton />
           </div>

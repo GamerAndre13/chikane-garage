@@ -93,16 +93,6 @@ export function Header() {
     };
   }, [mobileOpen]);
 
-  // Com a gaveta aberta, o fundo não deve rolar por baixo.
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [mobileOpen]);
-
   async function handleLogout() {
     setMobileOpen(false);
     await supabase.auth.signOut();
@@ -125,14 +115,14 @@ export function Header() {
         </Link>
 
         <nav className="group/nav ml-auto hidden items-center gap-9 md:flex">
-          <Link href="/usados" className={navClass("/usados")}>
-            Usados
+          <Link href="/" className={navClass("/")}>
+            Home
+          </Link>
+          <Link href="/catalogo" className={navClass("/catalogo")}>
+            Catálogo
           </Link>
           <Link href="/novos" className={navClass("/novos")}>
             Novos
-          </Link>
-          <Link href="/campanhas" className={navClass("/campanhas")}>
-            Campanhas
           </Link>
           <Link href="/sobre" className={navClass("/sobre")}>
             Sobre Nós
@@ -142,6 +132,9 @@ export function Header() {
           </Link>
         </nav>
 
+        {/* ml-auto empurra os controlos para a direita no telemóvel (onde a nav
+            está escondida); a partir de md a nav já tem ml-auto e o espaçamento
+            volta a ser o ml-6. */}
         <div className="ml-auto flex items-center gap-3 md:ml-6">
           {user ? (
             <>
@@ -155,7 +148,7 @@ export function Header() {
               )}
               <Link
                 href="/conta/perfil"
-                className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-border text-silver transition-colors hover:border-copper hover:text-copper"
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded border border-border text-silver hover:border-copper hover:text-copper transition-colors"
                 title="Meu perfil"
                 aria-label="Abrir o meu perfil"
               >
@@ -181,21 +174,20 @@ export function Header() {
           ) : (
             <Link
               href="/conta"
-              className="flex h-10 w-10 shrink-0 items-center justify-center border border-border text-silver transition-colors hover:border-copper hover:text-copper"
-              title="Entrar"
-              aria-label="Entrar na conta"
+              className="flex items-center gap-2 border border-border px-4 py-2 text-xs font-medium uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
                 <polyline points="10 17 15 12 10 7" />
                 <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
+              Entrar
             </Link>
           )}
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center md:hidden"
+            className="flex h-11 w-11 items-center justify-center md:hidden"
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={mobileOpen}
           >
@@ -211,95 +203,48 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <>
-          {/* Fundo escuro: clicar fora fecha o menu. */}
-          <button
-            type="button"
-            aria-label="Fechar menu"
-            onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
-          />
+        <div className="border-t border-border bg-background px-4 py-4 md:hidden">
+          <nav className="flex flex-col gap-3">
+            <Link href="/" className={`${navClass("/")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Início
+            </Link>
+            <Link href="/catalogo" className={`${navClass("/catalogo")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Catálogo
+            </Link>
+            <Link href="/novos" className={`${navClass("/novos")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Novos
+            </Link>
+            <Link href="/sobre" className={`${navClass("/sobre")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Sobre Nós
+            </Link>
+            <Link href="/contacto" className={`${navClass("/contacto")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Contacto
+            </Link>
+          </nav>
 
-          {/* Gaveta lateral (drawer) — só muda a apresentação; os links e o
-              comportamento (Escape, clicar fora) são os mesmos de sempre. */}
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu principal"
-            className="fixed inset-y-0 right-0 z-50 flex w-[88%] max-w-[340px] flex-col border-l border-border bg-surface-deep md:hidden"
-          >
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <span className="font-display text-sm font-bold uppercase leading-tight tracking-[0.18em] text-foreground">
-                Chikane <span className="text-copper">Garage</span>
-              </span>
+          {/* Em ecrãs pequenos o "Backoffice" e o "Sair" do cabeçalho ficam
+              escondidos — repõe-se aqui o acesso, senão não havia como
+              terminar sessão no telemóvel. */}
+          {user && (
+            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+              <Link href="/conta/perfil" className={`${navClass("/conta")} w-fit`} onClick={() => setMobileOpen(false)}>
+                Meu Perfil
+              </Link>
+              {isAdmin && (
+                <Link href="/admin" className={`${navClass("/admin")} w-fit`} onClick={() => setMobileOpen(false)}>
+                  Backoffice
+                </Link>
+              )}
               <button
                 type="button"
-                onClick={() => setMobileOpen(false)}
-                autoFocus
-                className="flex h-10 w-10 items-center justify-center border border-border text-silver transition-colors hover:border-copper hover:text-copper"
-                aria-label="Fechar menu"
+                onClick={handleLogout}
+                className="w-fit py-2 text-left font-display text-xs font-medium uppercase tracking-[0.2em] text-red-light transition-colors hover:text-red"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
+                Terminar sessão
               </button>
             </div>
-
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-5 py-6">
-              <Link href="/usados" className={navClass("/usados")} onClick={() => setMobileOpen(false)}>
-                Usados
-              </Link>
-              <Link href="/novos" className={navClass("/novos")} onClick={() => setMobileOpen(false)}>
-                Novos
-              </Link>
-              <Link href="/campanhas" className={navClass("/campanhas")} onClick={() => setMobileOpen(false)}>
-                Campanhas
-              </Link>
-              <Link href="/sobre" className={navClass("/sobre")} onClick={() => setMobileOpen(false)}>
-                Sobre Nós
-              </Link>
-              <Link href="/contacto" className={navClass("/contacto")} onClick={() => setMobileOpen(false)}>
-                Contacto
-              </Link>
-            </nav>
-
-            {/* Em ecrãs pequenos o "Backoffice" e o "Sair" do cabeçalho ficam
-                escondidos — repõe-se aqui o acesso, senão não havia como
-                terminar sessão no telemóvel. */}
-            {user && (
-              <div className="flex flex-col gap-3 border-t border-border px-5 py-5">
-                <Link href="/conta/perfil" className={`${navClass("/conta")} w-fit`} onClick={() => setMobileOpen(false)}>
-                  Meu Perfil
-                </Link>
-                <Link href="/conta/encomendas" className={`${navClass("/conta/encomendas")} w-fit`} onClick={() => setMobileOpen(false)}>
-                  As minhas encomendas
-                </Link>
-                {isAdmin && (
-                  <Link href="/admin" className={`${navClass("/admin")} w-fit`} onClick={() => setMobileOpen(false)}>
-                    Backoffice
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-fit py-2 text-left font-display text-xs font-medium uppercase tracking-[0.2em] text-red-light transition-colors hover:text-red"
-                >
-                  Terminar sessão
-                </button>
-              </div>
-            )}
-
-            <div className="border-t border-border px-5 py-5">
-              <Link
-                href="/contacto"
-                onClick={() => setMobileOpen(false)}
-                className="block border border-copper px-4 py-3 text-center font-display text-xs font-semibold uppercase tracking-widest text-copper transition-colors hover:bg-copper hover:text-black"
-              >
-                Fala connosco
-              </Link>
-            </div>
-          </div>
-        </>
+          )}
+        </div>
       )}
     </header>
   );

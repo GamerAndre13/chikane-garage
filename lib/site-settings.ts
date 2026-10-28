@@ -23,4 +23,7 @@ export type SiteSettings = {
   td_duration_minutes?: number | null;
   td_slots?: string | null;
   td_days?: string | null;
+  // Propostas de viaturas novas (supabase/021_add_sale_type_and_proposals.sql)
+  proposal_notify_emails?: string | null;
+  proposal_auto_send_list?: boolean | null;
 };
