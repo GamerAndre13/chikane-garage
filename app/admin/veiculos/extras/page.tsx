@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import {
   createVehicleExtraCatalog,
   updateVehicleExtraCatalog,
+  updateVehicleExtraAssociations,
   deleteVehicleExtraCatalog,
   createVehicleExtraVariant,
   updateVehicleExtraVariant,
@@ -17,6 +18,7 @@ interface ExtraCatalog {
   id: string;
   name: string;
   description: string | null;
+  category: string;
   image_url: string | null;
   price: number;
   position: number;
@@ -121,36 +123,47 @@ export default function VehicleExtrasCatalogPage() {
 
   // Preço e ordem começam vazios (e identificados) para não aparecerem
   // dois "0" sem contexto ao criar um extra.
-  const [newItem, setNewItem] = useState({ name: "", description: "", image_url: "", price: "", position: "", is_active: true });
+  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", image_url: "", price: "", position: "", is_active: true });
   // Variantes que serão criadas logo a seguir ao extra.
   const [draftVariants, setDraftVariants] = useState<{ name: string; price: string }[]>([]);
   // Viaturas novas onde o extra pode ficar associado logo na criação.
   const [newVehicles, setNewVehicles] = useState<NewVehicleOption[]>([]);
   const [associations, setAssociations] = useState<string[]>([]);
+  // Associações já existentes (extra ↔ viatura nova), para poderem ser
+  // alteradas depois de o extra estar criado.
+  const [links, setLinks] = useState<{ vehicle_id: string; catalog_extra_id: string | null }[]>([]);
+  const [assocDraft, setAssocDraft] = useState<Record<string, string[]>>({});
   // Fotografias em edição (por id do extra), para não escrever no formulário
   // controlado de cada linha da lista.
   const [images, setImages] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
-    const [catalogRes, variantsRes] = await Promise.all([
+    const [catalogRes, variantsRes, linksRes] = await Promise.all([
       supabase.from("vehicle_extra_catalog").select("*").order("position", { ascending: true }).order("name", { ascending: true }),
       supabase.from("vehicle_extra_variants").select("*").order("position", { ascending: true }).order("name", { ascending: true }),
+      supabase.from("vehicle_extras").select("vehicle_id, catalog_extra_id"),
     ]);
     setItems((catalogRes.data as ExtraCatalog[]) || []);
     setVariants((variantsRes.data as ExtraVariant[]) || []);
+    const rows = (linksRes.data as { vehicle_id: string; catalog_extra_id: string | null }[]) || [];
+    setLinks(rows);
+    // Depois de guardar, as seleções em edição passam a refletir a BD.
+    setAssocDraft({});
     setLoading(false);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [catalogRes, variantsRes] = await Promise.all([
+      const [catalogRes, variantsRes, linksRes] = await Promise.all([
         supabase.from("vehicle_extra_catalog").select("*").order("position", { ascending: true }).order("name", { ascending: true }),
         supabase.from("vehicle_extra_variants").select("*").order("position", { ascending: true }).order("name", { ascending: true }),
+        supabase.from("vehicle_extras").select("vehicle_id, catalog_extra_id"),
       ]);
       if (cancelled) return;
       setItems((catalogRes.data as ExtraCatalog[]) || []);
       setVariants((variantsRes.data as ExtraVariant[]) || []);
+      setLinks(((linksRes.data as { vehicle_id: string; catalog_extra_id: string | null }[]) || []));
       setLoading(false);
     })();
     return () => {
@@ -182,6 +195,17 @@ export default function VehicleExtrasCatalogPage() {
   const toggleAllAssociations = () =>
     setAssociations(allAssociated ? [] : newVehicles.map((vehicle) => vehicle.id));
 
+  // Categorias já usadas, para a lista de sugestões (datalist).
+  const categories = useMemo(
+    () => Array.from(new Set(items.map((item) => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt")),
+    [items]
+  );
+
+  // Viaturas associadas a um extra: a edição em curso tem prioridade sobre a BD.
+  const linksOf = (extraId: string) =>
+    links.filter((link) => link.catalog_extra_id === extraId).map((link) => link.vehicle_id);
+  const draftAssociations = (extraId: string) => assocDraft[extraId] ?? linksOf(extraId);
+
   const imageFor = (item: ExtraCatalog) => images[item.id] ?? item.image_url ?? "";
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -192,6 +216,7 @@ export default function VehicleExtrasCatalogPage() {
       const formData = new FormData();
       formData.append("name", newItem.name);
       formData.append("description", newItem.description);
+      formData.append("category", newItem.category);
       formData.append("image_url", newItem.image_url);
       formData.append("price", newItem.price);
       formData.append("position", newItem.position);
@@ -210,7 +235,7 @@ export default function VehicleExtrasCatalogPage() {
         await createVehicleExtraVariant(created.id, variantData);
       }
 
-      setNewItem({ name: "", description: "", image_url: "", price: "", position: "", is_active: true });
+      setNewItem({ name: "", description: "", category: "", image_url: "", price: "", position: "", is_active: true });
       setDraftVariants([]);
       setAssociations(newVehicles.map((vehicle) => vehicle.id));
       await load();
@@ -247,6 +272,22 @@ export default function VehicleExtrasCatalogPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao apagar extra.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Guarda as viaturas novas marcadas para um extra já existente.
+  const handleSaveAssociations = async (item: ExtraCatalog) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      draftAssociations(item.id).forEach((vehicleId) => formData.append("vehicle_ids", vehicleId));
+      await updateVehicleExtraAssociations(item.id, formData);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao guardar as associações.");
     } finally {
       setSaving(false);
     }
@@ -325,6 +366,11 @@ export default function VehicleExtrasCatalogPage() {
       <div className="mb-6 p-4 border rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
         <h2 className="text-sm uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>Adicionar novo extra</h2>
         <form onSubmit={handleCreate} className="space-y-4">
+          <datalist id="extra-categorias">
+            {categories.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="md:col-span-2">
               <label htmlFor="extra-nome" className={fieldLabel} style={{ color: "var(--muted)" }}>Nome do extra *</label>
@@ -342,10 +388,15 @@ export default function VehicleExtrasCatalogPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-start">
             <div>
               <label htmlFor="extra-descricao" className={fieldLabel} style={{ color: "var(--muted)" }}>Descrição</label>
               <input id="extra-descricao" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} placeholder="Texto curto que aparece no configurador" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <div>
+              <label htmlFor="extra-categoria" className={fieldLabel} style={{ color: "var(--muted)" }}>Categoria</label>
+              <input id="extra-categoria" list="extra-categorias" value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} placeholder="Ex.: Jantes" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>Opcional · 1 escolha por categoria</p>
             </div>
             <ExtraImageField value={newItem.image_url} onChange={(url) => setNewItem({ ...newItem, image_url: url })} />
           </div>
@@ -452,6 +503,8 @@ export default function VehicleExtrasCatalogPage() {
           items.map((item) => {
             const itemVariants = variants.filter((v) => v.extra_id === item.id);
             const open = expanded === item.id;
+            const draftLinks = draftAssociations(item.id);
+            const allDraftLinked = newVehicles.length > 0 && draftLinks.length === newVehicles.length;
             return (
               <div key={item.id} className="border rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
                 <form
@@ -465,7 +518,10 @@ export default function VehicleExtrasCatalogPage() {
                   <div className="space-y-1">
                     <label htmlFor={`nome-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome do extra</label>
                     <input id={`nome-${item.id}`} name="name" defaultValue={item.name} required className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                    <input name="description" defaultValue={item.description || ""} placeholder="Descrição" aria-label="Descrição" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      <input name="description" defaultValue={item.description || ""} placeholder="Descrição" aria-label="Descrição" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      <input name="category" defaultValue={item.category} placeholder="Categoria (opcional)" aria-label="Categoria" list="extra-categorias" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    </div>
                   </div>
                   <div>
                     <label htmlFor={`preco-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
@@ -477,7 +533,7 @@ export default function VehicleExtrasCatalogPage() {
                   </label>
                   <div className="whitespace-nowrap pt-4 text-right">
                     <button type="button" onClick={() => setExpanded(open ? null : item.id)} className="mr-3 text-xs" style={{ color: "var(--silver)" }}>
-                      {open ? "Fechar" : `Variantes (${itemVariants.length})`}
+                      {open ? "Fechar" : `Variantes e viaturas (${itemVariants.length})`}
                     </button>
                     <button disabled={saving} className="mr-3 text-xs" style={{ color: "var(--copper-deep)" }}>{saving ? "..." : "Guardar"}</button>
                     <button type="button" onClick={() => handleDelete(item.id)} disabled={saving} className="text-xs" style={{ color: "#ef4444" }}>Apagar</button>
@@ -528,6 +584,72 @@ export default function VehicleExtrasCatalogPage() {
                       </div>
                       <button disabled={saving} className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}>+ Variante</button>
                     </form>
+
+                    <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--copper-deep)" }}>Associar a viaturas novas</p>
+                        {newVehicles.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setAssocDraft((prev) => ({ ...prev, [item.id]: allDraftLinked ? [] : newVehicles.map((vehicle) => vehicle.id) }))}
+                            className="rounded border px-3 py-1 text-xs transition-colors hover:border-copper"
+                            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+                          >
+                            {allDraftLinked ? "Limpar seleção" : "Selecionar todas"}
+                          </button>
+                        )}
+                      </div>
+                      {newVehicles.length === 0 ? (
+                        <p className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
+                          Ainda não existem viaturas novas para associar.
+                        </p>
+                      ) : (
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                          {newVehicles.map((vehicle) => {
+                            const checked = draftLinks.includes(vehicle.id);
+                            const label = [vehicle.brand, vehicle.model, vehicle.trim, vehicle.registration_year].filter(Boolean).join(" · ");
+                            return (
+                              <label
+                                key={vehicle.id}
+                                htmlFor={`assoc-${item.id}-${vehicle.id}`}
+                                className="flex items-center gap-2 rounded border px-3 py-2 text-xs"
+                                style={{
+                                  cursor: "pointer",
+                                  borderColor: checked ? "var(--copper)" : "var(--border)",
+                                  backgroundColor: checked ? "rgba(244,119,36,0.09)" : "var(--background)",
+                                  color: "var(--foreground)",
+                                }}
+                              >
+                                <input
+                                  id={`assoc-${item.id}-${vehicle.id}`}
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    const ids = e.target.checked ? [...draftLinks, vehicle.id] : draftLinks.filter((id) => id !== vehicle.id);
+                                    setAssocDraft((prev) => ({ ...prev, [item.id]: ids }));
+                                  }}
+                                />
+                                <span className="min-w-0">{label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-[10px]" style={{ color: "var(--muted)" }}>
+                          As viaturas marcadas ficam com este extra disponível no configurador da proposta.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveAssociations(item)}
+                          disabled={saving}
+                          className="px-3 py-1 rounded text-xs"
+                          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}
+                        >
+                          {saving ? "A guardar..." : "Guardar associações"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

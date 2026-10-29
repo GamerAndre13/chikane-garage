@@ -98,8 +98,9 @@ export default async function ComprarPage({ params }: { params: Promise<{ slug: 
       const rows = (extraRows || []) as { catalog_extra_id: string | null; name: string; price: number | null }[];
       const catalogIds = rows.map((row) => row.catalog_extra_id).filter((value): value is string => Boolean(value));
       let variantRows: { id: string; extra_id: string; name: string; price: number | null; position: number | null }[] = [];
-      // Descrição e fotografia vivem no catálogo partilhado (vehicle_extra_catalog).
-      let catalogRows: { id: string; description: string | null; image_url: string | null }[] = [];
+      // Descrição, fotografia e categoria vivem no catálogo partilhado
+      // (vehicle_extra_catalog).
+      let catalogRows: { id: string; description: string | null; image_url: string | null; category: string | null; position: number | null }[] = [];
       if (catalogIds.length) {
         const [variantsRes, catalogRes] = await Promise.all([
           supabase
@@ -110,25 +111,32 @@ export default async function ComprarPage({ params }: { params: Promise<{ slug: 
             .order("position", { ascending: true }),
           supabase
             .from("vehicle_extra_catalog")
-            .select("id, description, image_url")
+            .select("id, description, image_url, category, position")
             .in("id", catalogIds),
         ]);
         variantRows = (variantsRes.data || []) as typeof variantRows;
         catalogRows = (catalogRes.data || []) as typeof catalogRows;
       }
-      configuratorExtras = rows.map((row, index) => {
-        const catalog = catalogRows.find((item) => item.id === row.catalog_extra_id);
-        return {
-          id: row.catalog_extra_id || `${vehicle.id}-${index}`,
-          name: row.name,
-          description: catalog?.description ?? null,
-          image_url: catalog?.image_url ?? null,
-          price: Number(row.price) || 0,
-          variants: variantRows
-            .filter((variant) => variant.extra_id === row.catalog_extra_id)
-            .map((variant) => ({ id: variant.id, name: variant.name, price: Number(variant.price) || 0 })),
-        };
-      });
+      configuratorExtras = rows
+        .map((row, index) => {
+          const catalog = catalogRows.find((item) => item.id === row.catalog_extra_id);
+          return {
+            position: catalog?.position ?? 0,
+            extra: {
+              id: row.catalog_extra_id || `${vehicle.id}-${index}`,
+              name: row.name,
+              description: catalog?.description ?? null,
+              category: catalog?.category ?? null,
+              image_url: catalog?.image_url ?? null,
+              price: Number(row.price) || 0,
+              variants: variantRows
+                .filter((variant) => variant.extra_id === row.catalog_extra_id)
+                .map((variant) => ({ id: variant.id, name: variant.name, price: Number(variant.price) || 0 })),
+            },
+          };
+        })
+        .sort((a, b) => a.position - b.position || a.extra.name.localeCompare(b.extra.name, "pt"))
+        .map((item) => item.extra);
     } catch {
       configuratorExtras = [];
     }

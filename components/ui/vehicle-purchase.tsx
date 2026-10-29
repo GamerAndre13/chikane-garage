@@ -19,6 +19,7 @@ export type PurchaseExtra = {
   id: string;
   name: string;
   description?: string | null;
+  category?: string | null;
   image_url?: string | null;
   price: number;
   variants: PurchaseVariant[];
@@ -41,6 +42,10 @@ type Props = {
 
 // Escolha do cliente por extra: sem entrada = extra não selecionado.
 type Selection = { variantId: string | null };
+
+// Extras com categoria são alternativos dentro dessa categoria (escolhe-se
+// um). Os extras sem categoria são independentes e podem ser combinados.
+type ExtraGroup = { key: string; label: string | null; exclusive: boolean; items: PurchaseExtra[] };
 
 const euro = (value: number) =>
   `${value.toLocaleString("pt-PT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
@@ -98,12 +103,40 @@ export function VehiclePurchase({
       return [{
         extra_id: extra.id,
         name: extra.name,
+        category: extra.category ?? null,
         variant_id: variant?.id ?? null,
         variant_name: variant?.name ?? null,
         price: variant ? variant.price : extra.price,
       }];
     });
   }, [extras, selection]);
+
+  // Agrupa os extras por categoria, mantendo a ordem do catálogo. Os que não
+  // têm categoria ficam no fim, num grupo de escolha livre.
+  const groups = useMemo<ExtraGroup[]>(() => {
+    const result: ExtraGroup[] = [];
+    const byCategory = new Map<string, PurchaseExtra[]>();
+    const uncategorized: PurchaseExtra[] = [];
+
+    extras.forEach((extra) => {
+      const category = (extra.category || "").trim();
+      if (!category) {
+        uncategorized.push(extra);
+        return;
+      }
+      const list = byCategory.get(category) ?? [];
+      list.push(extra);
+      byCategory.set(category, list);
+    });
+
+    byCategory.forEach((items, category) => {
+      result.push({ key: `categoria-${category}`, label: category, exclusive: true, items });
+    });
+    if (uncategorized.length) {
+      result.push({ key: "sem-categoria", label: null, exclusive: false, items: uncategorized });
+    }
+    return result;
+  }, [extras]);
 
   const extrasTotal = useMemo(() => chosen.reduce((sum, item) => sum + (Number(item.price) || 0), 0), [chosen]);
   const base = Number(basePrice) || 0;
@@ -116,8 +149,17 @@ export function VehiclePurchase({
         delete next[extra.id];
         return next;
       }
+      const next = { ...prev };
+      // Dentro da mesma categoria só pode ficar uma opção escolhida.
+      if (extra.category) {
+        Object.keys(next).forEach((key) => {
+          const other = extras.find((item) => item.id === key);
+          if (other?.category === extra.category) delete next[key];
+        });
+      }
       // Com variantes, a primeira é a pré-seleção.
-      return { ...prev, [extra.id]: { variantId: extra.variants[0]?.id ?? null } };
+      next[extra.id] = { variantId: extra.variants[0]?.id ?? null };
+      return next;
     });
   };
 
@@ -220,71 +262,88 @@ export function VehiclePurchase({
           <div className="space-y-12">
             <section>
               <h2 className="font-display text-sm uppercase tracking-[0.28em] text-copper">1 · Extras da configuração</h2>
-              <p className="mb-5 mt-2 text-xs text-muted">Escolhe os extras que queres incluir. O total atualiza à medida das escolhas.</p>
+              <p className="mb-5 mt-2 text-xs text-muted">Escolhe os extras que queres incluir. Dentro de cada categoria escolhes uma opção; os extras sem categoria podem ser combinados.</p>
 
-              {extras.length === 0 ? (
+              {groups.length === 0 ? (
                 <p className="border border-border bg-surface px-5 py-6 text-sm text-muted">
                   Esta configuração ainda não tem extras opcionais. Podes enviar a proposta com o preço base e falamos contigo sobre as opções disponíveis.
                 </p>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {extras.map((extra) => {
-                    const picked = selection[extra.id];
-                    const active = Boolean(picked);
-                    const currentPrice = picked?.variantId
-                      ? extra.variants.find((item) => item.id === picked.variantId)?.price ?? extra.price
-                      : extra.price;
-                    return (
-                      <article
-                        key={extra.id}
-                        className={`border transition-colors ${active ? "border-copper bg-surface" : "border-border hover:border-copper"}`}
-                      >
-                        <label className="flex cursor-pointer gap-4 p-3">
-                          {extra.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- fotografia vem do R2 (domínio configurável)
-                            <img src={extra.image_url} alt="" loading="lazy" className="h-20 w-20 shrink-0 object-cover" />
-                          ) : (
-                            <span className="grid h-20 w-20 shrink-0 place-items-center border border-border text-[10px] text-muted">Sem foto</span>
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-display text-sm uppercase leading-tight tracking-wide text-foreground">{extra.name}</span>
-                            {extra.description && <span className="mt-1 line-clamp-2 block text-xs leading-5 text-muted">{extra.description}</span>}
-                            <span className="mt-1 block text-sm text-copper">+ {euro(Number(currentPrice) || 0)}</span>
-                          </span>
-                          <span className={`grid h-6 w-6 shrink-0 place-items-center border ${active ? "border-copper bg-copper text-black" : "border-border"}`}>
-                            {active && (
-                              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
-                            )}
-                          </span>
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={active}
-                            onChange={() => toggleExtra(extra)}
-                          />
-                        </label>
+                <div className="space-y-8">
+                  {groups.map((group) => (
+                    <div key={group.key}>
+                      {group.label && (
+                        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2">
+                          <h3 className="font-display text-xs uppercase tracking-[0.22em] text-foreground">{group.label}</h3>
+                          <span className="font-display text-[10px] uppercase tracking-[0.16em] text-muted">Escolhe 1 opção</span>
+                        </div>
+                      )}
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {group.items.map((extra) => {
+                          const picked = selection[extra.id];
+                          const active = Boolean(picked);
+                          const currentPrice = picked?.variantId
+                            ? extra.variants.find((item) => item.id === picked.variantId)?.price ?? extra.price
+                            : extra.price;
+                          return (
+                            <article
+                              key={extra.id}
+                              className={`border transition-colors ${active ? "border-copper bg-surface" : "border-border hover:border-copper"}`}
+                            >
+                              <label className="flex cursor-pointer gap-4 p-3">
+                                {extra.image_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element -- fotografia vem do R2 (domínio configurável)
+                                  <img src={extra.image_url} alt="" loading="lazy" className="h-20 w-20 shrink-0 object-cover" />
+                                ) : (
+                                  <span className="grid h-20 w-20 shrink-0 place-items-center border border-border text-[10px] text-muted">Sem foto</span>
+                                )}
+                                <span className="min-w-0 flex-1">
+                                  <span className="block font-display text-sm uppercase leading-tight tracking-wide text-foreground">{extra.name}</span>
+                                  {extra.description && <span className="mt-1 line-clamp-2 block text-xs leading-5 text-muted">{extra.description}</span>}
+                                  <span className="mt-1 block text-sm text-copper">+ {euro(Number(currentPrice) || 0)}</span>
+                                </span>
+                                <span className={`grid h-6 w-6 shrink-0 place-items-center border ${group.exclusive ? "rounded-full" : "rounded"} ${active ? "border-copper bg-copper text-black" : "border-border"}`}>
+                                  {active && (
+                                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
+                                  )}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  className="sr-only"
+                                  checked={active}
+                                  onChange={() => toggleExtra(extra)}
+                                />
+                              </label>
 
-                        {active && extra.variants.length > 0 && (
-                          <div className="flex flex-wrap gap-2 border-t border-border px-3 py-2.5">
-                            {extra.variants.map((variant) => {
-                              const selectedVariant = picked?.variantId === variant.id;
-                              return (
-                                <button
-                                  key={variant.id}
-                                  type="button"
-                                  onClick={() => pickVariant(extra.id, variant.id)}
-                                  aria-pressed={selectedVariant}
-                                  className={`border px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em] transition-colors ${selectedVariant ? "border-copper bg-copper text-black" : "border-border text-silver hover:border-copper hover:text-copper"}`}
-                                >
-                                  {variant.name} · {euro(Number(variant.price) || 0)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </article>
-                    );
-                  })}
+                              {active && extra.variants.length > 0 && (
+                                <div className="flex flex-wrap gap-2 border-t border-border px-3 py-2.5">
+                                  {extra.variants.map((variant) => {
+                                    const selectedVariant = picked?.variantId === variant.id;
+                                    return (
+                                      <button
+                                        key={variant.id}
+                                        type="button"
+                                        onClick={() => pickVariant(extra.id, variant.id)}
+                                        aria-pressed={selectedVariant}
+                                        className={`border px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.14em] transition-colors ${selectedVariant ? "border-copper bg-copper text-black" : "border-border text-silver hover:border-copper hover:text-copper"}`}
+                                      >
+                                        {variant.name} · {euro(Number(variant.price) || 0)}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {groups.some((group) => group.exclusive) && (
+                    <p className="text-xs leading-5 text-muted">
+                      Dentro de cada categoria escolhes uma opção. Os extras sem categoria podem ser combinados entre si.
+                    </p>
+                  )}
                 </div>
               )}
             </section>

@@ -14,6 +14,8 @@ interface Proposal {
   base_price: number | null;
   extras_total: number | null;
   total_price: number | null;
+  discount: number | null;
+  final_price: number | null;
   status: string;
   created_at: string;
   message: string | null;
@@ -126,7 +128,10 @@ export default function PropostasPage() {
           <tbody>
             {visible.map((p) => {
               const statusOpt = STATUS_OPTIONS.find((s) => s.value === p.status) || STATUS_OPTIONS[0];
-              const total = p.total_price != null ? `${Number(p.total_price).toLocaleString("pt-PT")} €` : "-";
+              const original = p.total_price != null ? Number(p.total_price) : null;
+              const finalPrice = p.final_price != null ? Number(p.final_price) : original;
+              const hasDiscount = p.discount != null && Number(p.discount) > 0;
+              const total = finalPrice != null ? `${finalPrice.toLocaleString("pt-PT")} €` : "-";
               const date = new Date(p.created_at).toLocaleString("pt-PT");
               return (
                 <tr key={p.id} className="border-b" style={{ borderColor: "var(--border)" }}>
@@ -142,6 +147,12 @@ export default function PropostasPage() {
                   </td>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
                     {total}
+                    {hasDiscount && original != null && (
+                      <div className="text-xs" style={{ color: "var(--muted)" }}>
+                        <span style={{ textDecoration: "line-through" }}>{`${original.toLocaleString("pt-PT")} €`}</span>
+                        {` · −${Number(p.discount).toLocaleString("pt-PT")} €`}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <select

@@ -52,6 +52,7 @@ export async function createVehicleExtraCatalog(formData: FormData): Promise<{ i
   const supabase = await adminClient();
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
+  const category = String(formData.get("category") || "").trim();
   const image_url = String(formData.get("image_url") || "").trim();
   const positionRaw = String(formData.get("position") || "0");
   const is_active = formData.get("is_active") === "on";
@@ -66,6 +67,7 @@ export async function createVehicleExtraCatalog(formData: FormData): Promise<{ i
     .insert({
       name,
       description,
+      category,
       image_url,
       price,
       position: Number(positionRaw) || 0,
@@ -97,6 +99,7 @@ export async function updateVehicleExtraCatalog(id: string, formData: FormData) 
   const supabase = await adminClient();
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
+  const category = String(formData.get("category") || "").trim();
   const image_url = String(formData.get("image_url") || "").trim();
   const positionRaw = String(formData.get("position") || "0");
   const is_active = formData.get("is_active") === "on";
@@ -106,6 +109,7 @@ export async function updateVehicleExtraCatalog(id: string, formData: FormData) 
   const { error } = await supabase.from("vehicle_extra_catalog").update({
     name,
     description,
+    category,
     image_url,
     price: parsePrice(formData.get("price")),
     position: Number(positionRaw) || 0,
@@ -113,6 +117,44 @@ export async function updateVehicleExtraCatalog(id: string, formData: FormData) 
   }).eq("id", id);
 
   if (error) throw new Error(error.message);
+  revalidateExtras();
+}
+
+// Atualiza as viaturas novas onde um extra já existente fica disponível.
+// O formulário envia uma entrada "vehicle_ids" por viatura marcada; as
+// associações antigas deste extra são substituídas pelas novas.
+export async function updateVehicleExtraAssociations(id: string, formData: FormData) {
+  const supabase = await adminClient();
+  const vehicleIds = formData.getAll("vehicle_ids").map((value) => String(value)).filter(Boolean);
+
+  const { data: catalog, error: catalogError } = await supabase
+    .from("vehicle_extra_catalog")
+    .select("id, name, price")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (catalogError) throw new Error(catalogError.message);
+  if (!catalog) throw new Error("Extra não encontrado.");
+
+  const { error: deleteError } = await supabase
+    .from("vehicle_extras")
+    .delete()
+    .eq("catalog_extra_id", id);
+
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (vehicleIds.length) {
+    const { error: insertError } = await supabase.from("vehicle_extras").insert(
+      vehicleIds.map((vehicleId) => ({
+        vehicle_id: vehicleId,
+        catalog_extra_id: id,
+        name: catalog.name,
+        price: catalog.price ?? 0,
+      }))
+    );
+    if (insertError) throw new Error(insertError.message);
+  }
+
   revalidateExtras();
 }
 

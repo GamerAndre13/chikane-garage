@@ -24,6 +24,8 @@ interface Proposal {
   base_price: number | null;
   extras_total: number | null;
   total_price: number | null;
+  discount: number | null;
+  final_price: number | null;
   selected_extras: ExtraItem[] | null;
   message: string | null;
   status: string;
@@ -60,6 +62,7 @@ export default function PropostaDetalhe() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [discount, setDiscount] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +73,7 @@ export default function PropostaDetalhe() {
         setProposal(data as Proposal);
         setStatus(data.status || "pending");
         setAdminNotes(data.admin_notes || "");
+        setDiscount(data.discount ? String(data.discount) : "");
         if (data.vehicle_id) {
           const { data: v } = await supabase.from("vehicles").select("brand, model, trim, slug, registration_year, price").eq("id", data.vehicle_id).maybeSingle();
           if (!cancelled) setVehicle(v);
@@ -82,12 +86,21 @@ export default function PropostaDetalhe() {
     };
   }, [id]);
 
+  // Desconto em euros definido pelo backoffice (0 = sem desconto).
+  const discountValue = Math.max(0, Number(discount.replace(",", ".")) || 0);
+
   const handleSave = async () => {
     if (!proposal) return;
     setSaving(true);
-    const { error } = await supabase.from("sale_proposals").update({ status, admin_notes: adminNotes }).eq("id", proposal.id);
+    const total = proposal.total_price != null ? Number(proposal.total_price) : null;
+    const finalPrice = total != null ? Math.max(0, total - discountValue) : null;
+    const { error } = await supabase
+      .from("sale_proposals")
+      .update({ status, admin_notes: adminNotes, discount: discountValue, final_price: finalPrice })
+      .eq("id", proposal.id);
     if (error) alert("Erro ao guardar: " + error.message);
     else {
+      setProposal({ ...proposal, status, admin_notes: adminNotes, discount: discountValue, final_price: finalPrice });
       alert("Guardado com sucesso");
       router.refresh();
     }
@@ -229,8 +242,26 @@ export default function PropostaDetalhe() {
               <span style={{ color: "var(--foreground)" }}>{proposal.extras_total != null ? `${Number(proposal.extras_total).toLocaleString("pt-PT")} €` : "0 €"}</span>
             </div>
             <div className="flex justify-between pt-2 border-t text-base" style={{ borderColor: "var(--border)" }}>
-              <span style={{ color: "var(--foreground)" }}>Total estimado</span>
-              <span style={{ color: "var(--copper-deep)" }}>{proposal.total_price != null ? `${Number(proposal.total_price).toLocaleString("pt-PT")} €` : "-"}</span>
+              <span style={{ color: "var(--muted)" }}>Total estimado</span>
+              <span style={{ color: proposal.discount ? "var(--muted)" : "var(--foreground)", textDecoration: proposal.discount ? "line-through" : "none" }}>
+                {proposal.total_price != null ? `${Number(proposal.total_price).toLocaleString("pt-PT")} €` : "-"}
+              </span>
+            </div>
+            {Number(proposal.discount) > 0 && (
+              <div className="flex justify-between">
+                <span style={{ color: "var(--muted)" }}>Desconto</span>
+                <span style={{ color: "#22c55e" }}>− {Number(proposal.discount).toLocaleString("pt-PT")} €</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t text-base" style={{ borderColor: "var(--border)" }}>
+              <span style={{ color: "var(--foreground)" }}>Total da proposta</span>
+              <span style={{ color: "var(--copper-deep)" }}>
+                {proposal.final_price != null
+                  ? `${Number(proposal.final_price).toLocaleString("pt-PT")} €`
+                  : proposal.total_price != null
+                    ? `${Number(proposal.total_price).toLocaleString("pt-PT")} €`
+                    : "-"}
+              </span>
             </div>
           </div>
         </div>
@@ -257,6 +288,28 @@ export default function PropostaDetalhe() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label htmlFor="proposta-desconto" className="text-xs uppercase tracking-widest mb-1 block" style={{ color: "var(--muted)" }}>
+              Desconto (€)
+            </label>
+            <input
+              id="proposta-desconto"
+              inputMode="decimal"
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value.replace(/[^\d.,]/g, ""))}
+              placeholder="0"
+              className="w-full px-3 py-2 text-sm border rounded bg-background"
+              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+            />
+            <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+              Total da proposta:{" "}
+              <strong style={{ color: "var(--copper-deep)" }}>
+                {proposal.total_price != null
+                  ? `${Math.max(0, Number(proposal.total_price) - discountValue).toLocaleString("pt-PT")} €`
+                  : "-"}
+              </strong>
+            </p>
           </div>
         </div>
         <div className="mt-4">
