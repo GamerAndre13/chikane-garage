@@ -18,6 +18,7 @@ partiu nada.
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
 | **Novos** (viaturas novas por encomenda) | `app/novos/page.tsx` |
 | **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
+| **Comprar / pedir proposta** (extras + dados) | `app/comprar/[slug]/page.tsx` (+ `components/ui/vehicle-purchase.tsx`) |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
 | **Conta** (entrar / registar) | `app/conta/page.tsx` |
@@ -44,7 +45,7 @@ partiu nada.
 | Rodapé | `components/layout/footer.tsx` | Contactos, redes, newsletter |
 | Botão de cookies | `components/layout/cookie-settings-button.tsx` | Reabrir preferências |
 | Grelha do catálogo | `components/ui/catalog-browser.tsx` | Cartões + filtros |
-| Configurador + proposta (viaturas novas) | `components/ui/vehicle-proposal-configurator.tsx` | Extras com fotografia, total e pedido de proposta (formulário no estilo de «Pedir informações») |
+| Configurador + proposta (`/comprar/[slug]`) | `components/ui/vehicle-purchase.tsx` | Extras com fotografia, resumo sticky e pedido de proposta (formulário no estilo de «Pedir informações») |
 | Cartão de viatura (galeria) | `components/ui/vehicle-card-gallery.tsx` | Fotografia em cartão |
 | Galeria da ficha | `components/ui/vehicle-detail-gallery.tsx` | Galeria grande |
 | Galeria (genérica) | `components/ui/vehicle-gallery.tsx` | Lista de fotos |

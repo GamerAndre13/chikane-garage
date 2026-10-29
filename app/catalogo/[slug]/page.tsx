@@ -7,7 +7,6 @@ import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { VehicleSpecifications } from "@/components/ui/vehicle-specifications";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
-import { VehicleProposalConfigurator, type ConfiguratorExtra } from "@/components/ui/vehicle-proposal-configurator";
 import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 
@@ -239,55 +238,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   if (vehicle.co2_emissions != null) additionalSpecs.push({ label: "CO₂", value: `${vehicle.co2_emissions} g/km` });
   if (vehicle.warranty_months) additionalSpecs.push({ label: "Garantia", value: `${vehicle.warranty_months} meses` });
 
-  // Extras configuráveis (só viaturas novas): o catálogo associado a esta
-  // viatura + variantes ativas de cada extra.
-  let configuratorExtras: ConfiguratorExtra[] = [];
-  if (vehicle.sale_type === "new") {
-    try {
-      const supabase = await createClient();
-      const { data: extraRows } = await supabase
-        .from("vehicle_extras")
-        .select("catalog_extra_id, name, price")
-        .eq("vehicle_id", vehicle.id)
-        .order("created_at", { ascending: true });
-      const rows = (extraRows || []) as { catalog_extra_id: string | null; name: string; price: number | null }[];
-      const catalogIds = rows.map((row) => row.catalog_extra_id).filter((value): value is string => Boolean(value));
-      let variantRows: { id: string; extra_id: string; name: string; price: number | null; position: number | null }[] = [];
-      // Descrição e fotografia vivem no catálogo partilhado (vehicle_extra_catalog).
-      let catalogRows: { id: string; description: string | null; image_url: string | null }[] = [];
-      if (catalogIds.length) {
-        const [variantsRes, catalogRes] = await Promise.all([
-          supabase
-            .from("vehicle_extra_variants")
-            .select("id, extra_id, name, price, position")
-            .in("extra_id", catalogIds)
-            .eq("is_active", true)
-            .order("position", { ascending: true }),
-          supabase
-            .from("vehicle_extra_catalog")
-            .select("id, description, image_url")
-            .in("id", catalogIds),
-        ]);
-        variantRows = (variantsRes.data || []) as typeof variantRows;
-        catalogRows = (catalogRes.data || []) as typeof catalogRows;
-      }
-      configuratorExtras = rows.map((row, index) => {
-        const catalog = catalogRows.find((item) => item.id === row.catalog_extra_id);
-        return {
-          id: row.catalog_extra_id || `${vehicle.id}-${index}`,
-          name: row.name,
-          description: catalog?.description ?? null,
-          image_url: catalog?.image_url ?? null,
-          price: Number(row.price) || 0,
-          variants: variantRows
-            .filter((variant) => variant.extra_id === row.catalog_extra_id)
-            .map((variant) => ({ id: variant.id, name: variant.name, price: Number(variant.price) || 0 })),
-        };
-      });
-    } catch {
-      configuratorExtras = [];
-    }
-  }
+  // Extras configuráveis (só viaturas novas) vivem agora na página
+  // /comprar/<slug>, juntamente com o pedido de proposta.
 
   let similarVehicles: Vehicle[] = [];
   try {
@@ -339,7 +291,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
           {vehicle.status !== "sold" && vehicle.sale_type === "new" && (
             <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <a href="#configurador" className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Configurar</a>
+              <Link href={`/comprar/${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Configurar</Link>
               <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Pedir informações</Link>
             </div>
           )}
@@ -365,16 +317,6 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
           <p className="mt-7 border-l-2 border-copper bg-surface px-4 py-3 text-xs leading-5 text-muted">Contacta a equipa para confirmar disponibilidade, características e condições desta viatura.</p>
         </div>
       </div>
-
-      {vehicle.sale_type === "new" && (
-        <VehicleProposalConfigurator
-          vehicleId={vehicle.id}
-          vehicleSlug={vehicle.slug}
-          vehicleName={[vehicle.brand, vehicle.model, vehicle.trim].filter(Boolean).join(" ")}
-          basePrice={vehicle.price ?? null}
-          extras={configuratorExtras}
-        />
-      )}
 
       <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={car.id}/></div>{car.status === "reserved" && <span className="absolute bottom-3 left-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span>}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
     </div>
