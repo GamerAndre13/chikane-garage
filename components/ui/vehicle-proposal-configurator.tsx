@@ -35,6 +35,18 @@ type Selection = { variantId: string | null };
 
 const euro = (value: number) => `${value.toLocaleString("pt-PT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
 
+// Mesmo tratamento visual do formulário "Pedir informações" (app/contacto).
+const inputStyle = {
+  width: "100%",
+  padding: "0.75rem 1rem",
+  border: "1px solid var(--border)",
+  backgroundColor: "var(--background-alt)",
+  color: "var(--foreground)",
+  fontSize: "0.875rem",
+} as const;
+
+const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted";
+
 // Validação do NIF português (9 dígitos + dígito de controlo mod 11).
 function isValidNif(raw: string): boolean {
   const nif = raw.replace(/\s+/g, "");
@@ -346,42 +358,43 @@ export function VehicleProposalConfigurator({ vehicleId, vehicleSlug, vehicleNam
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
                 <div>
-                  <label htmlFor="proposta-nome" className="mb-1 block font-display text-[10px] uppercase tracking-[0.18em] text-white/60">Nome *</label>
+                  <label htmlFor="proposta-nome" className={labelCls}>Nome *</label>
                   <input
                     id="proposta-nome"
                     required
                     value={form.name}
                     onChange={(event) => setForm({ ...form, name: event.target.value })}
-                    className="w-full border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper"
+                    style={inputStyle}
                   />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="proposta-email" className="mb-1 block font-display text-[10px] uppercase tracking-[0.18em] text-white/60">Email *</label>
+                    <label htmlFor="proposta-email" className={labelCls}>Email *</label>
                     <input
                       id="proposta-email"
                       type="email"
                       required
                       value={form.email}
                       onChange={(event) => setForm({ ...form, email: event.target.value })}
-                      className="w-full border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper"
+                      style={inputStyle}
                     />
                   </div>
                   <div>
-                    <label htmlFor="proposta-telefone" className="mb-1 block font-display text-[10px] uppercase tracking-[0.18em] text-white/60">Telefone</label>
+                    <label htmlFor="proposta-telefone" className={labelCls}>Telefone</label>
                     <input
                       id="proposta-telefone"
+                      type="tel"
                       inputMode="tel"
                       value={form.phone}
                       onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                      className="w-full border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper"
+                      style={inputStyle}
                     />
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="proposta-nif" className="mb-1 block font-display text-[10px] uppercase tracking-[0.18em] text-white/60">NIF *</label>
+                  <label htmlFor="proposta-nif" className={labelCls}>NIF *</label>
                   <input
                     id="proposta-nif"
                     required
@@ -389,32 +402,32 @@ export function VehicleProposalConfigurator({ vehicleId, vehicleSlug, vehicleNam
                     maxLength={9}
                     value={form.nif}
                     onChange={(event) => setForm({ ...form, nif: event.target.value.replace(/[^\d]/g, "") })}
-                    className="w-full border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper"
+                    style={inputStyle}
                   />
-                  <p className="mt-1 text-[11px] text-white/45">Necessário para emitir a proposta.</p>
+                  <p className="mt-1 text-xs text-muted">Necessário para emitir a proposta.</p>
                 </div>
                 <div>
-                  <label htmlFor="proposta-mensagem" className="mb-1 block font-display text-[10px] uppercase tracking-[0.18em] text-white/60">Mensagem</label>
+                  <label htmlFor="proposta-mensagem" className={labelCls}>Mensagem</label>
                   <textarea
                     id="proposta-mensagem"
                     rows={4}
                     value={form.message}
                     onChange={(event) => setForm({ ...form, message: event.target.value })}
                     placeholder="Retoma, prazo de entrega, financiamento..."
-                    className="w-full resize-y border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-copper"
+                    style={{ ...inputStyle, resize: "vertical" as const }}
                   />
                 </div>
 
-                {error && <p className="border-l-2 border-red-500 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
+                {error && <div role="alert" className="border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
 
                 <button
                   type="submit"
                   disabled={sending}
-                  className="w-full bg-copper px-6 py-4 font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light disabled:opacity-60"
+                  className="bg-copper px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light disabled:opacity-50"
                 >
-                  {sending ? "A enviar..." : "Enviar proposta"}
+                  {sending ? "A enviar…" : "Enviar proposta"}
                 </button>
-                <p className="text-[11px] leading-5 text-white/45">Os teus dados são usados apenas para responder a este pedido.</p>
+                <p className="text-xs leading-5 text-muted">Os teus dados são usados apenas para responder a este pedido.</p>
               </form>
             )}
           </div>

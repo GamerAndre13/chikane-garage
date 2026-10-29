@@ -55,6 +55,9 @@ export async function createVehicleExtraCatalog(formData: FormData): Promise<{ i
   const image_url = String(formData.get("image_url") || "").trim();
   const positionRaw = String(formData.get("position") || "0");
   const is_active = formData.get("is_active") === "on";
+  const price = parsePrice(formData.get("price"));
+  // Viaturas novas onde o extra deve ficar logo disponível no configurador.
+  const vehicleIds = formData.getAll("vehicle_ids").map((value) => String(value)).filter(Boolean);
 
   if (!name) throw new Error("Nome do extra é obrigatório.");
 
@@ -64,7 +67,7 @@ export async function createVehicleExtraCatalog(formData: FormData): Promise<{ i
       name,
       description,
       image_url,
-      price: parsePrice(formData.get("price")),
+      price,
       position: Number(positionRaw) || 0,
       is_active,
     })
@@ -72,6 +75,20 @@ export async function createVehicleExtraCatalog(formData: FormData): Promise<{ i
     .single();
 
   if (error) throw new Error(error.message);
+
+  // Associação imediata às viaturas novas escolhidas (vehicle_extras).
+  if (vehicleIds.length) {
+    const { error: linkError } = await supabase.from("vehicle_extras").insert(
+      vehicleIds.map((vehicleId) => ({
+        vehicle_id: vehicleId,
+        catalog_extra_id: String(data.id),
+        name,
+        price,
+      }))
+    );
+    if (linkError) throw new Error(linkError.message);
+  }
+
   revalidateExtras();
   return { id: String(data.id) };
 }

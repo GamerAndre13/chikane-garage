@@ -32,6 +32,14 @@ interface ExtraVariant {
   is_active: boolean;
 }
 
+interface NewVehicleOption {
+  id: string;
+  brand: string | null;
+  model: string | null;
+  trim: string | null;
+  registration_year: number | null;
+}
+
 const fieldLabel = "mb-1 block text-[11px] uppercase tracking-[0.12em]";
 const inputClass = "w-full rounded border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-copper";
 
@@ -116,6 +124,9 @@ export default function VehicleExtrasCatalogPage() {
   const [newItem, setNewItem] = useState({ name: "", description: "", image_url: "", price: "", position: "", is_active: true });
   // Variantes que serão criadas logo a seguir ao extra.
   const [draftVariants, setDraftVariants] = useState<{ name: string; price: string }[]>([]);
+  // Viaturas novas onde o extra pode ficar associado logo na criação.
+  const [newVehicles, setNewVehicles] = useState<NewVehicleOption[]>([]);
+  const [associations, setAssociations] = useState<string[]>([]);
   // Fotografias em edição (por id do extra), para não escrever no formulário
   // controlado de cada linha da lista.
   const [images, setImages] = useState<Record<string, string>>({});
@@ -147,6 +158,30 @@ export default function VehicleExtrasCatalogPage() {
     };
   }, []);
 
+  // Viaturas novas (por encomenda) para associar o extra logo na criação.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("vehicles")
+        .select("id, brand, model, trim, registration_year")
+        .eq("sale_type", "new")
+        .order("brand", { ascending: true })
+        .order("model", { ascending: true });
+      if (cancelled) return;
+      const vehicles = (data as NewVehicleOption[]) || [];
+      setNewVehicles(vehicles);
+      setAssociations(vehicles.map((vehicle) => vehicle.id));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allAssociated = newVehicles.length > 0 && associations.length === newVehicles.length;
+  const toggleAllAssociations = () =>
+    setAssociations(allAssociated ? [] : newVehicles.map((vehicle) => vehicle.id));
+
   const imageFor = (item: ExtraCatalog) => images[item.id] ?? item.image_url ?? "";
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -161,6 +196,8 @@ export default function VehicleExtrasCatalogPage() {
       formData.append("price", newItem.price);
       formData.append("position", newItem.position);
       if (newItem.is_active) formData.append("is_active", "on");
+      // Associação imediata às viaturas novas que ficaram marcadas.
+      associations.forEach((vehicleId) => formData.append("vehicle_ids", vehicleId));
 
       const created = await createVehicleExtraCatalog(formData);
 
@@ -175,6 +212,7 @@ export default function VehicleExtrasCatalogPage() {
 
       setNewItem({ name: "", description: "", image_url: "", price: "", position: "", is_active: true });
       setDraftVariants([]);
+      setAssociations(newVehicles.map((vehicle) => vehicle.id));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar extra.");
@@ -342,6 +380,55 @@ export default function VehicleExtrasCatalogPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="rounded border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--background-alt)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: "var(--copper-deep)" }}>Associar a viaturas novas</p>
+              {newVehicles.length > 0 && (
+                <button type="button" onClick={toggleAllAssociations} className="rounded border px-3 py-1 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+                  {allAssociated ? "Limpar seleção" : "Selecionar todas"}
+                </button>
+              )}
+            </div>
+            {newVehicles.length === 0 ? (
+              <p className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
+                Ainda não existem viaturas novas. O extra fica no catálogo e pode ser associado ao criar a viatura.
+              </p>
+            ) : (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {newVehicles.map((vehicle) => {
+                  const checked = associations.includes(vehicle.id);
+                  const label = [vehicle.brand, vehicle.model, vehicle.trim, vehicle.registration_year].filter(Boolean).join(" · ");
+                  return (
+                    <label
+                      key={vehicle.id}
+                      className="flex items-center gap-2 rounded border px-3 py-2 text-xs"
+                      style={{
+                        cursor: "pointer",
+                        borderColor: checked ? "var(--copper)" : "var(--border)",
+                        backgroundColor: checked ? "rgba(244,119,36,0.09)" : "var(--background-alt)",
+                        color: "var(--foreground)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          setAssociations((prev) =>
+                            e.target.checked ? [...prev, vehicle.id] : prev.filter((id) => id !== vehicle.id)
+                          )
+                        }
+                      />
+                      <span className="min-w-0">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <p className="mt-2 text-[10px]" style={{ color: "var(--muted)" }}>
+              Todas vêm marcadas por defeito. As viaturas marcadas ficam logo com este extra no configurador.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">

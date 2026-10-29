@@ -101,9 +101,18 @@ const labelStyle = {
   color: "var(--muted)",
 } as const;
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div><label style={labelStyle}>{label}</label>{children}</div>
+const Field = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
+  <div>
+    <label style={labelStyle}>{label}</label>
+    {children}
+    {error && <p role="alert" style={{ marginTop: "0.25rem", fontSize: "0.6875rem", color: "#ef4444" }}>{error}</p>}
+  </div>
 );
+
+// Campos obrigatórios em falta ficam com a borda vermelha (a validação é
+// feita no submit, com o form em noValidate).
+const withError = (base: React.CSSProperties, error?: string): React.CSSProperties =>
+  error ? { ...base, borderColor: "#ef4444" } : base;
 
 export default function NovoVeiculo() {
   const router = useRouter();
@@ -113,6 +122,7 @@ export default function NovoVeiculo() {
   const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
   const [extraCatalog, setExtraCatalog] = useState<ExtraCatalogItem[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Catálogo de extras partilhado — gerido em /admin/veiculos/extras.
   useEffect(() => {
@@ -156,17 +166,54 @@ export default function NovoVeiculo() {
     }
   }, [setMultiple, models]);
 
+  // Limpa a borda vermelha de um campo assim que o utilizador o corrige.
+  const clearError = useCallback((field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
   // A primeira decisão do formulário é usado vs. novo: esconde os campos que
   // não fazem sentido numa viatura por encomenda (0 km, sem donos anteriores)
   // e limpa os extras selecionados quando passa a usado.
   const handleSaleTypeChange = useCallback((value: string) => {
+    clearError("mileage_km");
     if (value === "new") {
       setSelectedExtras([]);
       setMultiple({ sale_type: value, mileage_km: "0", previous_owners: "0", service_book: "full_dealer" });
     } else {
       setMultiple({ sale_type: value, mileage_km: "", previous_owners: "1", service_book: "full_dealer" });
     }
-  }, [setMultiple]);
+  }, [clearError, setMultiple]);
+
+  // Handler de campos obrigatórios: atualiza o valor e limpa o erro do campo.
+  const handleFieldChange = useCallback((field: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    handleChange(field)(event);
+    clearError(field);
+  }, [clearError, handleChange]);
+
+  // Validação feita no submit (o form usa noValidate) para marcar a vermelho
+  // os campos obrigatórios que ficaram vazios.
+  const validate = useCallback((): Record<string, string> => {
+    const next: Record<string, string> = {};
+    if (!form.brand.trim()) next.brand = "Escolhe a marca.";
+    if (!form.model.trim()) next.model = "Indica o modelo.";
+    if (!form.registration_year.trim()) next.registration_year = "Indica o ano de registo.";
+    else {
+      const year = Number(form.registration_year);
+      if (!Number.isFinite(year) || year < 1900 || year > 2100) next.registration_year = "Ano entre 1900 e 2100.";
+    }
+    if (form.sale_type === "used") {
+      if (!form.mileage_km.trim()) next.mileage_km = "Indica a quilometragem.";
+      else if (Number(form.mileage_km) < 0) next.mileage_km = "Indica uma quilometragem válida.";
+    }
+    if (!form.price.trim()) next.price = "Indica o preço.";
+    else if (Number(form.price) < 0) next.price = "Indica um preço válido.";
+    return next;
+  }, [form]);
 
   // Nacional → o país de origem fica fixo em Portugal e o campo desaparece.
   const handleOriginChange = useCallback((value: string) => {
@@ -179,6 +226,13 @@ export default function NovoVeiculo() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors = validate();
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      // Foca o primeiro campo em falta para o utilizador saber onde corrigir.
+      document.getElementById(`vehicle-${Object.keys(nextErrors)[0]}`)?.focus();
+      return;
+    }
     setSaving(true);
     try {
       const { features, ...vehicleForm } = form;
@@ -263,7 +317,7 @@ export default function NovoVeiculo() {
   return (
     <div>
       <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>Nova Viatura</h1>
-      <form onSubmit={handleSubmit} style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
+      <form onSubmit={handleSubmit} noValidate style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
         {/* Primeira pergunta: usada ou nova */}
         <fieldset style={{ border: "none", padding: 0, margin: 0, marginBottom: "1.5rem" }}>
           <legend className="text-xs uppercase tracking-widest" style={{ color: "var(--copper-deep)", marginBottom: "0.5rem" }}>1. Esta viatura é…</legend>
@@ -307,19 +361,21 @@ export default function NovoVeiculo() {
         {/* Identificação */}
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Marca *">
-            <select style={selectStyle} value={form.brand} onChange={(e) => handleBrandChange(e.target.value)}>
+          <Field label="Marca *" error={errors.brand}>
+            <select id="vehicle-brand" aria-invalid={Boolean(errors.brand)} style={withError(selectStyle, errors.brand)} value={form.brand} onChange={(e) => { handleBrandChange(e.target.value); clearError("brand"); }}>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </Field>
-          <Field label="Modelo *">
+          <Field label="Modelo *" error={errors.model}>
             <>
-              <input required list="vehicle-models" style={inputStyle} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => handleModelChange(e.target.value)} />
+              <input id="vehicle-model" required list="vehicle-models" aria-invalid={Boolean(errors.model)} style={withError(inputStyle, errors.model)} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => { handleModelChange(e.target.value); clearError("model"); }} />
               <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
-          <Field label="Ano Registo *"><input required type="number" min="1900" max="2100" style={inputStyle} value={form.registration_year} onChange={handleChange("registration_year")} /></Field>
+          <Field label="Ano Registo *" error={errors.registration_year}>
+            <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onChange={handleFieldChange("registration_year")} />
+          </Field>
           <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
         </div>
 
@@ -342,7 +398,7 @@ export default function NovoVeiculo() {
           {/* Quilometragem, donos e caderneta só existem em viaturas usadas. */}
           {form.sale_type === "used" && (
             <>
-              <Field label="Quilometragem *"><input required type="number" min="0" style={inputStyle} value={form.mileage_km} onChange={handleChange("mileage_km")} /></Field>
+              <Field label="Quilometragem *" error={errors.mileage_km}><input id="vehicle-mileage_km" required type="number" min="0" aria-invalid={Boolean(errors.mileage_km)} style={withError(inputStyle, errors.mileage_km)} value={form.mileage_km} onChange={handleFieldChange("mileage_km")} /></Field>
             </>
           )}
           <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
@@ -371,7 +427,7 @@ export default function NovoVeiculo() {
         {/* Preço & Status */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Preço (€) *"><input required type="number" min="0" step="100" style={inputStyle} value={form.price} onChange={handleChange("price")} /></Field>
+          <Field label="Preço (€) *" error={errors.price}><input id="vehicle-price" required type="number" min="0" step="100" aria-invalid={Boolean(errors.price)} style={withError(inputStyle, errors.price)} value={form.price} onChange={handleFieldChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
           <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
