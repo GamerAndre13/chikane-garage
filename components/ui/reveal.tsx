@@ -7,13 +7,15 @@ type RevealProps = {
   className?: string;
   /** Atraso em ms para efeito de cascata (stagger). */
   delay?: number;
+  /** Duração da transição em ms (por omissão: 600ms definidos no CSS). */
+  duration?: number;
 };
 
 /**
  * Revela o conteúdo ao entrar no viewport (fade + subida + leve skew).
  * Com `prefers-reduced-motion` a transição é instantânea (regra global em globals.css).
  */
-export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
+export function Reveal({ children, className = "", delay = 0, duration }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -44,7 +46,14 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
     <div
       ref={ref}
       className={`reveal ${visible ? "reveal-in" : ""} ${className}`}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+      style={
+        delay || duration
+          ? {
+              ...(delay ? { transitionDelay: `${delay}ms` } : {}),
+              ...(duration ? { transitionDuration: `${duration}ms` } : {}),
+            }
+          : undefined
+      }
     >
       {children}
     </div>

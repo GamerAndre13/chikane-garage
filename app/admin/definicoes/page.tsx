@@ -88,6 +88,12 @@ export default function DefinicoesPage() {
   const [rowId, setRowId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  // Secções colapsáveis: começam todas fechadas para a página ficar curta.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
 
   useEffect(() => {
     (async () => {
@@ -240,155 +246,216 @@ export default function DefinicoesPage() {
         </div>
       )}
 
-      {GROUPS.map((group) => (
-        <div
-          key={group.title}
-          style={{
-            backgroundColor: "var(--surface-mid)",
-            border: "1px solid var(--border)",
-            borderRadius: "0.5rem",
-            padding: "1rem",
-            marginBottom: "1rem",
-          }}
-        >
-          <div style={{ marginBottom: "0.75rem" }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--copper-deep)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              {group.title}
-            </div>
-            <div style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted)" }}>
-              {group.description}
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-            {group.fields.map((field) => (
-              <div key={field.key} style={field.full || field.photo ? { gridColumn: "1 / -1" } : undefined}>
-                <label style={labelStyle}>{field.label}</label>
+      <p className="mb-4" style={{ color: "var(--muted)", fontSize: "0.8125rem" }}>
+        Abre apenas a secção que queres alterar. As alterações só ficam visíveis no site depois de clicares em{" "}
+        <strong style={{ color: "var(--silver)" }}>Guardar definições</strong>.
+      </p>
 
-                {field.photo ? (
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <div
-                        style={{
-                          width: "11rem",
-                          height: "6.5rem",
-                          flexShrink: 0,
-                          borderRadius: "0.375rem",
-                          border: "1px solid var(--border)",
-                          backgroundColor: "var(--background-alt)",
-                          overflow: "hidden",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {form[field.key] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={form[field.key]}
-                            alt={field.label}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
-                        ) : (
-                          <span style={{ padding: "0 0.5rem", fontSize: "0.7rem", color: "var(--muted-deep)", textAlign: "center" }}>
-                            Imagem por omissão
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label
-                          className="cursor-pointer rounded px-3 py-1.5 text-center text-xs font-medium"
-                          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: uploadingKey === field.key ? 0.6 : 1 }}
-                        >
-                          {uploadingKey === field.key ? "A enviar..." : form[field.key] ? "Trocar foto" : "Enviar foto"}
+      {GROUPS.map((group) => {
+        const open = Boolean(openGroups[group.title]);
+        const panelId = `definicoes-${group.title
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")}`;
+        return (
+          <div
+            key={group.title}
+            style={{
+              backgroundColor: "var(--surface-mid)",
+              border: "1px solid var(--border)",
+              borderRadius: "0.5rem",
+              marginBottom: "0.75rem",
+              overflow: "hidden",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => toggleGroup(group.title)}
+              aria-expanded={open}
+              aria-controls={panelId}
+              className="w-full"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "1rem",
+                padding: "1rem",
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              <span style={{ minWidth: 0 }}>
+                <span
+                  style={{
+                    display: "block",
+                    fontFamily: "var(--font-display)",
+                    fontSize: "0.95rem",
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    color: "var(--foreground)",
+                  }}
+                >
+                  {group.title}
+                </span>
+                <span style={{ display: "block", marginTop: "0.35rem", fontSize: "0.75rem", color: "var(--muted)", lineHeight: 1.5 }}>
+                  {group.description}
+                </span>
+              </span>
+              <span
+                className="shrink-0 rounded px-3 py-1.5 text-xs"
+                style={{
+                  border: `1px solid ${open ? "var(--copper)" : "var(--border)"}`,
+                  color: open ? "var(--copper)" : "var(--muted)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {open ? "Ocultar opções −" : "Mostrar opções +"}
+              </span>
+            </button>
+
+            {open && (
+              <div
+                id={panelId}
+                style={{
+                  padding: "1rem",
+                  borderTop: "1px solid var(--border)",
+                  backgroundColor: "var(--background-alt)",
+                }}
+              >
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  {group.fields.map((field) => (
+                    <div key={field.key} style={field.full || field.photo ? { gridColumn: "1 / -1" } : undefined}>
+                      <label style={labelStyle}>{field.label}</label>
+
+                      {field.photo ? (
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <div
+                              style={{
+                                width: "11rem",
+                                height: "6.5rem",
+                                flexShrink: 0,
+                                borderRadius: "0.375rem",
+                                border: "1px solid var(--border)",
+                                backgroundColor: "var(--background-alt)",
+                                overflow: "hidden",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {form[field.key] ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={form[field.key]}
+                                  alt={field.label}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              ) : (
+                                <span style={{ padding: "0 0.5rem", fontSize: "0.7rem", color: "var(--muted-deep)", textAlign: "center" }}>
+                                  Imagem por omissão
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <label
+                                className="cursor-pointer rounded px-3 py-1.5 text-center text-xs font-medium"
+                                style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: uploadingKey === field.key ? 0.6 : 1 }}
+                              >
+                                {uploadingKey === field.key ? "A enviar..." : form[field.key] ? "Trocar foto" : "Enviar foto"}
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="sr-only"
+                                  disabled={uploadingKey === field.key}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) void handlePhotoUpload(field.key, file);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                              {form[field.key] && (
+                                <button
+                                  onClick={() => setForm((prev) => ({ ...prev, [field.key]: "" }))}
+                                  className="rounded px-3 py-1.5 text-xs"
+                                  style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                                >
+                                  Remover
+                                </button>
+                              )}
+                            </div>
+                          </div>
                           <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="sr-only"
-                            disabled={uploadingKey === field.key}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) void handlePhotoUpload(field.key, file);
-                              e.target.value = "";
-                            }}
+                            style={{ ...inputStyle, marginTop: "0.5rem" }}
+                            placeholder="https://... ou envia um ficheiro"
+                            value={form[field.key] ?? ""}
+                            onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
                           />
-                        </label>
-                        {form[field.key] && (
-                          <button
-                            onClick={() => setForm((prev) => ({ ...prev, [field.key]: "" }))}
-                            className="rounded px-3 py-1.5 text-xs"
-                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                        </div>
+                      ) : field.full ? (
+                        <textarea
+                          rows={6}
+                          style={{ ...inputStyle, resize: "vertical" as const }}
+                          value={form[field.key] ?? ""}
+                          onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        />
+                      ) : (
+                        <input
+                          style={inputStyle}
+                          placeholder={field.hint}
+                          value={form[field.key] ?? ""}
+                          onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        />
+                      )}
+
+                      <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "var(--muted-deep)" }}>{field.hint}</div>
+
+                      {field.key === "avatar_pool" && (
+                        <div className="mt-2">
+                          <label
+                            className="cursor-pointer inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium"
+                            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
                           >
-                            Remover
-                          </button>
-                        )}
-                      </div>
+                            {uploadingKey === "avatar_pool" ? "A enviar..." : "Enviar foto para adicionar à lista"}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="sr-only"
+                              disabled={uploadingKey === "avatar_pool"}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setUploadingKey("avatar_pool");
+                                  setError(null);
+                                  const fd = new FormData();
+                                  fd.append("file", file);
+                                  fd.append("name", "avatar_pool");
+                                  uploadSiteImage(fd).then((res) => {
+                                    setUploadingKey(null);
+                                    if (res.error) setError(res.error);
+                                    if (res.url) {
+                                      const current = form[field.key] ?? "";
+                                      const newVal = current ? current + "\n" + res.url : res.url;
+                                      setForm((prev) => ({ ...prev, [field.key]: newVal }));
+                                    }
+                                  });
+                                }
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
                     </div>
-                    <input
-                      style={{ ...inputStyle, marginTop: "0.5rem" }}
-                      placeholder="https://... ou envia um ficheiro"
-                      value={form[field.key] ?? ""}
-                      onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    />
-                  </div>
-                ) : field.full ? (
-                  <textarea
-                    rows={6}
-                    style={{ ...inputStyle, resize: "vertical" as const }}
-                    value={form[field.key] ?? ""}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  />
-                ) : (
-                  <input
-                    style={inputStyle}
-                    placeholder={field.hint}
-                    value={form[field.key] ?? ""}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  />
-                )}
-
-                <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "var(--muted-deep)" }}>{field.hint}</div>
-
-                {field.key === "avatar_pool" && (
-                  <div className="mt-2">
-                    <label
-                      className="cursor-pointer inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium"
-                      style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
-                    >
-                      {uploadingKey === "avatar_pool" ? "A enviar..." : "Enviar foto para adicionar à lista"}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="sr-only"
-                        disabled={uploadingKey === "avatar_pool"}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setUploadingKey("avatar_pool");
-                            setError(null);
-                            const fd = new FormData();
-                            fd.append("file", file);
-                            fd.append("name", "avatar_pool");
-                            uploadSiteImage(fd).then((res) => {
-                              setUploadingKey(null);
-                              if (res.error) setError(res.error);
-                              if (res.url) {
-                                const current = form[field.key] ?? "";
-                                const newVal = current ? current + "\n" + res.url : res.url;
-                                setForm((prev) => ({ ...prev, [field.key]: newVal }));
-                              }
-                            });
-                          }
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className="flex items-center gap-3">
         <button

@@ -11,26 +11,25 @@ import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-l
 import type { SiteSettings } from "@/lib/site-settings";
 
 export const metadata = {
-  title: "Chikane Garage — Viaturas de performance e acessórios",
-  description:
-    "Boutique de viaturas de performance importadas: unidades escolhidas à mão, inspeccionadas em 140 pontos e entregues com garantia Chikane. Novos, usados e loja de acessórios.",
+  title: "Chikane Garage — Catálogo de Viaturas",
+  description: "Consulta as viaturas disponíveis na Chikane Garage e pede informação sobre cada unidade.",
 };
 
 const FALLBACK = {
-  "hero.tagline": "Seleção rigorosa · Garantia Chikane",
-  "hero.slogan": "Precision.\nImported.\nPassion Delivered.",
-  "hero.intro": "Uma garagem privada de viaturas de performance importadas. Cada unidade escolhida à mão, inspeccionada ao detalhe e entregue com garantia Chikane — para quem vive a estrada com paixão.",
+  "hero.tagline": "Seleção rigorosa · Garantia garantida",
+  "hero.slogan": "Precision.\nPerfected.\nPassion.",
+  "hero.intro": "Uma garagem privada de performance. Cada unidade escolhida à mão, inspecionada ao detalhe e entregue com garantia Chikane para quem vive a estrada com paixão.",
   "garage.title": "A Garagem",
-  "garage.text": "Cada viatura é escolhida como se fosse para a nossa própria garagem. Avaliamos o histórico, o estado mecânico e estético, e só depois de passar a nossa lista de 140 pontos é que uma unidade recebe o número de série Chikane.",
+  "garage.text": "Compramos cada viatura como se fosse para a nossa própria coleção: histórico verificado, mecânica e estética inspecionadas ao detalhe, sempre com a garantia Chikane. Fala connosco para confirmar a disponibilidade e as condições.",
   "newsletter.title": "As viaturas saem antes de chegarem ao site",
   "newsletter.text": "Alguns clientes são informados antes de as viaturas serem anunciadas.",
 };
 
 const PROCESS_STEPS = [
   { num: "01", title: "Selecção", text: "Critérios rigorosos de escolha: histórico, estado e equipamento." },
-  { num: "02", title: "Inspecção", text: "140 pontos verificados, relatório fotográfico e histórico validado." },
-  { num: "03", title: "Transparência", text: "Documentação completa e acompanhamento de todo o processo." },
-  { num: "04", title: "Entrega", text: "Viatura pronta a rolar, com garantia Chikane e apoio contínuo." },
+  { num: "02", title: "Informação", text: "Consulta os dados disponíveis na ficha de cada viatura." },
+  { num: "03", title: "Contacto", text: "Esclarece dúvidas e confirma disponibilidade diretamente com a equipa." },
+  { num: "04", title: "Condições", text: "Confirma por escrito as condições da viatura antes de avançar." },
 ];
 
 type Vehicle = {
@@ -76,7 +75,8 @@ export default async function HomePage() {
 
   // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com mais
   // de 7 dias são arquivadas antes da leitura.
-  await Promise.all([expireReservations(), archiveSoldVehicles()]);
+  await expireReservations();
+  await archiveSoldVehicles();
   const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
     supabase
       .from("vehicles")
@@ -178,13 +178,12 @@ export default async function HomePage() {
             {t("hero.intro")}
           </p>
           <div className="mt-auto flex flex-col items-start gap-3 pt-9 sm:mt-9 sm:flex-row sm:pt-0">
-            <Link href="/usados" className="inline-flex items-center justify-center bg-copper px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-black transition-colors hover:bg-copper-light">
-              Ver Usados
+            <Link href="/catalogo" className="inline-flex items-center justify-center bg-copper px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
+              Ver Catálogo
             </Link>
-            <Link href="/novos" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">
-              Ver Novos
+            <Link href="/sobre" className="inline-flex items-center justify-center border border-white/30 px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">
+              A Nossa História
             </Link>
-            <Link href="/usados" className="inline-flex items-center justify-center border border-white/30 px-8 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">Ver Catálogo</Link>
           </div>
         </div>
       </section>
@@ -358,16 +357,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ─── LOJA ─── */}
-      <section className="border-y border-border bg-background-alt px-5 py-20 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-[1400px]">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div><p className="kicker">Loja Chikane</p><h2 className="mt-3 max-w-3xl font-display text-3xl font-bold uppercase leading-[0.95] text-foreground sm:text-5xl">A garagem também se leva contigo</h2></div>
-            <Link href="/loja" className="font-display text-xs uppercase tracking-widest text-copper hover:text-copper-light">Explorar a loja</Link>
-          </div>
-        </div>
-      </section>
-
       {/* ─── A GARAGEM ─── */}
       <section className="bg-surface-oxide">
         <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
@@ -403,7 +392,7 @@ export default async function HomePage() {
           <div className="absolute left-0 top-6 hidden h-px w-full bg-border lg:block" />
           <div className="grid gap-8 lg:grid-cols-4">
             {PROCESS_STEPS.map((s, i) => (
-              <Reveal key={s.num} delay={Math.min(i * 90, 360)}>
+              <Reveal key={s.num} delay={Math.min(i * 45, 135)} duration={240}>
                 <div className="relative">
                   <div className="relative z-10 mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-copper bg-background-alt font-display text-sm font-bold text-copper lg:h-10 lg:w-10 lg:text-xs">
                     {s.num}

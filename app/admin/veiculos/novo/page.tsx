@@ -5,8 +5,18 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import vehicleCatalog from "@/lib/vehicle-catalog.json";
 import { useVehicleForm } from "@/hooks/use-vehicle-form";
+import { useVehicleOptions } from "@/hooks/use-vehicle-options";
 import { VehiclePhotoPicker } from "@/components/ui/vehicle-photo-picker";
+import { FeatureListEditor } from "@/components/ui/feature-list-editor";
 import { uploadVehicleImages } from "@/app/actions/upload";
+import {
+  capitalizeWords,
+  COUNTRY_OPTIONS,
+  countryInputLabel,
+  isEngineValid,
+  maskEngineValue,
+  resolveCountryCode,
+} from "@/lib/vehicle-options";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -16,13 +26,6 @@ interface ExtraCatalogItem {
   price: number;
   image_url: string | null;
 }
-
-const STATUS_OPTIONS = [
-  { value: "available", label: "Disponível" },
-  { value: "reserved", label: "Reservada" },
-  { value: "sold", label: "Vendida" },
-  { value: "archived", label: "Arquivada" },
-] as const;
 
 const SALE_TYPE_OPTIONS = [
   { value: "used", label: "Usado" },
@@ -70,13 +73,12 @@ const initialForm = {
   previous_owners: "1",
   service_book: "full_dealer",
   origin: "imported",
-  origin_country: "DE",
+  origin_country: "Alemanha - DE",
   price: "",
   warranty_months: "6",
   cover_image_url: "",
   description: "",
   is_featured: "false",
-  status: "available",
   sale_type: "used",
 };
 
@@ -116,7 +118,8 @@ const withError = (base: React.CSSProperties, error?: string): React.CSSProperti
 
 export default function NovoVeiculo() {
   const router = useRouter();
-  const { form, handleChange, handleCheckboxChange, setMultiple } = useVehicleForm(initialForm);
+  const { form, handleChange, handleCheckboxChange, setField, setMultiple } = useVehicleForm(initialForm);
+  const { exteriorColors, interiorColors, featureOptions } = useVehicleOptions();
   const [saving, setSaving] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
@@ -155,7 +158,8 @@ export default function NovoVeiculo() {
     if (specs) {
       setMultiple({
         model,
-        engine: specs.engine,
+        // O catálogo guarda "2.0d"/"3.0d"; o formulário só aceita X.X.
+        engine: maskEngineValue(specs.engine),
         power_hp: String(specs.power_hp),
         torque_nm: String(specs.torque_nm),
         transmission: specs.transmission,
@@ -178,14 +182,30 @@ export default function NovoVeiculo() {
 
   // A primeira decisão do formulário é usado vs. novo: esconde os campos que
   // não fazem sentido numa viatura por encomenda (0 km, sem donos anteriores)
-  // e limpa os extras selecionados quando passa a usado.
+  // e limpa os extras selecionados quando passa a usado. Numa viatura nova o
+  // ano é o atual, não há mês e a origem fica fixa como nacional.
   const handleSaleTypeChange = useCallback((value: string) => {
     clearError("mileage_km");
+    clearError("registration_year");
     if (value === "new") {
       setSelectedExtras([]);
-      setMultiple({ sale_type: value, mileage_km: "0", previous_owners: "0", service_book: "full_dealer" });
+      setMultiple({
+        sale_type: value,
+        mileage_km: "0",
+        previous_owners: "0",
+        service_book: "full_dealer",
+        registration_year: String(new Date().getFullYear()),
+        registration_month: "",
+        origin: "national",
+        origin_country: "Portugal",
+      });
     } else {
-      setMultiple({ sale_type: value, mileage_km: "", previous_owners: "1", service_book: "full_dealer" });
+      setMultiple({
+        sale_type: value,
+        mileage_km: "",
+        previous_owners: "1",
+        service_book: "full_dealer",
+      });
     }
   }, [clearError, setMultiple]);
 
@@ -210,6 +230,7 @@ export default function NovoVeiculo() {
       if (!form.mileage_km.trim()) next.mileage_km = "Indica a quilometragem.";
       else if (Number(form.mileage_km) < 0) next.mileage_km = "Indica uma quilometragem válida.";
     }
+    if (!isEngineValid(form.engine)) next.engine = "Usa o formato X.X (ex.: 2.0).";
     if (!form.price.trim()) next.price = "Indica o preço.";
     else if (Number(form.price) < 0) next.price = "Indica um preço válido.";
     return next;
@@ -217,7 +238,7 @@ export default function NovoVeiculo() {
 
   // Nacional → o país de origem fica fixo em Portugal e o campo desaparece.
   const handleOriginChange = useCallback((value: string) => {
-    setMultiple({ origin: value, origin_country: value === "national" ? "Portugal" : "DE" });
+    setMultiple({ origin: value, origin_country: value === "national" ? "Portugal" : countryInputLabel("DE") });
   }, [setMultiple]);
 
   const generateSlug = (brand: string, model: string, trim: string, year: string) => {
@@ -237,24 +258,31 @@ export default function NovoVeiculo() {
     try {
       const { features, ...vehicleForm } = form;
       const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
+      const isNew = form.sale_type === "new";
       const { data: vehicle, error } = await supabase.from("vehicles").insert({
         ...vehicleForm,
         slug,
+        engine: form.engine.trim(),
         registration_year: form.registration_year ? parseInt(form.registration_year) : null,
-        registration_month: form.registration_month ? parseInt(form.registration_month) : null,
+        // Viaturas novas não têm mês de registo.
+        registration_month: isNew || !form.registration_month ? null : parseInt(form.registration_month),
         power_hp: form.power_hp ? parseInt(form.power_hp) : null,
         torque_nm: form.torque_nm ? parseInt(form.torque_nm) : null,
         combined_consumption: form.combined_consumption ? parseFloat(form.combined_consumption) : null,
         co2_emissions: form.co2_emissions ? parseInt(form.co2_emissions) : null,
-        mileage_km: form.sale_type === "new" ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
-        previous_owners: form.sale_type === "new" ? 0 : form.previous_owners ? parseInt(form.previous_owners) : null,
-        // Viatura nacional: o país de origem é sempre Portugal.
-        origin_country: form.origin === "national" ? "Portugal" : form.origin_country || null,
+        mileage_km: isNew ? 0 : form.mileage_km ? parseInt(form.mileage_km) : null,
+        previous_owners: isNew ? 0 : form.previous_owners ? parseInt(form.previous_owners) : null,
+        exterior_color: capitalizeWords(form.exterior_color),
+        interior_color: capitalizeWords(form.interior_color),
+        // Viatura nova: origem fixa como nacional. Usada: país guardado em código (DE).
+        origin: isNew ? "national" : form.origin,
+        origin_country: isNew || form.origin === "national" ? "Portugal" : resolveCountryCode(form.origin_country) || null,
         price: form.price ? parseFloat(form.price) : null,
         warranty_months: form.warranty_months ? parseInt(form.warranty_months) : null,
         is_featured: form.is_featured === "true",
-        status: form.status,
-        sold_at: form.status === "sold" ? new Date().toISOString() : null,
+        // O estado é gerido na lista de viaturas; ao criar fica sempre disponível.
+        status: "available",
+        sold_at: null,
       }).select("id").single();
 
       if (error || !vehicle) {
@@ -374,15 +402,26 @@ export default function NovoVeiculo() {
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
           <Field label="Ano Registo *" error={errors.registration_year}>
-            <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onChange={handleFieldChange("registration_year")} />
+            <>
+              <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onChange={handleFieldChange("registration_year")} />
+              {form.sale_type === "new" && (
+                <p style={{ marginTop: "0.25rem", fontSize: "0.6875rem", color: "var(--muted-deep)" }}>
+                  Preenchido automaticamente com o ano atual.
+                </p>
+              )}
+            </>
           </Field>
-          <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
+          {form.sale_type === "used" && (
+            <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
+          )}
         </div>
 
         {/* Especificações Técnicas */}
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Especificações Técnicas</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Motor"><input style={inputStyle} placeholder="ex: 2.0d" value={form.engine} onChange={handleChange("engine")} /></Field>
+          <Field label="Motor" error={errors.engine}>
+            <input id="vehicle-engine" inputMode="decimal" maxLength={3} placeholder="ex: 2.0" aria-invalid={Boolean(errors.engine)} style={withError(inputStyle, errors.engine)} value={form.engine} onChange={(e) => { setField("engine", maskEngineValue(e.target.value)); clearError("engine"); }} />
+          </Field>
           <Field label="Potência (CV)"><input type="number" min="0" style={inputStyle} value={form.power_hp} onChange={handleChange("power_hp")} /></Field>
           <Field label="Binário (Nm)"><input type="number" min="0" style={inputStyle} value={form.torque_nm} onChange={handleChange("torque_nm")} /></Field>
           <Field label="Caixa"><select style={selectStyle} value={form.transmission} onChange={handleChange("transmission")}><option value="automatic">Automática</option><option value="manual">Manual</option></select></Field>
@@ -401,9 +440,37 @@ export default function NovoVeiculo() {
               <Field label="Quilometragem *" error={errors.mileage_km}><input id="vehicle-mileage_km" required type="number" min="0" aria-invalid={Boolean(errors.mileage_km)} style={withError(inputStyle, errors.mileage_km)} value={form.mileage_km} onChange={handleFieldChange("mileage_km")} /></Field>
             </>
           )}
-          <Field label="Cor Exterior"><input style={inputStyle} value={form.exterior_color} onChange={handleChange("exterior_color")} /></Field>
+          <Field label="Cor Exterior">
+            <>
+              <input
+                list="vehicle-exterior-colors"
+                placeholder="Escreve ou escolhe"
+                style={inputStyle}
+                value={form.exterior_color}
+                onChange={handleChange("exterior_color")}
+                onBlur={(e) => setField("exterior_color", capitalizeWords(e.target.value))}
+              />
+              <datalist id="vehicle-exterior-colors">
+                {exteriorColors.map((color) => <option key={color} value={color} />)}
+              </datalist>
+            </>
+          </Field>
           <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
-          <Field label="Cor Interior"><input style={inputStyle} value={form.interior_color} onChange={handleChange("interior_color")} /></Field>
+          <Field label="Cor Interior">
+            <>
+              <input
+                list="vehicle-interior-colors"
+                placeholder="Escreve ou escolhe"
+                style={inputStyle}
+                value={form.interior_color}
+                onChange={handleChange("interior_color")}
+                onBlur={(e) => setField("interior_color", capitalizeWords(e.target.value))}
+              />
+              <datalist id="vehicle-interior-colors">
+                {interiorColors.map((color) => <option key={color} value={color} />)}
+              </datalist>
+            </>
+          </Field>
           {form.sale_type === "used" && (
             <>
               <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
@@ -412,24 +479,44 @@ export default function NovoVeiculo() {
           )}
         </div>
 
-        {/* Origem */}
-        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={(e) => handleOriginChange(e.target.value)}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          {/* Nacional → país de origem fixo em Portugal (campo escondido). */}
-          {form.origin === "imported" ? (
-            <Field label="País Origem"><input style={inputStyle} value={form.origin_country} onChange={handleChange("origin_country")} /></Field>
-          ) : (
-            <Field label="País Origem"><input readOnly style={{ ...inputStyle, color: "var(--muted)" }} value="Portugal" /></Field>
-          )}
-        </div>
+        {/* Origem — viaturas novas são sempre nacionais, por isso a secção não aparece. */}
+        {form.sale_type === "used" && (
+          <>
+            <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+              <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={(e) => handleOriginChange(e.target.value)}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+              {/* Nacional → país de origem fixo em Portugal (campo escondido). */}
+              {form.origin === "imported" ? (
+                <Field label="País Origem">
+                  <>
+                    <input
+                      list="vehicle-origin-countries"
+                      placeholder="Alemanha - DE"
+                      style={inputStyle}
+                      value={form.origin_country}
+                      onChange={handleChange("origin_country")}
+                      onBlur={(e) => setField("origin_country", countryInputLabel(e.target.value))}
+                    />
+                    <datalist id="vehicle-origin-countries">
+                      {COUNTRY_OPTIONS.map((country) => <option key={country} value={country} />)}
+                    </datalist>
+                    <p style={{ marginTop: "0.25rem", fontSize: "0.6875rem", color: "var(--muted-deep)" }}>
+                      Aceita o nome ou o código (ex.: Alemanha, alemanha ou DE) e guarda sempre o código.
+                    </p>
+                  </>
+                </Field>
+              ) : (
+                <Field label="País Origem"><input readOnly style={{ ...inputStyle, color: "var(--muted)" }} value="Portugal" /></Field>
+              )}
+            </div>
+          </>
+        )}
 
-        {/* Preço & Status */}
-        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço & Status</p>
+        {/* Preço */}
+        <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *" error={errors.price}><input id="vehicle-price" required type="number" min="0" step="100" aria-invalid={Boolean(errors.price)} style={withError(inputStyle, errors.price)} value={form.price} onChange={handleFieldChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
-          <Field label="Status"><select style={selectStyle} value={form.status} onChange={handleChange("status")}>{STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
         </div>
 
         <VehiclePhotoPicker onChange={(files, coverIndex) => { setPhotos(files); setCoverPhotoIndex(coverIndex); }} />
@@ -488,7 +575,15 @@ export default function NovoVeiculo() {
           </div>
         )}
 
-        <div style={{ marginTop: "0.75rem" }}><label style={labelStyle}>Extras e equipamento (um por linha)</label><textarea rows={5} style={{ ...inputStyle, resize: "vertical" as const }} value={form.features} onChange={handleChange("features")} placeholder={"Bancos aquecidos\nTeto panorâmico\nCâmara traseira"} /></div>
+        <FeatureListEditor
+          label="Extras e equipamento"
+          value={form.features}
+          options={featureOptions}
+          onChange={(value) => setField("features", value)}
+          labelStyle={labelStyle}
+          inputStyle={inputStyle}
+          placeholder="ex: Teto panorâmico"
+        />
         <div style={{ marginTop: "0.75rem" }}>
           <label style={labelStyle}>Descrição</label>
           <textarea rows={4} style={{ ...inputStyle, resize: "vertical" as const }} value={form.description} onChange={handleChange("description")} />

@@ -201,6 +201,18 @@ export default function VehicleExtrasCatalogPage() {
     [items]
   );
 
+  // Ordem automática: o próximo extra entra no fim; o campo continua editável.
+  const nextPosition = useMemo(
+    () => items.reduce((highest, item) => Math.max(highest, Number(item.position) || 0), 0) + 1,
+    [items]
+  );
+
+  // O mesmo para as variantes, dentro de cada extra.
+  const nextVariantPosition = (extraId: string) =>
+    variants
+      .filter((variant) => variant.extra_id === extraId)
+      .reduce((highest, variant) => Math.max(highest, Number(variant.position) || 0), 0) + 1;
+
   // Viaturas associadas a um extra: a edição em curso tem prioridade sobre a BD.
   const linksOf = (extraId: string) =>
     links.filter((link) => link.catalog_extra_id === extraId).map((link) => link.vehicle_id);
@@ -219,7 +231,8 @@ export default function VehicleExtrasCatalogPage() {
       formData.append("category", newItem.category);
       formData.append("image_url", newItem.image_url);
       formData.append("price", newItem.price);
-      formData.append("position", newItem.position);
+      // Sem ordem escolhida, usa automaticamente a próxima livre.
+      formData.append("position", newItem.position.trim() || String(nextPosition));
       if (newItem.is_active) formData.append("is_active", "on");
       // Associação imediata às viaturas novas que ficaram marcadas.
       associations.forEach((vehicleId) => formData.append("vehicle_ids", vehicleId));
@@ -301,7 +314,8 @@ export default function VehicleExtrasCatalogPage() {
       const formData = new FormData();
       formData.append("name", newVariant.name);
       formData.append("price", newVariant.price);
-      formData.append("position", newVariant.position);
+      // Sem ordem escolhida, usa automaticamente a próxima livre dentro do extra.
+      formData.append("position", newVariant.position.trim() || String(nextVariantPosition(extraId)));
       await createVehicleExtraVariant(extraId, formData);
       setNewVariant({ name: "", price: "", position: "" });
       await load();
@@ -383,8 +397,8 @@ export default function VehicleExtrasCatalogPage() {
             </div>
             <div>
               <label htmlFor="extra-ordem" className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem de apresentação</label>
-              <input id="extra-ordem" inputMode="numeric" value={newItem.position} onChange={(e) => setNewItem({ ...newItem, position: e.target.value })} placeholder="1" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-              <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>Número menor aparece primeiro</p>
+              <input id="extra-ordem" inputMode="numeric" value={newItem.position} onChange={(e) => setNewItem({ ...newItem, position: e.target.value })} placeholder={String(nextPosition)} className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>Automática ({nextPosition}). Podes alterar se quiseres.</p>
             </div>
           </div>
 
@@ -580,7 +594,7 @@ export default function VehicleExtrasCatalogPage() {
                       </div>
                       <div>
                         <label htmlFor={`variante-ordem-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
-                        <input id={`variante-ordem-${item.id}`} inputMode="numeric" value={newVariant.position} onChange={(e) => setNewVariant({ ...newVariant, position: e.target.value })} placeholder="0" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                        <input id={`variante-ordem-${item.id}`} inputMode="numeric" value={newVariant.position} onChange={(e) => setNewVariant({ ...newVariant, position: e.target.value })} placeholder={String(nextVariantPosition(item.id))} className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
                       </div>
                       <button disabled={saving} className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}>+ Variante</button>
                     </form>
