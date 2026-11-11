@@ -60,6 +60,50 @@ body {
 
 a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
+/* ── Cursor de mão em tudo o que é clicável ──
+   O Tailwind v4 repõe o cursor nativo ("default") nos botões; aqui devolve-se
+   o pointer a botões, selects, summaries e elementos com papel de botão.
+   Elementos desativados mostram "not-allowed". */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select {
+  cursor: pointer;
+}
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* ── Micro-interação de pressão (scale 0.97) ──
+   Usa a propriedade `scale` para não colidir com transformações existentes
+   (imagens com hover, cartões, etc.). Sem bounce: curva ease-out curta. */
+:where(button, [role="button"], .press) {
+  transition: scale 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+:where(button, [role="button"], .press):active:not(:disabled):not([aria-disabled="true"]) {
+  scale: 0.97;
+}
+
+/* ── Popovers/menus: entram a partir de 0.95, sem bounce ── */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.pop-in {
+  animation: pop-in 190ms cubic-bezier(0.2, 0, 0, 1) both;
+  transform-origin: top center;
+}
+
+/* ── Pulso curto para confirmar sucesso (usar uma vez) ── */
+@keyframes success-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(244, 119, 36, 0.35); }
+  100% { box-shadow: 0 0 0 14px rgba(244, 119, 36, 0); }
+}
+.pulse-success {
+  animation: success-pulse 700ms cubic-bezier(0.2, 0, 0, 1) 1;
+}
+
 :focus-visible {
   outline: 2px solid var(--copper-light);
   outline-offset: 3px;
@@ -152,11 +196,14 @@ html {
   transform: translateY(-4px);
 }
 
-/* ── Revelação ao scroll (fade + subida + leve skew) ── */
+/* ── Revelação ao scroll (fade + subida + leve skew) ──
+   Entradas em ease-out (curva sem bounce), detalhes assentam suavemente. */
 .reveal {
   opacity: 0;
   transform: translateY(18px) skewY(0.6deg);
-  transition: opacity 600ms ease, transform 600ms ease;
+  transition:
+    opacity 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
 }
 .reveal.reveal-in {

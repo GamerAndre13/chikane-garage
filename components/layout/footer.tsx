@@ -8,6 +8,7 @@ import { mapsUrl } from "@/lib/maps";
 const NAV_LINKS = [
   { label: "Usados", href: "/catalogo" },
   { label: "Novos", href: "/novos" },
+  { label: "Campanhas", href: "/campanhas" },
   { label: "Sobre Nós", href: "/sobre" },
   { label: "Contacto", href: "/contacto" },
 ];

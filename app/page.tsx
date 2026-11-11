@@ -55,6 +55,35 @@ type Vehicle = {
 
 type SiteContent = { section_key: string; body: string | null };
 
+type Campaign = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  badge?: string | null;
+  image_url?: string | null;
+  price_from?: number | null;
+  cta_label?: string | null;
+  cta_url?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  vehicles?: { slug?: string | null } | { slug?: string | null }[] | null;
+};
+
+const campaignHref = (campaign: Campaign): string => {
+  if (campaign.cta_url?.trim()) return campaign.cta_url.trim();
+  // A relação pode vir como objeto ou array, conforme a versão do PostgREST.
+  const related = campaign.vehicles;
+  const slug = Array.isArray(related) ? related[0]?.slug : related?.slug;
+  return slug ? `/catalogo/${slug}` : "/campanhas";
+};
+
+const campaignEndLabel = (endsAt?: string | null): string | null =>
+  endsAt
+    ? new Intl.DateTimeFormat("pt-PT", { timeZone: "Europe/Lisbon", day: "2-digit", month: "long", year: "numeric" }).format(new Date(endsAt))
+    : null;
+
 const TRANSMISSION_LABEL: Record<string, string> = { automatic: "Automática", manual: "Manual" };
 const FUEL_LABEL: Record<string, string> = {
   diesel: "Diesel",
@@ -77,7 +106,7 @@ export default async function HomePage() {
   // de 7 dias são arquivadas antes da leitura.
   await expireReservations();
   await archiveSoldVehicles();
-  const [vehiclesRes, spotlightRes, contentRes, settingsRes] = await Promise.all([
+  const [vehiclesRes, spotlightRes, contentRes, settingsRes, campaignsRes] = await Promise.all([
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
@@ -91,7 +120,16 @@ export default async function HomePage() {
       .limit(1),
     supabase.from("site_content").select("section_key, body"),
     supabase.from("site_settings").select("photo_home_hero, photo_home_history, phone, email, address, location, location_url, social_instagram, social_facebook, social_youtube, social_tiktok").limit(1).maybeSingle(),
+    supabase
+      .from("campaigns")
+      .select("id, slug, title, subtitle, description, badge, image_url, price_from, cta_label, cta_url, starts_at, ends_at, vehicles(slug)")
+      .eq("is_active", true)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(3),
   ]);
+
+  const campaigns = (campaignsRes.data || []) as unknown as Campaign[];
 
   const vehicles = (vehiclesRes.data || []) as Vehicle[];
   // A viatura marcada como destaque da semana (fallback: a mais recente).
@@ -380,6 +418,80 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ─── CAMPANHAS ─── */}
+      {campaigns.length > 0 && (
+        <section className="border-t border-border bg-background-alt">
+          <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12">
+            <Reveal className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">Campanhas</p>
+                <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground text-balance sm:text-4xl">
+                  Condições especiais
+                </h2>
+              </div>
+              <Link href="/campanhas" className="nav-link transition-colors hover:text-copper">
+                Ver todas
+              </Link>
+            </Reveal>
+
+            <div className="mt-12 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+              {campaigns.map((campaign, index) => {
+                const ends = campaignEndLabel(campaign.ends_at);
+                return (
+                  <Reveal key={campaign.id} delay={Math.min(index * 60, 180)} className="h-full">
+                    <Link
+                      href={campaignHref(campaign)}
+                      className="group relative flex h-full flex-col border border-border bg-surface transition-colors duration-500 hover:border-copper/70"
+                    >
+                      <div className="relative aspect-[16/10] overflow-hidden bg-surface-mid">
+                        {campaign.image_url ? (
+                          <Image
+                            src={campaign.image_url}
+                            alt={campaign.title}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center px-6 text-center">
+                            <p className="font-display text-lg font-bold uppercase tracking-wide text-muted">{campaign.title}</p>
+                          </div>
+                        )}
+                        {campaign.badge && (
+                          <span className="absolute left-0 top-5 bg-copper px-3 py-1 font-display text-[0.6rem] tracking-[0.26em] text-black">
+                            {campaign.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-1 flex-col p-6">
+                        {ends && (
+                          <p className="font-display text-[0.6rem] uppercase tracking-[0.22em] text-copper">Até {ends}</p>
+                        )}
+                        <h3 className="mt-2 font-display text-2xl uppercase leading-none text-foreground">{campaign.title}</h3>
+                        {campaign.subtitle && (
+                          <p className="mt-2 font-display text-xs uppercase tracking-[0.16em] text-muted">{campaign.subtitle}</p>
+                        )}
+                        {campaign.description && (
+                          <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-silver">{campaign.description}</p>
+                        )}
+                        <div className="mt-auto flex items-end justify-between gap-3 pt-6">
+                          <p className="font-display text-lg text-copper">
+                            {campaign.price_from != null ? `Desde ${campaign.price_from.toLocaleString("pt-PT")} €` : ""}
+                          </p>
+                          <span className="font-display text-[0.6rem] uppercase tracking-[0.22em] text-silver transition-colors group-hover:text-copper">
+                            {campaign.cta_label || "Ver campanha"} →
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ─── FAIXA RACING (divisor com motivos de velocidade) ─── */}
       <div aria-hidden="true" className="speed-lines h-12 w-full border-y border-copper/15 bg-surface-mid" />

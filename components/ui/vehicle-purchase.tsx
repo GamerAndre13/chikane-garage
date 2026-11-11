@@ -93,6 +93,7 @@ export function VehiclePurchase({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", nif: "", message: "" });
 
   const chosen = useMemo(() => {
@@ -157,8 +158,10 @@ export function VehiclePurchase({
           if (other?.category === extra.category) delete next[key];
         });
       }
-      // Com variantes, a primeira é a pré-seleção.
-      next[extra.id] = { variantId: extra.variants[0]?.id ?? null };
+      // Com variantes, a mais barata é a pré-seleção (é o valor que o
+      // backoffice mostra como preço do extra).
+      const cheapest = [...extra.variants].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))[0];
+      next[extra.id] = { variantId: cheapest?.id ?? null };
       return next;
     });
   };
@@ -201,17 +204,27 @@ export function VehiclePurchase({
       }
 
       // Notificação por email (dono + confirmação ao cliente). Uma falha de
-      // email não invalida a proposta — já está guardada no backoffice.
+      // email não invalida a proposta — já está guardada no backoffice. Só se
+      // afirma que o email foi enviado quando a API confirma que não houve
+      // falhas nem saltos (ex.: RESEND_API_KEY em falta).
+      let confirmationSent = false;
       try {
-        await fetch("/api/proposals/notify", {
+        const response = await fetch("/api/proposals/notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...payload, vehicle_slug: vehicleSlug, vehicle_name: vehicleName }),
         });
+        if (response.ok) {
+          const result = (await response.json().catch(() => null)) as
+            | { success?: boolean; skipped?: boolean; errors?: string[] }
+            | null;
+          confirmationSent = Boolean(result?.success) && !result?.skipped && !(result?.errors?.length);
+        }
       } catch {
         // silencioso: a proposta está guardada
       }
 
+      setEmailSent(confirmationSent);
       setSent(true);
     } finally {
       setSending(false);
@@ -239,14 +252,20 @@ export function VehiclePurchase({
       </h1>
 
       {sent ? (
-        <div className="mt-10 border border-border bg-surface p-8 sm:p-12">
+        <div className="pulse-success mt-10 border border-border bg-surface p-8 sm:p-12">
           <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Proposta enviada</p>
           <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-foreground">
             Obrigado{form.name.trim() ? `, ${form.name.trim()}` : ""}!
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-silver">
             Recebemos o teu pedido para a {vehicleName}. Vamos analisar a configuração e contactar-te brevemente com todos os detalhes.
-            Enviámos também uma confirmação para <strong className="text-foreground">{form.email.trim()}</strong>.
+            {emailSent ? (
+              <>
+                {" "}Enviámos também uma confirmação para <strong className="text-foreground">{form.email.trim()}</strong>.
+              </>
+            ) : (
+              " A confirmação por email não pôde ser enviada, mas o teu pedido ficou registado."
+            )}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href={`/catalogo/${vehicleSlug}`} className="bg-copper px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
@@ -284,7 +303,9 @@ export function VehiclePurchase({
                           const active = Boolean(picked);
                           const currentPrice = picked?.variantId
                             ? extra.variants.find((item) => item.id === picked.variantId)?.price ?? extra.price
-                            : extra.price;
+                            : extra.variants.length
+                              ? Math.min(...extra.variants.map((item) => Number(item.price) || 0))
+                              : extra.price;
                           return (
                             <article
                               key={extra.id}

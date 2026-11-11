@@ -1,28 +1,23 @@
 import { Resend } from "resend";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-// Ferramenta interna: só administradores podem usá-la (o /admin é protegido
-// pelo proxy, mas esta rota está fora dele — por isso se verifica aqui).
-async function isAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  return profile?.role === "admin";
-}
-
 async function sendTestEmail(email: string) {
   "use server";
 
-  if (!(await isAdmin())) return { result: null, vehicles: null };
+  // A página não está dentro de /admin (o proxy.ts não a protege), por isso a
+  // ação volta a confirmar sessão e papel de administrador.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Inicia sessão para enviar o email de teste.");
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if (profile?.role !== "admin") throw new Error("Apenas administradores podem enviar o email de teste.");
 
   const resend = new Resend(process.env.RESEND_API_KEY!);
 
   // Get featured vehicle
-  const supabase = await createClient();
   const { data: vehicles } = await supabase
     .from("vehicles")
     .select("brand, model, trim, price, cover_image_url, slug")
@@ -107,7 +102,12 @@ async function sendTestEmail(email: string) {
 }
 
 export default async function TestNewsletterPage() {
-  if (!(await isAdmin())) notFound();
+  // Ferramenta interna: só administradores com sessão iniciada.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/");
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if (profile?.role !== "admin") redirect("/");
 
   return (
     <main className="min-h-screen bg-black px-4 py-12">
@@ -127,7 +127,6 @@ export default async function TestNewsletterPage() {
           <form
             action={async (formData) => {
               "use server";
-              if (!(await isAdmin())) return;
               const email = formData.get("email") as string;
               if (!email) return;
 

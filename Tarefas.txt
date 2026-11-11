@@ -1,0 +1,33 @@
+na pagina de pedidos falta o pinter no hover, nisso e em todos os btns que da para clicar
+
+no bo, quero que na parte dos extras e se o extra tiver variantes a parte do nome e do preço não mostra, pois vai ser mostrado a variante mais barata
+
+no bo, no novo viatura, quando é um veiculo novo a parte do ano é para deixar oculto e por definição o ano atual,
+
+os carros novos não precisam de campo de status, ou fica disponível ou arquivado
+
+na pagina dos novos e usados, a parte do filtro é para ficar tipo fixado na tela, quando vou para baixo a parte dos filtros tem de continuar na tela, 
+
+falta a parte das campanhas, onde está isso, quero uma pagina de campanhas, e uma seccao no home
+
+para deixares o site mais bonito faz isto:
+ease-out for entraces
+dropdowns at 150-250ms
+stragger list rows by 30ms
+scale to 0.97 on press
+strech moving knobs 12%
+stragger as details settle 
+arcs for object movement
+pulse to confirm success
+ease-in-out for moves
+start popovers at 0.95
+enter from trigger
+exit to the trigger
+no bounce on everyday UI
+dont twenn while held
+make exits 20% shorter
+overlap old and new states
+masks for reveals & colours
+crossfade icons + blur
+rubber band past bounds
+reuse the mase layoutId

@@ -1,0 +1,37 @@
+REVISÃO DO SITE — MELHORIAS E PROBLEMAS IDENTIFICADOS
+Data: 8 de novembro de 2026
+
+VERIFICAÇÕES
+- TypeScript: npx tsc --noEmit passou sem erros.
+- ESLint em app e components: sem erros; 2 avisos sobre imagens <img> na página de perfil.
+- Revisão feita ao código e às verificações estáticas. Não foi feita validação visual de todas as páginas num navegador com dados reais.
+
+PROBLEMAS A RESOLVER
+
+1. Prioridade alta — página de teste de newsletter
+Ficheiro: app/test-newsletter/page.tsx
+A página permite enviar um email de teste para o endereço introduzido no formulário. Não foi encontrada uma verificação de autenticação na própria página. Confirmar se está acessível em produção e restringir o acesso ou removê-la. Esta alteração envolve lógica e requer autorização explícita do proprietário.
+
+2. Informação legal por preencher
+Ficheiros: app/termos-e-condicoes/page.tsx e app/politica-de-privacidade/page.tsx
+Os textos contêm os marcadores “[firma/NIPC e morada da sede a preencher pelo titular]” e “[a preencher]”. Completar os dados da entidade e a informação em falta antes de considerar as páginas legais concluídas.
+
+3. Instrução antiga no erro do backoffice
+Ficheiro: app/admin/contas/page.tsx
+A mensagem de erro indica que se devem executar as migrations 005 e 007. As instruções atuais do projeto dizem que as migrations foram consolidadas em supabase/setup.sql. Atualizar a mensagem para corresponder ao processo atual.
+
+4. Confirmação de email pode não corresponder ao resultado
+Ficheiro: components/ui/vehicle-purchase.tsx
+A proposta é guardada e a notificação por email é tentada, mas a resposta HTTP da chamada de notificação não é verificada. Assim, a interface pode informar que foi enviada uma confirmação mesmo que o serviço de email tenha falhado. Rever o tratamento do resultado e ajustar a mensagem apresentada.
+
+5. Datas de test drive dependem do fuso horário do navegador
+Ficheiro: app/contacto/page.tsx
+A data atual e o limite de 30 dias são calculados com o fuso local do dispositivo. Como os horários são tratados como hora de Lisboa, visitantes noutros fusos podem ver datas disponíveis diferentes. Uniformizar o cálculo com o fuso horário de Lisboa.
+
+MELHORIAS OPCIONAIS
+
+- Rever as duas imagens <img> assinaladas pelo ESLint em app/conta/perfil/page.tsx e avaliar otimização, tendo em conta a origem das imagens.
+- Fazer uma revisão visual em telemóvel e desktop, incluindo navegação, formulários, páginas de estado vazio e backoffice.
+
+NOTA SOBRE O ESTADO DO REPOSITÓRIO
+Já existiam alterações locais antes desta revisão. Foram preservadas e nenhum ficheiro da aplicação foi alterado ao criar este relatório.

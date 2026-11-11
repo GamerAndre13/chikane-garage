@@ -17,6 +17,7 @@ partiu nada.
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
 | **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
 | **Novos** (viaturas novas por encomenda) | `app/novos/page.tsx` |
+| **Campanhas** (ofertas e condições especiais) | `app/campanhas/page.tsx` |
 | **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
 | **Comprar / pedir proposta** (extras + dados) | `app/comprar/[slug]/page.tsx` (+ `components/ui/vehicle-purchase.tsx`) |
 | **Sobre** | `app/sobre/page.tsx` |
@@ -31,6 +32,7 @@ partiu nada.
 | ↳ Painel inicial | `app/admin/page.tsx` |
 | ↳ Viaturas | `app/admin/veiculos/page.tsx` (+ `novo/`, `editar/[id]/`) |
 | ↳ Extras (catálogo, fotografia, variantes, categoria e associação a viaturas novas) | `app/admin/veiculos/extras/page.tsx` |
+| ↳ Campanhas (criar, editar, ativar e associar a viaturas) | `app/admin/campanhas/page.tsx` |
 | ↳ Pedidos | `app/admin/pedidos/page.tsx` |
 | ↳ Propostas (viaturas novas, desconto e preço final) | `app/admin/propostas/page.tsx` (+ `[id]/`) |
 | ↳ Contas | `app/admin/contas/page.tsx` |

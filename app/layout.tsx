@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   metadataBase: siteUrl ? new URL(siteUrl) : undefined,
   title: { default: "Chikane Garage | Viaturas", template: "%s | Chikane Garage" },
   description:
-    "Boutique de viaturas de performance: unidades escolhidas à mão, inspeccionadas em 140 pontos e entregues com garantia Chikane. Novos, usados e loja de acessórios.",
+    "Chikane Garage — catálogo de viaturas de performance com garantia. Consulta disponibilidade, características e condições de venda.",
   keywords: ["Chikane Garage", "chikane garage", "viaturas", "carros usados", "automóveis", "stand de automóveis", "comprar carro"],
   applicationName: "Chikane Garage",
   authors: [{ name: "Chikane Garage" }],
@@ -26,10 +26,10 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_PT",
     siteName: "Chikane Garage",
-    title: "Chikane Garage | Viaturas de performance",
-    description: "Viaturas de performance escolhidas à mão, inspeccionadas em 140 pontos e entregues com garantia Chikane.",
+    title: "Chikane Garage | Viaturas",
+    description: "Catálogo de viaturas de performance com garantia — Chikane Garage.",
   },
-  twitter: { card: "summary_large_image", title: "Chikane Garage | Viaturas de performance", description: "Viaturas de performance escolhidas à mão, inspeccionadas em 140 pontos e entregues com garantia Chikane." },
+  twitter: { card: "summary_large_image", title: "Chikane Garage | Viaturas", description: "Catálogo de viaturas de performance com garantia — Chikane Garage." },
 };
 
 // Dados estruturados base da organização (o AutoDealer completo, com contactos

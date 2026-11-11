@@ -17,6 +17,7 @@ const navGroups = [
     links: [
       { href: "/admin/veiculos", label: "Viaturas" },
       { href: "/admin/veiculos/extras", label: "Extras" },
+      { href: "/admin/campanhas", label: "Campanhas" },
     ],
   },
   {

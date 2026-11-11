@@ -500,7 +500,7 @@ export default function PedidosPage() {
           aria-label={modal.title}
         >
           <div
-            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6"
+            className="pop-in max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6"
             style={{ backgroundColor: "var(--surface-mid)", borderColor: "var(--border)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -544,7 +544,7 @@ export default function PedidosPage() {
           aria-label="Responder ao pedido"
         >
           <div
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6"
+            className="pop-in max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6"
             style={{ backgroundColor: "var(--surface-mid)", borderColor: "var(--border)" }}
             onClick={(e) => e.stopPropagation()}
           >

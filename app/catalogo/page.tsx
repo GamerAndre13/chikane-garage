@@ -25,7 +25,8 @@ export default async function CatalogoPage() {
   try {
     // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com
     // mais de 7 dias são arquivadas antes da leitura.
-    await Promise.all([expireReservations(), archiveSoldVehicles()]);
+    await expireReservations();
+    await archiveSoldVehicles();
     const supabase = await createClient();
     // O catálogo mostra apenas disponíveis, reservadas e vendidas (nunca
     // arquivadas).

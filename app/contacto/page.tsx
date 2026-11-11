@@ -78,11 +78,25 @@ function nowMinutesLisbon(): number {
   return get("hour") * 60 + get("minute");
 }
 
-// Prazo máximo para marcar: 30 dias a partir de hoje
-const FORMAT_DATE = (d: Date) => {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+// Data (YYYY-MM-DD) no fuso de Lisboa, com deslocamento em dias. Serve para
+// os limites do test drive acompanharem o calendário português mesmo quando
+// o servidor ou o browser estão noutro fuso.
+function lisbonDateString(offsetDays = 0): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Lisbon",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const date = new Date(Date.UTC(get("year"), get("month") - 1, get("day") + offsetDays, 12));
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Lisbon",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
 
 const inputStyle = {
   width: "100%",
@@ -241,10 +255,9 @@ function ContactoContent() {
     })();
   }, []);
 
-  const today = FORMAT_DATE(new Date());
-  const maxDateD = new Date();
-  maxDateD.setDate(maxDateD.getDate() + 30);
-  const maxDate = FORMAT_DATE(maxDateD);
+  // Limites no fuso de Lisboa: hoje → próximos 30 dias.
+  const today = lisbonDateString(0);
+  const maxDate = lisbonDateString(30);
 
   // Insere o pedido e confirma que a BD gravou (select de "id"). Caso a coluna
   // user_id ainda não exista na BD, repete o insert sem ela. Só é "sucesso"

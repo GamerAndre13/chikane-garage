@@ -13,6 +13,7 @@ import {
   deleteVehicleExtraVariant,
   uploadVehicleExtraImage,
 } from "./actions";
+import { cheapestVariantFor } from "@/lib/extra-variants";
 
 interface ExtraCatalog {
   id: string;
@@ -516,6 +517,10 @@ export default function VehicleExtrasCatalogPage() {
         ) : (
           items.map((item) => {
             const itemVariants = variants.filter((v) => v.extra_id === item.id);
+            // Com variantes, o valor do extra é sempre o da variante ativa mais
+            // barata — é isso que o cliente vê e paga no configurador.
+            const cheapestVariant = cheapestVariantFor(item.id, itemVariants);
+            const cheapestPrice = cheapestVariant ? Number(cheapestVariant.price) || 0 : null;
             const open = expanded === item.id;
             const draftLinks = draftAssociations(item.id);
             const allDraftLinked = newVehicles.length > 0 && draftLinks.length === newVehicles.length;
@@ -538,8 +543,22 @@ export default function VehicleExtrasCatalogPage() {
                     </div>
                   </div>
                   <div>
-                    <label htmlFor={`preco-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
-                    <input id={`preco-${item.id}`} name="price" defaultValue={item.price} inputMode="decimal" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    <label htmlFor={`preco-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>
+                      {cheapestVariant ? "Preço da variante" : "Preço (€)"}
+                    </label>
+                    {/* Com variantes o preço base deixa de ser usado: o valor
+                        mostrado é o da variante ativa mais barata. O input
+                        escondido mantém o preço base intacto ao guardar. */}
+                    {cheapestVariant ? (
+                      <>
+                        <input type="hidden" name="price" value={item.price} />
+                        <p className="px-2 py-1 text-xs rounded border" style={{ borderColor: "var(--border)", color: "var(--foreground)", backgroundColor: "var(--background)" }}>
+                          {cheapestVariant.name} · {cheapestPrice ? `${cheapestPrice.toLocaleString("pt-PT")} €` : "Incluído"}
+                        </p>
+                      </>
+                    ) : (
+                      <input id={`preco-${item.id}`} name="price" defaultValue={item.price} inputMode="decimal" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    )}
                   </div>
                   <label className="flex items-center gap-2 pt-4 text-xs" style={{ color: "var(--foreground)" }}>
                     <input name="is_active" type="checkbox" defaultChecked={item.is_active} />

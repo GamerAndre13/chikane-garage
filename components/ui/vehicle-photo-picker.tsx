@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cropVehicleImage } from "@/lib/crop-vehicle-image";
 
-export function VehiclePhotoPicker({ onChange, label = "viatura" }: { onChange: (files: File[], coverIndex: number) => void; label?: string }) {
+export function VehiclePhotoPicker({ onChange }: { onChange: (files: File[], coverIndex: number) => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -56,7 +56,7 @@ export function VehiclePhotoPicker({ onChange, label = "viatura" }: { onChange: 
   };
 
   return (
-    <section className="mt-5" aria-label={`Fotografias da ${label}`}>
+    <section className="mt-5" aria-label="Fotografias da viatura">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-widest text-[#b87333]">Fotografias</p>

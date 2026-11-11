@@ -17,6 +17,7 @@ import {
   maskEngineValue,
   resolveCountryCode,
 } from "@/lib/vehicle-options";
+import { cheapestVariantFor, type ExtraVariantSummary } from "@/lib/extra-variants";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -125,19 +126,30 @@ export default function EditarVeiculo() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [extraCatalog, setExtraCatalog] = useState<ExtraCatalogItem[]>([]);
+  const [extraVariants, setExtraVariants] = useState<ExtraVariantSummary[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Catálogo de extras partilhado — gerido em /admin/veiculos/extras.
+  // As variantes ativas são carregadas para mostrar sempre a mais barata,
+  // que é a opção que o cliente vê no configurador.
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("vehicle_extra_catalog")
-        .select("id, name, price, image_url")
-        .eq("is_active", true)
-        .order("position", { ascending: true })
-        .order("name", { ascending: true });
-      setExtraCatalog((data || []) as ExtraCatalogItem[]);
+      const [catalogRes, variantsRes] = await Promise.all([
+        supabase
+          .from("vehicle_extra_catalog")
+          .select("id, name, price, image_url")
+          .eq("is_active", true)
+          .order("position", { ascending: true })
+          .order("name", { ascending: true }),
+        supabase
+          .from("vehicle_extra_variants")
+          .select("extra_id, name, price, position, is_active")
+          .eq("is_active", true)
+          .order("position", { ascending: true }),
+      ]);
+      setExtraCatalog((catalogRes.data || []) as ExtraCatalogItem[]);
+      setExtraVariants((variantsRes.data || []) as ExtraVariantSummary[]);
     })();
   }, []);
 
@@ -259,10 +271,13 @@ export default function EditarVeiculo() {
     const next: Record<string, string> = {};
     if (!form.brand.trim()) next.brand = "Escolhe a marca.";
     if (!form.model.trim()) next.model = "Indica o modelo.";
-    if (!form.registration_year.trim()) next.registration_year = "Indica o ano de registo.";
-    else {
-      const year = Number(form.registration_year);
-      if (!Number.isFinite(year) || year < 1900 || year > 2100) next.registration_year = "Ano entre 1900 e 2100.";
+    // Viaturas novas ficam sempre com o ano atual (campo escondido).
+    if (form.sale_type !== "new") {
+      if (!form.registration_year.trim()) next.registration_year = "Indica o ano de registo.";
+      else {
+        const year = Number(form.registration_year);
+        if (!Number.isFinite(year) || year < 1900 || year > 2100) next.registration_year = "Ano entre 1900 e 2100.";
+      }
     }
     if (form.sale_type === "used") {
       if (!form.mileage_km.trim()) next.mileage_km = "Indica a quilometragem.";
@@ -293,15 +308,19 @@ export default function EditarVeiculo() {
     }
     setSaving(true);
     const { features, ...vehicleForm } = form;
-    const slug = generateSlug(form.brand, form.model, form.trim, form.registration_year);
     const isNew = form.sale_type === "new";
+    // Viatura nova sem ano definido assume o ano atual.
+    const registrationYear = isNew
+      ? form.registration_year ? parseInt(form.registration_year) : new Date().getFullYear()
+      : form.registration_year ? parseInt(form.registration_year) : null;
+    const slug = generateSlug(form.brand, form.model, form.trim, String(registrationYear ?? ""));
     // `status` e `sold_at` não vão no update: continuam a ser geridos na lista
     // de viaturas e não são alterados ao editar os restantes dados.
     const { error } = await supabase.from("vehicles").update({
       ...vehicleForm,
       slug,
       engine: form.engine.trim(),
-      registration_year: form.registration_year ? parseInt(form.registration_year) : null,
+      registration_year: registrationYear,
       // Viaturas novas não têm mês de registo.
       registration_month: isNew || !form.registration_month ? null : parseInt(form.registration_month),
       power_hp: form.power_hp ? parseInt(form.power_hp) : null,
@@ -430,18 +449,13 @@ export default function EditarVeiculo() {
             </>
           </Field>
           <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
-          <Field label="Ano Registo *" error={errors.registration_year}>
-            <>
-              <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onChange={handleFieldChange("registration_year")} />
-              {form.sale_type === "new" && (
-                <p style={{ marginTop: "0.25rem", fontSize: "0.6875rem", color: "var(--muted-deep)" }}>
-                  Preenchido automaticamente com o ano atual.
-                </p>
-              )}
-            </>
-          </Field>
           {form.sale_type === "used" && (
-            <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
+            <>
+              <Field label="Ano Registo *" error={errors.registration_year}>
+                <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onChange={handleFieldChange("registration_year")} />
+              </Field>
+              <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
+            </>
           )}
         </div>
 
@@ -560,6 +574,8 @@ export default function EditarVeiculo() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }}>
                 {extraCatalog.map((extra) => {
                   const checked = selectedExtras.includes(extra.id);
+                  const cheapest = cheapestVariantFor(extra.id, extraVariants);
+                  const shownPrice = cheapest ? Number(cheapest.price) || 0 : extra.price;
                   return (
                     <label
                       key={extra.id}
@@ -590,7 +606,10 @@ export default function EditarVeiculo() {
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: "0.8125rem", color: "var(--foreground)" }}>{extra.name}</span>
                         <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--muted)" }}>
-                          {extra.price ? `${extra.price.toLocaleString("pt-PT")} €` : "Incluído"}
+                          {/* Com variantes mostra-se a mais barata — é a opção
+                              que o cliente vê no configurador. */}
+                          {cheapest ? `${cheapest.name} · ` : ""}
+                          {shownPrice ? `${shownPrice.toLocaleString("pt-PT")} €` : "Incluído"}
                         </span>
                       </span>
                     </label>

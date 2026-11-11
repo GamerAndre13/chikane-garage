@@ -23,6 +23,12 @@ const STATUS_OPTIONS = [
   { value: "archived", label: "Arquivada", color: "#6b7280" },
 ] as const;
 
+// Viaturas novas (por encomenda) só podem ficar disponíveis ou arquivadas —
+// não há reserva nem venda de uma unidade que ainda não existe em stock.
+const NEW_VEHICLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(
+  (option) => option.value === "available" || option.value === "archived"
+);
+
 export default function VeiculosList() {
   const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +82,9 @@ export default function VeiculosList() {
   }, [allVehicles, search, statusFilter]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    // Defesa extra: uma viatura nova nunca fica reservada/vendida.
+    const vehicle = allVehicles.find((item) => item.id === id);
+    if (vehicle?.sale_type === "new" && newStatus !== "available" && newStatus !== "archived") return;
     setUpdating(id);
     const { error } = await supabase.from("vehicles").update({
       status: newStatus,
@@ -195,7 +204,17 @@ export default function VeiculosList() {
           </thead>
           <tbody>
             {visibleVehicles.map((v) => {
-              const statusOpt = STATUS_OPTIONS.find((s) => s.value === v.status) || STATUS_OPTIONS[0];
+              const isNewVehicle = v.sale_type === "new";
+              const statusOptions = isNewVehicle ? NEW_VEHICLE_STATUS_OPTIONS : STATUS_OPTIONS;
+              // Estados antigos fora da lista continuam visíveis para não se
+              // perder informação (ex.: uma viatura nova já marcada como vendida).
+              const legacyStatus = statusOptions.some((s) => s.value === v.status)
+                ? null
+                : STATUS_OPTIONS.find((s) => s.value === v.status) ?? null;
+              const statusOpt =
+                statusOptions.find((s) => s.value === v.status) ||
+                legacyStatus ||
+                statusOptions[0];
               return (
                 <tr key={v.id} className="border-b transition-colors" style={{ borderColor: "var(--border)" }}>
                   <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
@@ -223,9 +242,12 @@ export default function VeiculosList() {
                         cursor: updating === v.id ? "not-allowed" : "pointer",
                       }}
                     >
-                      {STATUS_OPTIONS.map((o) => (
+                      {statusOptions.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
+                      {legacyStatus && (
+                        <option value={legacyStatus.value}>{legacyStatus.label} (estado antigo)</option>
+                      )}
                     </select>
                   </td>
                   <td className="px-4 py-3">

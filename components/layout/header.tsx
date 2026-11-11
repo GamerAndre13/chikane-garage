@@ -114,7 +114,7 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="group/nav ml-auto hidden items-center gap-9 md:flex">
+        <nav className="group/nav ml-auto hidden items-center gap-6 md:flex xl:gap-9">
           <Link href="/" className={navClass("/")}>
             Home
           </Link>
@@ -123,6 +123,9 @@ export function Header() {
           </Link>
           <Link href="/novos" className={navClass("/novos")}>
             Novos
+          </Link>
+          <Link href="/campanhas" className={navClass("/campanhas")}>
+            Campanhas
           </Link>
           <Link href="/sobre" className={navClass("/sobre")}>
             Sobre Nós
@@ -203,7 +206,7 @@ export function Header() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-border bg-background px-4 py-4 md:hidden">
+        <div className="pop-in border-t border-border bg-background px-4 py-4 md:hidden">
           <nav className="flex flex-col gap-3">
             <Link href="/" className={`${navClass("/")} w-fit`} onClick={() => setMobileOpen(false)}>
               Início
@@ -213,6 +216,9 @@ export function Header() {
             </Link>
             <Link href="/novos" className={`${navClass("/novos")} w-fit`} onClick={() => setMobileOpen(false)}>
               Novos
+            </Link>
+            <Link href="/campanhas" className={`${navClass("/campanhas")} w-fit`} onClick={() => setMobileOpen(false)}>
+              Campanhas
             </Link>
             <Link href="/sobre" className={`${navClass("/sobre")} w-fit`} onClick={() => setMobileOpen(false)}>
               Sobre Nós
