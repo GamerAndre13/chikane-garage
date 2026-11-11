@@ -50,6 +50,11 @@ type ExtraGroup = { key: string; label: string | null; exclusive: boolean; items
 const euro = (value: number) =>
   `${value.toLocaleString("pt-PT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
 
+// Variantes sempre por ordem crescente de preço, para a mais barata aparecer
+// primeiro no configurador.
+const byPriceAsc = (a: PurchaseVariant, b: PurchaseVariant) =>
+  (Number(a.price) || 0) - (Number(b.price) || 0);
+
 // Mesmo tratamento visual do formulário "Pedir informações" (app/contacto).
 const inputStyle = {
   width: "100%",
@@ -160,7 +165,7 @@ export function VehiclePurchase({
       }
       // Com variantes, a mais barata é a pré-seleção (é o valor que o
       // backoffice mostra como preço do extra).
-      const cheapest = [...extra.variants].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))[0];
+      const cheapest = [...extra.variants].sort(byPriceAsc)[0];
       next[extra.id] = { variantId: cheapest?.id ?? null };
       return next;
     });
@@ -338,7 +343,7 @@ export function VehiclePurchase({
 
                               {active && extra.variants.length > 0 && (
                                 <div className="flex flex-wrap gap-2 border-t border-border px-3 py-2.5">
-                                  {extra.variants.map((variant) => {
+                                  {[...extra.variants].sort(byPriceAsc).map((variant) => {
                                     const selectedVariant = picked?.variantId === variant.id;
                                     return (
                                       <button

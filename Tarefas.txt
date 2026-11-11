@@ -1,14 +1,4 @@
-na pagina de pedidos falta o pinter no hover, nisso e em todos os btns que da para clicar
 
-no bo, quero que na parte dos extras e se o extra tiver variantes a parte do nome e do preço não mostra, pois vai ser mostrado a variante mais barata
-
-no bo, no novo viatura, quando é um veiculo novo a parte do ano é para deixar oculto e por definição o ano atual,
-
-os carros novos não precisam de campo de status, ou fica disponível ou arquivado
-
-na pagina dos novos e usados, a parte do filtro é para ficar tipo fixado na tela, quando vou para baixo a parte dos filtros tem de continuar na tela, 
-
-falta a parte das campanhas, onde está isso, quero uma pagina de campanhas, e uma seccao no home
 
 para deixares o site mais bonito faz isto:
 ease-out for entraces
@@ -31,3 +21,18 @@ masks for reveals & colours
 crossfade icons + blur
 rubber band past bounds
 reuse the mase layoutId
+
+quero que nas camapnha de para colocar mais fotos, tens de criar uma pagina de campanha ao clicar na campanha e mostrar a campanha, o texto das campanhas pode ser meio grande 
+o btn de guardar defenicoes deve de estar mais visivel, deixa tipo em cima e um pouco maior
+a imagem da garagem do sobre devia de ser um pouco mais alta
+no configurador do novo, as variantes de um extra mostra por ordem crescente de preço
+certo, na pagina de /novos e /usados, a seccao dos filtros está fixada na pagina, mas eu nao quero isso, por exemplo se eu tiver 100 usados e estiver na parte de baixo, e quiser utilizar um filtro nao da pois o filtro está em cima, quero os filtros fixados no ecra
+na parte do user, quero que a foto de perfil apareça assim [foto "bem vindo e o resto" ] e depois nas defenicoes fica so o nome e isso
+o carro do destaque semanal nao tem btn favorito no index.
+no home quero a parte do processo diferente, primeiro quero que a secacao tenha umas divisorias basicamente quero a secaco de o processo ifual a do lovable https://speed-chicago-drive.lovable.app
+quando for editar um veiculo, nao é possivel editar se a viatura é nova ou usada, como foi inserida é asim que fica nao faz sentido alterar
+e aproveita a ideia do lovable tb, nos cards no home dos veiculos que aparece os que forem usados aparece do ldo diretiro com um cinza muito claro ou algo para diferenciar o fundo e escreve usado ou novo de acordo com o que é, e do lado esquerdo outras tags,
+vi tambem que os veiculos reservados nao aparecem no home, nao faz sentido pode aparecer
+e tambem vi que os veiculos novos aparecem no /usados, nao é suposto
+quero tambem que nos cards dos carros usados, em todos os sitios que aparecer do lado esquerod no sitio da tag se o carro tiver chegado á loja nos ultimos 4 dias ficacom a tag de novidade
+quero que no sobre nos, fique +- como do lovable a parte dos 140 e isso, as fique 140 pontos de inspecao, mais de x viaturas vendidas, mais de x anos de experiencia, mais de x clientes satisfeitos, os x vai ter de ser possivel alterar no bo

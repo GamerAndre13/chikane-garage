@@ -237,6 +237,41 @@ export default function DefinicoesPage() {
         </Link>
       </div>
 
+      {/* Barra de gravação fixa no topo: o botão fica sempre à vista, mesmo a
+          rolar as secções abertas. */}
+      <div
+        className="sticky top-0 z-20 -mx-8 mb-6 border-b px-8 py-3"
+        style={{ backgroundColor: "var(--background-alt)", borderColor: "var(--border)" }}
+      >
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex min-h-12 items-center gap-2 rounded px-8 py-3 text-sm font-semibold uppercase tracking-wide transition-opacity"
+            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}
+          >
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+              <path d="M17 21v-8H7v8M7 3v5h8" />
+            </svg>
+            {saving ? "A guardar..." : "Guardar definições"}
+          </button>
+          {saved && (
+            <span className="pulse-success inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: "#4ade80" }}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              Guardado
+            </span>
+          )}
+          {!saved && (
+            <span style={{ color: "var(--muted)", fontSize: "0.8125rem" }}>
+              As alterações só ficam visíveis no site depois de guardares.
+            </span>
+          )}
+        </div>
+      </div>
+
       {error && (
         <div
           className="mb-4 border-l-4 p-4 text-sm"
@@ -458,15 +493,9 @@ export default function DefinicoesPage() {
       })}
 
       <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="rounded px-4 py-2 text-xs font-medium transition-opacity"
-          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}
-        >
-          {saving ? "A guardar..." : "Guardar definições"}
-        </button>
-        {saved && <span style={{ color: "#4ade80", fontSize: "0.75rem" }}>Guardado ✓</span>}
+        <p style={{ color: "var(--muted-deep)", fontSize: "0.75rem" }}>
+          O botão <strong style={{ color: "var(--silver)" }}>Guardar definições</strong> fica fixo no topo da página.
+        </p>
       </div>
     </div>
   );
