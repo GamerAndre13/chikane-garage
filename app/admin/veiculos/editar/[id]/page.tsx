@@ -28,11 +28,6 @@ interface ExtraCatalogItem {
   image_url: string | null;
 }
 
-const SALE_TYPE_OPTIONS = [
-  { value: "used", label: "Usado" },
-  { value: "new", label: "Novo (por encomenda)" },
-] as const;
-
 const FUEL_OPTIONS = [
   { value: "diesel", label: "Diesel" },
   { value: "gasoline", label: "Gasolina" },
@@ -239,25 +234,8 @@ export default function EditarVeiculo() {
   }, []);
 
   // Usado vs. novo: ao mudar para novo os campos de usados deixam de aparecer,
-  // o ano passa a ser o atual e a origem fica fixa como nacional.
-  const handleSaleTypeChange = useCallback((value: string) => {
-    clearError("mileage_km");
-    clearError("registration_year");
-    if (value === "new") {
-      setMultiple({
-        sale_type: value,
-        mileage_km: "0",
-        previous_owners: "0",
-        service_book: "full_dealer",
-        registration_year: String(new Date().getFullYear()),
-        registration_month: "",
-        origin: "national",
-        origin_country: "Portugal",
-      });
-    } else {
-      setMultiple({ sale_type: value });
-    }
-  }, [clearError, setMultiple]);
+  // o ano passa a ser o atual e a origem fica fixa como nacional. Na edição o
+  // tipo de venda não muda (fica bloqueado), por isso não há handler.
 
   // Handler de campos obrigatórios: atualiza o valor e limpa o erro do campo.
   const handleFieldChange = useCallback((field: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -307,7 +285,9 @@ export default function EditarVeiculo() {
       return;
     }
     setSaving(true);
+    // `sale_type` fica de fora do update: o tipo de venda não é editável.
     const { features, ...vehicleForm } = form;
+    delete vehicleForm.sale_type;
     const isNew = form.sale_type === "new";
     // Viatura nova sem ano definido assume o ano atual.
     const registrationYear = isNew
@@ -395,45 +375,42 @@ export default function EditarVeiculo() {
     <div>
       <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>Editar Viatura</h1>
       <form onSubmit={handleSubmit} noValidate style={{ backgroundColor: "var(--surface-mid)", border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "1.5rem" }}>
-        {/* Primeira pergunta: usada ou nova */}
-        <fieldset style={{ border: "none", padding: 0, margin: 0, marginBottom: "1.5rem" }}>
-          <legend className="text-xs uppercase tracking-widest" style={{ color: "var(--copper-deep)", marginBottom: "0.5rem" }}>Esta viatura é…</legend>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem" }}>
-            {SALE_TYPE_OPTIONS.map((option) => {
-              const active = form.sale_type === option.value;
-              return (
-                <label
-                  key={option.value}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    padding: "0.9rem 1rem",
-                    borderRadius: "0.5rem",
-                    cursor: "pointer",
-                    border: `1px solid ${active ? "var(--copper)" : "var(--border)"}`,
-                    backgroundColor: active ? "rgba(244,119,36,0.09)" : "var(--background-alt)",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="sale_type"
-                    checked={active}
-                    onChange={() => handleSaleTypeChange(option.value)}
-                  />
-                  <span>
-                    <span style={{ display: "block", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.875rem", color: active ? "var(--copper)" : "var(--foreground)" }}>
-                      {option.label}
-                    </span>
-                    <span style={{ display: "block", fontSize: "0.75rem", color: "var(--muted)" }}>
-                      {option.value === "new" ? "Por encomenda, 0 km, configurável com extras" : "Já matriculada, com histórico e quilometragem"}
-                    </span>
-                  </span>
-                </label>
-              );
-            })}
+        {/* Tipo de venda: definido na criação e já não pode ser alterado
+            (muda os campos e as regras da viatura). */}
+        <div
+          style={{
+            marginBottom: "1.5rem",
+            padding: "1rem 1.1rem",
+            borderRadius: "0.5rem",
+            border: "1px solid var(--border)",
+            backgroundColor: "var(--background-alt)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: "200px" }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: "var(--copper-deep)" }}>Tipo de venda</p>
+            <p style={{ marginTop: "0.35rem", fontFamily: "var(--font-display)", textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.95rem", color: "var(--foreground)" }}>
+              {form.sale_type === "new" ? "Novo (por encomenda)" : "Usado"}
+            </p>
+            <p style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted)" }}>
+              O tipo de venda fica definido na criação da viatura e não pode ser alterado.
+            </p>
           </div>
-        </fieldset>
+          <span
+            aria-hidden="true"
+            className="inline-flex items-center gap-2"
+            style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--muted-deep)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Bloqueado
+          </span>
+        </div>
 
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
