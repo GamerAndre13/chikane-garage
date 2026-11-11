@@ -33,13 +33,17 @@ interface VehicleOption {
   sale_type: string | null;
 }
 
+interface CampaignImage {
+  url: string;
+  position: number | null;
+}
+
 const emptyForm = {
   title: "",
   slug: "",
   subtitle: "",
   description: "",
   badge: "",
-  image_url: "",
   price_from: "",
   vehicle_id: "",
   cta_label: "",
@@ -96,6 +100,8 @@ export default function AdminCampanhasPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CampaignForm>(emptyForm);
+  // Fotografias da campanha: a primeira é a capa dos cartões.
+  const [images, setImages] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,10 +153,11 @@ export default function AdminCampanhasPage() {
   const startCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setImages([]);
     setError(null);
   };
 
-  const startEdit = (campaign: Campaign) => {
+  const startEdit = async (campaign: Campaign) => {
     setEditingId(campaign.id);
     setForm({
       title: campaign.title,
@@ -158,7 +165,6 @@ export default function AdminCampanhasPage() {
       subtitle: campaign.subtitle || "",
       description: campaign.description || "",
       badge: campaign.badge || "",
-      image_url: campaign.image_url || "",
       price_from: campaign.price_from != null ? String(campaign.price_from) : "",
       vehicle_id: campaign.vehicle_id || "",
       cta_label: campaign.cta_label || "",
@@ -169,25 +175,51 @@ export default function AdminCampanhasPage() {
       is_active: campaign.is_active,
     });
     setError(null);
+    // Fotos guardadas; se a migração 029 ainda não correu, usa a capa antiga.
+    const { data: imageRows } = await supabase
+      .from("campaign_images")
+      .select("url, position")
+      .eq("campaign_id", campaign.id)
+      .order("position", { ascending: true });
+    const saved = ((imageRows || []) as CampaignImage[]).map((image) => image.url).filter(Boolean);
+    setImages(saved.length ? saved : campaign.image_url ? [campaign.image_url] : []);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleUpload = async (file: File | null) => {
-    if (!file) return;
+  // Várias fotos de uma vez: cada uma é enviada para o R2 e acrescentada
+  // à galeria da campanha.
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     setUploading(true);
     setError(null);
+    const uploaded: string[] = [];
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("name", `campaign_${Date.now()}`);
-      const result = await uploadSiteImage(formData);
-      if (result.error) setError(result.error);
-      else if (result.url) setForm((prev) => ({ ...prev, image_url: result.url! }));
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", `campaign_${Date.now()}_${uploaded.length}`);
+        const result = await uploadSiteImage(formData);
+        if (result.error) {
+          setError(result.error);
+          break;
+        }
+        if (result.url) uploaded.push(result.url);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar a imagem.");
+      setError(err instanceof Error ? err.message : "Erro ao carregar as imagens.");
     } finally {
+      if (uploaded.length) setImages((prev) => [...prev, ...uploaded]);
       setUploading(false);
     }
+  };
+
+  const removeImage = (url: string) => {
+    setImages((prev) => prev.filter((image) => image !== url));
+  };
+
+  // A capa é sempre a primeira foto da lista.
+  const makeCover = (url: string) => {
+    setImages((prev) => [url, ...prev.filter((image) => image !== url)]);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -209,7 +241,8 @@ export default function AdminCampanhasPage() {
       subtitle: form.subtitle.trim(),
       description: form.description.trim(),
       badge: form.badge.trim(),
-      image_url: form.image_url.trim() || null,
+      // A primeira foto é a capa usada nos cartões.
+      image_url: images[0] || null,
       price_from: form.price_from.trim() ? Number(form.price_from.replace(",", ".")) : null,
       vehicle_id: form.vehicle_id || null,
       cta_label: form.cta_label.trim() || "Ver campanha",
@@ -219,18 +252,44 @@ export default function AdminCampanhasPage() {
       is_active: form.is_active,
       position: form.position.trim() ? Number(form.position) : nextPosition,
     };
-    const result = editingId
-      ? await supabase.from("campaigns").update(payload).eq("id", editingId)
-      : await supabase.from("campaigns").insert(payload);
-    if (result.error) {
-      setError(
-        result.error.code === "23505"
-          ? "Já existe uma campanha com esse identificador. Muda o slug."
-          : `Erro ao guardar: ${result.error.message}`
-      );
-      setSaving(false);
-      return;
+    let campaignId = editingId;
+    if (editingId) {
+      const result = await supabase.from("campaigns").update(payload).eq("id", editingId);
+      if (result.error) {
+        setError(
+          result.error.code === "23505"
+            ? "Já existe uma campanha com esse identificador. Muda o slug."
+            : `Erro ao guardar: ${result.error.message}`
+        );
+        setSaving(false);
+        return;
+      }
+    } else {
+      const { data, error: insertError } = await supabase.from("campaigns").insert(payload).select("id").single();
+      if (insertError || !data) {
+        setError(
+          insertError?.code === "23505"
+            ? "Já existe uma campanha com esse identificador. Muda o slug."
+            : `Erro ao guardar: ${insertError?.message ?? "tenta novamente."}`
+        );
+        setSaving(false);
+        return;
+      }
+      campaignId = (data as { id: string }).id;
     }
+
+    // Sincroniza a galeria (apaga e reinsere pela ordem atual). Se a migração
+    // 029 ainda não tiver sido executada, a capa fica guardada em image_url.
+    if (campaignId) {
+      const { error: deleteImagesError } = await supabase.from("campaign_images").delete().eq("campaign_id", campaignId);
+      if (!deleteImagesError && images.length) {
+        const { error: imagesError } = await supabase.from("campaign_images").insert(
+          images.map((url, index) => ({ campaign_id: campaignId, url, position: index }))
+        );
+        if (imagesError) setError(`Campanha guardada, mas as fotos não: ${imagesError.message}`);
+      }
+    }
+
     startCreate();
     await load();
     setSaving(false);
@@ -348,38 +407,65 @@ export default function AdminCampanhasPage() {
 
           <div>
             <label htmlFor="campanha-descricao" className={fieldLabel} style={{ color: "var(--muted)" }}>Descrição</label>
-            <textarea id="campanha-descricao" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="O que está incluído, condições e prazo." className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)", resize: "vertical" }} />
+            <textarea id="campanha-descricao" rows={8} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="O que está incluído, condições e prazo. Podes escrever várias linhas — as quebras de linha aparecem na página da campanha." className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)", resize: "vertical", minHeight: "9rem" }} />
+            <p className="mt-1 text-[11px]" style={{ color: "var(--muted)" }}>
+              Texto da página da campanha. As linhas em branco separam parágrafos.
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-3">
-              {form.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- imagem vem do R2 (domínio configurável)
-                <img src={form.image_url} alt="" className="h-14 w-24 rounded border object-cover" style={{ borderColor: "var(--border)" }} />
-              ) : (
-                <div className="flex h-14 w-24 items-center justify-center rounded border text-center text-[10px]" style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
-                  Sem imagem
-                </div>
-              )}
-              <div className="flex flex-col gap-1">
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="rounded border px-3 py-1.5 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
-                  {uploading ? "A carregar..." : form.image_url ? "Trocar imagem" : "Escolher imagem"}
-                </button>
-                {form.image_url && (
-                  <button type="button" onClick={() => setForm({ ...form, image_url: "" })} className="text-left text-[11px]" style={{ color: "#ef4444" }}>
-                    Remover imagem
-                  </button>
-                )}
+          <div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className={fieldLabel} style={{ color: "var(--muted)", marginBottom: 0 }}>Fotografias</span>
+              <span className="text-[11px]" style={{ color: "var(--muted)" }}>
+                A primeira é a capa dos cartões da home e de /campanhas.
+              </span>
+            </div>
+
+            {images.length > 0 && (
+              <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {images.map((url, index) => (
+                  <div key={`${url}-${index}`} className="group relative overflow-hidden rounded border" style={{ borderColor: index === 0 ? "var(--copper)" : "var(--border)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- imagens vêm do R2 (domínio configurável) */}
+                    <img src={url} alt="" className="aspect-[16/10] w-full object-cover" />
+                    {index === 0 && (
+                      <span className="absolute left-0 top-0 px-2 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "var(--copper)", color: "var(--background-alt)" }}>
+                        Capa
+                      </span>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2 p-2">
+                      {index !== 0 && (
+                        <button type="button" onClick={() => makeCover(url)} className="text-[11px]" style={{ color: "var(--silver)" }}>
+                          Tornar capa
+                        </button>
+                      )}
+                      <button type="button" onClick={() => removeImage(url)} className="ml-auto text-[11px]" style={{ color: "#ef4444" }}>
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="rounded border px-3 py-1.5 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+                {uploading ? "A carregar..." : images.length ? "+ Adicionar fotos" : "+ Escolher fotos"}
+              </button>
+              <span className="text-[11px]" style={{ color: "var(--muted)" }}>
+                Podes escolher várias de uma vez (JPG, PNG ou WEBP).
+              </span>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 className="sr-only"
-                onChange={(e) => { void handleUpload(e.target.files?.[0] ?? null); e.target.value = ""; }}
+                onChange={(e) => { void handleUpload(e.target.files); e.target.value = ""; }}
               />
             </div>
+          </div>
 
+          <div className="flex flex-wrap items-center gap-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <label className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
               <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
               Ativa
@@ -427,7 +513,7 @@ export default function AdminCampanhasPage() {
                     <button type="button" onClick={() => toggleActive(campaign)} disabled={saving} style={{ color: "var(--silver)" }}>
                       {campaign.is_active ? "Desativar" : "Ativar"}
                     </button>
-                    <button type="button" onClick={() => startEdit(campaign)} className="font-medium" style={{ color: "var(--copper-deep)" }}>
+                    <button type="button" onClick={() => void startEdit(campaign)} className="font-medium" style={{ color: "var(--copper-deep)" }}>
                       Editar
                     </button>
                     <button type="button" onClick={() => handleDelete(campaign)} disabled={saving} style={{ color: "#ef4444" }}>

@@ -74,11 +74,8 @@ type Campaign = {
 };
 
 const campaignHref = (campaign: Campaign): string => {
-  if (campaign.cta_url?.trim()) return campaign.cta_url.trim();
-  // A relação pode vir como objeto ou array, conforme a versão do PostgREST.
-  const related = campaign.vehicles;
-  const slug = Array.isArray(related) ? related[0]?.slug : related?.slug;
-  return slug ? `/catalogo/${slug}` : "/campanhas";
+  // Cada campanha abre a sua própria página; o CTA final é escolhido lá.
+  return `/campanhas/${campaign.slug}`;
 };
 
 const campaignEndLabel = (endsAt?: string | null): string | null =>

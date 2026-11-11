@@ -43,12 +43,9 @@ function campaignWindow(startsAt?: string | null, endsAt?: string | null): strin
 }
 
 function campaignHref(campaign: Campaign): string {
-  if (campaign.cta_url && campaign.cta_url.trim()) return campaign.cta_url.trim();
-  // A relação pode vir como objeto ou array, conforme a versão do PostgREST.
-  const related = campaign.vehicles;
-  const slug = Array.isArray(related) ? related[0]?.slug : related?.slug;
-  if (slug) return `/catalogo/${slug}`;
-  return "/contacto";
+  // Cada campanha tem página própria; o destino final (viatura ou link
+  // externo) é escolhido lá dentro.
+  return `/campanhas/${campaign.slug}`;
 }
 
 export default async function CampanhasPage() {
