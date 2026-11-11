@@ -17,7 +17,7 @@ type Vehicle = {
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
 };
 
-const control = "w-full appearance-none border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60 disabled:cursor-not-allowed disabled:opacity-40";
+const control = "w-full appearance-none border border-white/10 bg-surface px-2.5 py-1.5 text-[13px] text-white outline-none transition-colors focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60 disabled:cursor-not-allowed disabled:opacity-40";
 const all = "all";
 const unique = (items: (string | number | null | undefined)[]) => [...new Set(items.filter((item): item is string | number => item !== null && item !== undefined && item !== ""))].sort((a, b) => String(a).localeCompare(String(b), "pt-PT", { numeric: true }));
 
@@ -35,7 +35,7 @@ function statusLabel(status?: string | null) {
 function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, year = false }: { label: string; values: number[]; min: string; max: string; onMin: (value: string) => void; onMax: (value: string) => void; unit?: string; step?: number; year?: boolean }) {
   const domainMin = values.length ? Math.min(...values) : undefined;
   const domainMax = values.length ? Math.max(...values) : undefined;
-  const inputClass = `${control} min-w-0 px-3 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""} ${year ? "tabular-nums" : ""}`;
+  const inputClass = `${control} min-w-0 px-2 placeholder:italic placeholder:text-white/50 ${unit ? "pr-8" : ""} ${year ? "tabular-nums" : ""}`;
   // Se "de" ultrapassar "até" (ou o contrário), os valores são invertidos
   // automaticamente — mas só 1s depois de o user parar de escrever, para não
   // trocar os campos a meio da digitação.
@@ -89,13 +89,13 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, ye
     max: year ? undefined : domainMax,
     step: year ? undefined : step,
   };
-  return <fieldset className="border-0 p-0"><legend className="mb-2 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
+  return <fieldset className="border-0 p-0"><legend className="mb-1.5 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
 }
 
 // Select de filtro simples, sem seta personalizada ("sem nada"): o user abre
 // a lista no clique e escolhe; sem ícones a rodar.
 function SelectField({ label, value, onChange, disabled, placeholder, options }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder: string; options: { value: string; label: string }[] }) {
-  return <label className="block"><span className="mb-2 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><select className={`${control} cursor-pointer`} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
+  return <label className="block"><span className="mb-1.5 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><select className={`${control} cursor-pointer`} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
@@ -210,8 +210,9 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     </button>
 
     <div className="mt-7 grid gap-8 lg:grid-cols-[270px_1fr] xl:gap-12">
-      <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-5 sm:p-6 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto`}><div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4"><h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
-        <div className="space-y-5">
+      <aside id="catalogo-filtros" className={`h-fit border border-white/10 bg-surface-oxide p-4 sm:p-5 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-[4.75rem] lg:block lg:max-h-[calc(100dvh-5.25rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain`}><div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
+        <div className="space-y-3">
           <SelectField label="Marca" value={brand} onChange={(value) => { setBrand(value); setModel(all); }} placeholder="Todas as marcas" options={brands.map((value) => ({ value, label: value }))} />
           <SelectField label="Modelo" value={model} onChange={setModel} placeholder="Todos os modelos" disabled={!models.length} options={models.map((value) => ({ value, label: value }))} />
           <SelectField label="Combustível" value={fuel} onChange={setFuel} placeholder="Todos" options={fuels.map((value) => ({ value, label: optionLabel(value) }))} />
