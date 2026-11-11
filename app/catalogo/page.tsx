@@ -17,6 +17,7 @@ type Vehicle = {
   body_style?: string | null;
   price?: number | null; status?: string | null; sold_at?: string | null; updated_at?: string | null;
   created_at?: string | null; cover_image_url?: string | null;
+  sale_type?: string | null;
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
 };
 
@@ -29,13 +30,13 @@ export default async function CatalogoPage() {
     await archiveSoldVehicles();
     const supabase = await createClient();
     // O catálogo mostra apenas disponíveis, reservadas e vendidas (nunca
-    // arquivadas).
+    // arquivadas). As viaturas novas ficam só em /novos.
     const { data } = await supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
       .in("status", ["available", "reserved", "sold"])
       .order("created_at", { ascending: false });
-    vehicles = ((data || []) as Vehicle[]).filter(isVehiclePubliclyVisible);
+    vehicles = ((data || []) as Vehicle[]).filter((v) => isVehiclePubliclyVisible(v) && v.sale_type !== "new");
   } catch { vehicles = []; }
 
   return <div className="mx-auto max-w-[1440px] px-5 pb-20 pt-12 sm:px-8 sm:pt-16 lg:px-12">

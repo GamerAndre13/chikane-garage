@@ -176,6 +176,13 @@ html {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
 }
 
+/* ── Divisória diagonal da secção do processo ── */
+.diagonal-rule {
+  background: repeating-linear-gradient(115deg, var(--copper) 0 18px, transparent 18px 30px);
+  opacity: 0.7;
+  height: 2px;
+}
+
 /* ── Faixa "racing strip" com gradiente de cobre ── */
 .racing-strip {
   background-image: linear-gradient(

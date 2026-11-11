@@ -7,6 +7,7 @@ import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { Reveal } from "@/components/ui/reveal";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
+import { isVehicleNovidade, saleTypeLabel } from "@/lib/vehicle-badges";
 import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import type { SiteSettings } from "@/lib/site-settings";
 
@@ -45,6 +46,7 @@ type Vehicle = {
   transmission?: string | null;
   price?: number | null;
   status?: string | null;
+  sale_type?: string | null;
   cover_image_url?: string | null;
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
   description?: string | null;
@@ -110,7 +112,7 @@ export default async function HomePage() {
     supabase
       .from("vehicles")
       .select("*, vehicle_images(url, position, alt_text)")
-      .eq("status", "available")
+      .in("status", ["available", "reserved"])
       .order("created_at", { ascending: false })
       .limit(4),
     supabase
@@ -264,6 +266,14 @@ export default async function HomePage() {
                 <span className="absolute left-0 top-6 bg-copper px-4 py-1.5 font-display text-[0.62rem] tracking-[0.3em] text-black">
                   SPOTLIGHT
                 </span>
+                {isVehicleNovidade(spotlight) && (
+                  <span className="absolute left-0 top-[3.5rem] bg-background/85 px-4 py-1.5 font-display text-[0.62rem] tracking-[0.3em] text-silver backdrop-blur-sm">
+                    NOVIDADE
+                  </span>
+                )}
+                <span className="absolute bottom-0 right-0 bg-white/15 px-4 py-1.5 font-display text-[0.6rem] tracking-[0.3em] text-white backdrop-blur-sm">
+                  {saleTypeLabel(spotlight).toUpperCase()}
+                </span>
                 <div className="absolute right-3 top-3 z-20">
                   <FavoriteButton vehicleId={spotlight.id} />
                 </div>
@@ -351,11 +361,23 @@ export default async function HomePage() {
                               className="scale-[1.06] object-cover opacity-0 transition-all duration-700 group-hover:opacity-100"
                             />
                           )}
-                          {v.status === "reserved" && (
-                            <span className="absolute left-0 top-4 bg-red px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-white">
-                              RESERVADO
-                            </span>
-                          )}
+                          {/* Etiquetas à esquerda: novidade (usados recentes) e estado */}
+                          <div className="absolute left-0 top-4 z-10 flex flex-col items-start gap-1.5">
+                            {isVehicleNovidade(v) && (
+                              <span className="bg-copper px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-black">
+                                NOVIDADE
+                              </span>
+                            )}
+                            {v.status === "reserved" && (
+                              <span className="bg-red px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-white">
+                                RESERVADO
+                              </span>
+                            )}
+                          </div>
+                          {/* Canto direito: cinza claro com o tipo de venda */}
+                          <span className="absolute bottom-0 right-0 bg-white/15 px-3 py-1 font-display text-[0.6rem] tracking-[0.28em] text-white backdrop-blur-sm">
+                            {saleTypeLabel(v).toUpperCase()}
+                          </span>
                           <div className="absolute right-3 top-3 z-20">
                             <FavoriteButton vehicleId={v.id} />
                           </div>
@@ -500,24 +522,30 @@ export default async function HomePage() {
       <div aria-hidden="true" className="speed-lines h-12 w-full border-y border-copper/15 bg-surface-mid" />
 
       {/* ─── PROCESSO ─── */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <p className="font-display text-xs uppercase tracking-[0.3em] text-copper">O Nosso Processo</p>
-        <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-foreground text-balance sm:text-4xl">Da Escolha à Sua Garagem</h2>
-        <div className="relative mt-14">
-          <div className="absolute left-0 top-6 hidden h-px w-full bg-border lg:block" />
-          <div className="grid gap-8 lg:grid-cols-4">
+      <section className="relative overflow-hidden border-t border-border px-5 py-24 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1400px]">
+          <Reveal>
+            <p className="kicker">O Nosso Processo</p>
+            <h2 className="mt-4 max-w-3xl font-display text-[clamp(2rem,5vw,3.6rem)] font-bold uppercase leading-[0.92] tracking-tight text-foreground text-balance">
+              Da Escolha à Sua Garagem
+            </h2>
+          </Reveal>
+          <div className="diagonal-rule mt-12" aria-hidden="true" />
+          <ol className="grid gap-px bg-border md:grid-cols-4">
             {PROCESS_STEPS.map((s, i) => (
-              <Reveal key={s.num} delay={Math.min(i * 45, 135)} duration={240}>
-                <div className="relative">
-                  <div className="relative z-10 mb-6 flex h-12 w-12 items-center justify-center rounded-full border-2 border-copper bg-background-alt font-display text-sm font-bold text-copper lg:h-10 lg:w-10 lg:text-xs">
-                    {s.num}
+              <li key={s.num} className="bg-background">
+                <Reveal delay={Math.min(i * 100, 300)} className="h-full">
+                  <div className="group relative h-full border-t-2 border-transparent p-6 transition-all duration-500 hover:border-t-copper hover:bg-surface sm:p-8">
+                    <span className="font-display text-5xl leading-none text-copper/35 transition-colors duration-500 group-hover:text-copper">
+                      {s.num}
+                    </span>
+                    <h3 className="mt-5 font-display text-xl font-semibold uppercase tracking-wide text-foreground">{s.title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-muted">{s.text}</p>
                   </div>
-                  <h3 className="font-display text-lg font-bold uppercase tracking-wide text-foreground">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">{s.text}</p>
-                </div>
-              </Reveal>
+                </Reveal>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
