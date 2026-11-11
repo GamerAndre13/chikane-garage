@@ -252,13 +252,35 @@ export default function PerfilPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-16">
-        <p className="text-xs uppercase tracking-widest text-copper">BEM-VINDO DE VOLTA</p>
-        <h1 className="font-display text-4xl uppercase tracking-wide mt-2">
-          {profile.full_name || profile.email?.split("@")[0] || "Utilizador"}
-        </h1>
-        <p className="mt-2 text-sm text-muted">{profile.email}</p>
+      {/* Header: foto de perfil ao lado das boas-vindas */}
+      <div className="mb-16 flex flex-wrap items-center gap-6 sm:gap-8">
+        <div className="relative h-24 w-24 shrink-0 sm:h-32 sm:w-32">
+          {profile.avatar_url ? (
+            <img src={profile.avatar_url} alt="Foto de perfil" className="h-full w-full rounded-full border border-border object-cover" />
+          ) : (
+            <img
+              src={user?.id ? pickFromPool(user.id, settings?.avatar_pool) || "" : ""}
+              alt="Foto de perfil"
+              className="h-full w-full rounded-full border border-border object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+                (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+              }}
+            />
+          )}
+          <div className="hidden h-full w-full items-center justify-center rounded-full bg-copper/20">
+            <span className="font-display text-4xl text-copper">
+              {profile.full_name?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase() || "U"}
+            </span>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-widest text-copper">Bem-vindo,</p>
+          <h1 className="mt-2 font-display text-4xl uppercase tracking-wide">
+            {profile.full_name || profile.email?.split("@")[0] || "Utilizador"}
+          </h1>
+          <p className="mt-2 text-sm text-muted">{profile.email}</p>
+        </div>
       </div>
 
       {error && <div className="mb-6 border border-red bg-red/10 px-4 py-3 text-sm text-red-light">{error}</div>}
@@ -271,32 +293,9 @@ export default function PerfilPage() {
           <section className="border border-border bg-surface p-6">
             <h2 className="font-display text-lg uppercase tracking-wide text-copper mb-6">Definições</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex items-start gap-6">
-                <div className="relative w-28 h-28 flex-shrink-0">
-                  {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full rounded-full object-cover border border-border" />
-                  ) : (
-                    <img src={user?.id ? pickFromPool(user.id, settings?.avatar_pool) || "" : ""} alt="Avatar" className="w-full h-full rounded-full object-cover border border-border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }} />
-                  )}
-                  <div className="w-full h-full rounded-full bg-copper/20 flex items-center justify-center hidden">
-                    <span className="font-display text-4xl text-copper">
-                      {profile.full_name?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase() || "U"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs uppercase tracking-wide text-muted mb-2">Foto de Perfil</p>
-                  <p className="text-sm text-muted">O teu avatar é atribuído automaticamente pela Chikane Garage.</p>
-                </div>
-              </div>
-              <hr className="border-border" />
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Nome *</label>
                 <input name="full_name" required defaultValue={profile.full_name} className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wide text-muted mb-2">Email *</label>
-                <input type="email" required defaultValue={profile.email} disabled className="w-full border border-border bg-surface-raised px-4 py-3 text-sm outline-none text-muted" />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Telefone</label>

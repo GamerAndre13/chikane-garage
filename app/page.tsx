@@ -264,6 +264,9 @@ export default async function HomePage() {
                 <span className="absolute left-0 top-6 bg-copper px-4 py-1.5 font-display text-[0.62rem] tracking-[0.3em] text-black">
                   SPOTLIGHT
                 </span>
+                <div className="absolute right-3 top-3 z-20">
+                  <FavoriteButton vehicleId={spotlight.id} />
+                </div>
               </Link>
 
               <div className="clip-chicane relative z-10 border border-copper/40 bg-surface p-5 sm:-mt-10 sm:p-10 lg:-ml-16 lg:mt-16">
