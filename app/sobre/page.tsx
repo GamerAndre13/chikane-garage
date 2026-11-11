@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { Reveal } from "@/components/ui/reveal";
 import type { SiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
@@ -9,14 +10,51 @@ export const metadata: Metadata = {
   description: "Conhece a Chikane Garage e consulta o catálogo de viaturas disponíveis.",
 };
 
+type AboutStats = Pick<
+  SiteSettings,
+  | "photo_about_hero"
+  | "photo_about_garage"
+  | "about_inspection_points"
+  | "about_vehicles_sold"
+  | "about_years_experience"
+  | "about_clients"
+>;
+
 export default async function SobrePage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("site_settings")
-    .select("photo_about_hero, photo_about_garage")
+    .select(
+      "photo_about_hero, photo_about_garage, about_inspection_points, about_vehicles_sold, about_years_experience, about_clients"
+    )
     .limit(1)
     .maybeSingle();
-  const photos = data as Pick<SiteSettings, "photo_about_hero" | "photo_about_garage"> | null;
+  const photos = data as AboutStats | null;
+
+  // Números editáveis em /admin/definicoes. Valores a 0 (ou em falta)
+  // escondem a respetiva entrada, para a faixa nunca ficar com zeros.
+  const stats = [
+    {
+      value: Number(photos?.about_inspection_points ?? 140),
+      prefix: "",
+      label: "pontos de inspeção por viatura",
+    },
+    {
+      value: Number(photos?.about_vehicles_sold ?? 0),
+      prefix: "+",
+      label: "viaturas vendidas",
+    },
+    {
+      value: Number(photos?.about_years_experience ?? 0),
+      prefix: "+",
+      label: "anos de experiência",
+    },
+    {
+      value: Number(photos?.about_clients ?? 0),
+      prefix: "+",
+      label: "clientes satisfeitos",
+    },
+  ].filter((stat) => Number.isFinite(stat.value) && stat.value > 0);
 
   return (
     <div className="bg-background">
@@ -83,6 +121,27 @@ export default async function SobrePage() {
           </div>
         </div>
       </section>
+
+      {/* Faixa de números (editáveis em /admin/definicoes) */}
+      {stats.length > 0 && (
+        <section className="border-y border-border bg-surface/40">
+          <div className="mx-auto max-w-[1440px] px-5 py-14 sm:px-8 sm:py-16 lg:px-12">
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              {stats.map((stat, i) => (
+                <Reveal key={stat.label} delay={Math.min(i * 100, 300)}>
+                  <p className="font-display text-5xl leading-none tabular-nums text-copper sm:text-6xl">
+                    {stat.prefix}
+                    {stat.value.toLocaleString("pt-PT")}
+                  </p>
+                  <p className="mt-3 max-w-[16rem] text-sm leading-relaxed text-white/70">
+                    {stat.label}
+                  </p>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* O Processo Section */}
       <section className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 sm:py-24 lg:px-12">

@@ -53,6 +53,17 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
     ],
   },
   {
+    title: "Sobre Nós — números",
+    description:
+      "Faixa de números da página Sobre Nós. Deixa 0 para esconder um número; os valores aparecem como «+ de X».",
+    fields: [
+      { key: "about_inspection_points", label: "Pontos de inspeção", hint: "Ex.: 140" },
+      { key: "about_vehicles_sold", label: "Viaturas vendidas", hint: "Ex.: 120 → «+ de 120 viaturas vendidas»" },
+      { key: "about_years_experience", label: "Anos de experiência", hint: "Ex.: 8 → «+ de 8 anos de experiência»" },
+      { key: "about_clients", label: "Clientes satisfeitos", hint: "Ex.: 300 → «+ de 300 clientes satisfeitos»" },
+    ],
+  },
+  {
     title: "Avatares de perfil",
     description:
       "Lista de imagens de carros para avatares aleatórios. Uma por linha ou envia ficheiros — os avatares serão atribuídos aleatoriamente a todos os utilizadores.",
@@ -122,6 +133,10 @@ export default function DefinicoesPage() {
           td_slots: row.td_slots ?? "",
           td_days: row.td_days ?? "",
           proposal_notify_emails: row.proposal_notify_emails ?? "",
+          about_inspection_points: String(row.about_inspection_points ?? 140),
+          about_vehicles_sold: String(row.about_vehicles_sold ?? 0),
+          about_years_experience: String(row.about_years_experience ?? 0),
+          about_clients: String(row.about_clients ?? 0),
         });
       }
       setLoading(false);
@@ -152,12 +167,21 @@ export default function DefinicoesPage() {
     setError(null);
 
     const payloadRaw: Record<string, unknown> = { ...form, updated_at: new Date().toISOString() };
+    // Campos INT na BD — convertem a string do formulário (vazio = 0).
+    const asInt = (value: unknown, fallback = 0) => {
+      const n = Number(value);
+      return Number.isFinite(n) && String(value).trim() !== "" ? Math.trunc(n) : fallback;
+    };
     // td_duration_minutes é INT na BD — converte a string do formulário.
     const rawDuration = payloadRaw.td_duration_minutes;
     const payload = {
       ...payloadRaw,
       td_duration_minutes:
         typeof rawDuration === "string" && rawDuration.trim() === "" ? 60 : Number(rawDuration ?? 60),
+      about_inspection_points: asInt(payloadRaw.about_inspection_points, 140),
+      about_vehicles_sold: asInt(payloadRaw.about_vehicles_sold, 0),
+      about_years_experience: asInt(payloadRaw.about_years_experience, 0),
+      about_clients: asInt(payloadRaw.about_clients, 0),
     };
     let saveError: PostgrestError | null = null;
 

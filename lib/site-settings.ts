@@ -25,4 +25,9 @@ export type SiteSettings = {
   td_days?: string | null;
   // Propostas de viaturas novas (supabase/021_add_sale_type_and_proposals.sql)
   proposal_notify_emails?: string | null;
+  // Números da página Sobre Nós (supabase/028_about_stats.sql)
+  about_inspection_points?: number | null;
+  about_vehicles_sold?: number | null;
+  about_years_experience?: number | null;
+  about_clients?: number | null;
 };
