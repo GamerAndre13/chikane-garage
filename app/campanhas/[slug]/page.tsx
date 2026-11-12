@@ -71,7 +71,7 @@ async function loadCampaign(slug: string) {
     const campaign = data as Campaign | null;
     if (!campaign) return { campaign: null, images: [] as string[] };
 
-    // Fotos da campanha; sem a migração 029 usa-se apenas a capa.
+    // Fotos adicionais da campanha; sem a migração 029 fica só a capa.
     const { data: imageRows } = await supabase
       .from("campaign_images")
       .select("url, position")
@@ -80,7 +80,6 @@ async function loadCampaign(slug: string) {
     const images = ((imageRows || []) as { url?: string | null }[])
       .map((image) => image.url)
       .filter((url): url is string => Boolean(url));
-    if (!images.length && campaign.image_url) images.push(campaign.image_url);
 
     return { campaign, images };
   } catch {
@@ -103,8 +102,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
   const { campaign, images } = await loadCampaign(slug);
   if (!campaign) notFound();
 
-  const hero = images[0] || campaign.image_url || null;
-  const gallery = images.slice(1);
+  // A capa é a imagem própria da campanha; as restantes vão para a galeria.
+  const cover = campaign.image_url || null;
+  const hero = cover || images[0] || null;
+  const gallery = images.filter((url) => url !== cover);
   const vehicle = relatedVehicle(campaign);
   const dateWindow = campaignWindow(campaign.starts_at, campaign.ends_at);
   const ctaHref = campaign.cta_url?.trim() || (vehicle?.slug ? `/catalogo/${vehicle.slug}` : "/contacto");
@@ -233,7 +234,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
                   {/* eslint-disable-next-line @next/next/no-img-element -- imagem vem do R2 (domínio configurável) */}
                   <img
                     src={url}
-                    alt={`${campaign.title} — fotografia ${index + 2}`}
+                    alt={`${campaign.title} — fotografia ${index + 1}`}
                     loading="lazy"
                     className="aspect-[4/3] h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                   />

@@ -100,10 +100,12 @@ export default function AdminCampanhasPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CampaignForm>(emptyForm);
-  // Fotografias da campanha: a primeira é a capa dos cartões.
+  // Imagem de capa (topo da página e cartões) + fotografias adicionais.
+  const [cover, setCover] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const [campaignsRes, vehiclesRes] = await Promise.all([
@@ -153,6 +155,7 @@ export default function AdminCampanhasPage() {
   const startCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setCover("");
     setImages([]);
     setError(null);
   };
@@ -182,8 +185,32 @@ export default function AdminCampanhasPage() {
       .eq("campaign_id", campaign.id)
       .order("position", { ascending: true });
     const saved = ((imageRows || []) as CampaignImage[]).map((image) => image.url).filter(Boolean);
-    setImages(saved.length ? saved : campaign.image_url ? [campaign.image_url] : []);
+    // A capa é própria (image_url); nas fotos adicionais ficam só as restantes.
+    const coverUrl = campaign.image_url || saved[0] || "";
+    setCover(coverUrl);
+    setImages(coverUrl ? saved.filter((url) => url !== coverUrl) : saved);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Imagem de capa: um único ficheiro, usado no topo da página da campanha e
+  // nos cartões da home e de /campanhas.
+  const handleCoverUpload = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", `campaign_cover_${Date.now()}`);
+      const result = await uploadSiteImage(formData);
+      if (result.error) setError(result.error);
+      else if (result.url) setCover(result.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar a imagem de capa.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Várias fotos de uma vez: cada uma é enviada para o R2 e acrescentada
@@ -217,11 +244,6 @@ export default function AdminCampanhasPage() {
     setImages((prev) => prev.filter((image) => image !== url));
   };
 
-  // A capa é sempre a primeira foto da lista.
-  const makeCover = (url: string) => {
-    setImages((prev) => [url, ...prev.filter((image) => image !== url)]);
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -241,8 +263,8 @@ export default function AdminCampanhasPage() {
       subtitle: form.subtitle.trim(),
       description: form.description.trim(),
       badge: form.badge.trim(),
-      // A primeira foto é a capa usada nos cartões.
-      image_url: images[0] || null,
+      // A capa é própria; sem capa usa-se a primeira foto adicional.
+      image_url: cover || images[0] || null,
       price_from: form.price_from.trim() ? Number(form.price_from.replace(",", ".")) : null,
       vehicle_id: form.vehicle_id || null,
       cta_label: form.cta_label.trim() || "Ver campanha",
@@ -278,8 +300,9 @@ export default function AdminCampanhasPage() {
       campaignId = (data as { id: string }).id;
     }
 
-    // Sincroniza a galeria (apaga e reinsere pela ordem atual). Se a migração
-    // 029 ainda não tiver sido executada, a capa fica guardada em image_url.
+    // Sincroniza as fotos adicionais (apaga e reinsere pela ordem atual). A
+    // capa fica só em image_url. Se a migração 029 ainda não tiver sido
+    // executada, a capa continua guardada.
     if (campaignId) {
       const { error: deleteImagesError } = await supabase.from("campaign_images").delete().eq("campaign_id", campaignId);
       if (!deleteImagesError && images.length) {
@@ -413,31 +436,67 @@ export default function AdminCampanhasPage() {
             </p>
           </div>
 
-          <div>
+          {/* Imagem de capa — topo da página da campanha e cartões */}
+          <div className="rounded border p-3" style={{ borderColor: "var(--border)" }}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <span className={fieldLabel} style={{ color: "var(--muted)", marginBottom: 0 }}>Fotografias</span>
+              <span className={fieldLabel} style={{ color: "var(--muted)", marginBottom: 0 }}>Imagem de capa</span>
               <span className="text-[11px]" style={{ color: "var(--muted)" }}>
-                A primeira é a capa dos cartões da home e de /campanhas.
+                Aparece em cima na página da campanha e nos cartões da home e de /campanhas.
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="w-full max-w-72 overflow-hidden rounded border" style={{ borderColor: cover ? "var(--copper)" : "var(--border)" }}>
+                {cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- imagens vêm do R2 (domínio configurável)
+                  <img src={cover} alt="" className="aspect-[16/9] w-full object-cover" />
+                ) : (
+                  <div className="flex aspect-[16/9] w-full items-center justify-center text-[11px]" style={{ backgroundColor: "var(--background)", color: "var(--muted)" }}>
+                    Sem imagem de capa
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button type="button" onClick={() => coverInputRef.current?.click()} disabled={uploading} className="rounded border px-3 py-1.5 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+                  {uploading ? "A carregar..." : cover ? "Trocar capa" : "Escolher capa"}
+                </button>
+                {cover && (
+                  <button type="button" onClick={() => setCover("")} className="text-[11px] text-left" style={{ color: "#ef4444" }}>
+                    Remover capa
+                  </button>
+                )}
+                <span className="text-[11px]" style={{ color: "var(--muted)" }}>
+                  Uma só imagem (JPG, PNG ou WEBP).
+                </span>
+              </div>
+
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(e) => { void handleCoverUpload(e.target.files); e.target.value = ""; }}
+              />
+            </div>
+          </div>
+
+          {/* Fotos adicionais — galeria da página da campanha */}
+          <div className="rounded border p-3" style={{ borderColor: "var(--border)" }}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className={fieldLabel} style={{ color: "var(--muted)", marginBottom: 0 }}>Fotos adicionais</span>
+              <span className="text-[11px]" style={{ color: "var(--muted)" }}>
+                Galeria que aparece abaixo do texto na página da campanha.
               </span>
             </div>
 
             {images.length > 0 && (
               <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {images.map((url, index) => (
-                  <div key={`${url}-${index}`} className="group relative overflow-hidden rounded border" style={{ borderColor: index === 0 ? "var(--copper)" : "var(--border)" }}>
+                  <div key={`${url}-${index}`} className="group relative overflow-hidden rounded border" style={{ borderColor: "var(--border)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element -- imagens vêm do R2 (domínio configurável) */}
                     <img src={url} alt="" className="aspect-[16/10] w-full object-cover" />
-                    {index === 0 && (
-                      <span className="absolute left-0 top-0 px-2 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "var(--copper)", color: "var(--background-alt)" }}>
-                        Capa
-                      </span>
-                    )}
                     <div className="flex flex-wrap items-center gap-2 p-2">
-                      {index !== 0 && (
-                        <button type="button" onClick={() => makeCover(url)} className="text-[11px]" style={{ color: "var(--silver)" }}>
-                          Tornar capa
-                        </button>
-                      )}
                       <button type="button" onClick={() => removeImage(url)} className="ml-auto text-[11px]" style={{ color: "#ef4444" }}>
                         Remover
                       </button>
@@ -448,14 +507,14 @@ export default function AdminCampanhasPage() {
             )}
 
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="rounded border px-3 py-1.5 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+              <button type="button" onClick={() => galleryInputRef.current?.click()} disabled={uploading} className="rounded border px-3 py-1.5 text-xs transition-colors hover:border-copper" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
                 {uploading ? "A carregar..." : images.length ? "+ Adicionar fotos" : "+ Escolher fotos"}
               </button>
               <span className="text-[11px]" style={{ color: "var(--muted)" }}>
                 Podes escolher várias de uma vez (JPG, PNG ou WEBP).
               </span>
               <input
-                ref={fileInputRef}
+                ref={galleryInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 multiple
