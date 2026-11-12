@@ -1,38 +1,228 @@
+podes tirar o btn de favorito do spotlight da semana
+as tags do lado esquerdo so pode existir uma tag, se o veiculo tiver mais que uma associada vai a com maior prioridade por exemplo fica visivel novidad ao inves de reservado
+na pagina de /catalogo nos cards dos carros podes retirar o usado
+na pagina de /novo nos cards dos carros podes retirar o novo
+nas campanhas tens de adicioanr uma imagem de capa que vai ficar em cima e depois uma parte para as fotos amais
+a foto do a garagem no sobre está demasiado grande, que fique 1 ou 2 linhas mais alta que o texto da seccao
+quando clicar no home, quero que a pagina atualize e va apra cima, isso e em todas as paginas
+no user, mete o bom dia, boa tarde, boa noite, de acordo com o horario do user
+no editar nao quero aquele bloco bloqueado, fica omitido isso
+quando clico no extra no bo, ele fica com o viaturas tb associado no menu, quero so o extra
+
+quero que apos inserir alguma info de algum campo, ele faça a verificacao do que ecrevemos e depois se tiver erro ele mostra logo
+quero que no bo
+
+no backoffice, quero
+que seja responsivo para o telemovel, naop quero collumns hide behind a swipe, deixa uder 640px:cards, 
+inline capped size, 
+udner 16px, ios zooms in 16px and the right keyboard
+thumbs miss 28px buttons, 44px on touch only
+the bar hides your last row, safe area and room below, 
+five fixes, onde 375px screen, screens first then code, 
 
 
-para deixares o site mais bonito faz isto:
-ease-out for entraces
-dropdowns at 150-250ms
-stragger list rows by 30ms
-scale to 0.97 on press
-strech moving knobs 12%
-stragger as details settle 
-arcs for object movement
-pulse to confirm success
-ease-in-out for moves
-start popovers at 0.95
-enter from trigger
-exit to the trigger
-no bounce on everyday UI
-dont twenn while held
-make exits 20% shorter
-overlap old and new states
-masks for reveals & colours
-crossfade icons + blur
-rubber band past bounds
-reuse the mase layoutId
+1. Gradientes Sem Propósito
+O problema: Usar gradientes (ex.: roxo para azul no cabeçalho, botões ou gráficos) só por usar. A IA costuma aplicar gradientes quando não há uma hierarquia de cor bem definida.
 
-quero que nas camapnha de para colocar mais fotos, tens de criar uma pagina de campanha ao clicar na campanha e mostrar a campanha, o texto das campanhas pode ser meio grande 
-o btn de guardar defenicoes deve de estar mais visivel, deixa tipo em cima e um pouco maior
-a imagem da garagem do sobre devia de ser um pouco mais alta
-no configurador do novo, as variantes de um extra mostra por ordem crescente de preço
-certo, na pagina de /novos e /usados, a seccao dos filtros está fixada na pagina, mas eu nao quero isso, por exemplo se eu tiver 100 usados e estiver na parte de baixo, e quiser utilizar um filtro nao da pois o filtro está em cima, quero os filtros fixados no ecra
-na parte do user, quero que a foto de perfil apareça assim [foto "bem vindo e o resto" ] e depois nas defenicoes fica so o nome e isso
-o carro do destaque semanal nao tem btn favorito no index.
-no home quero a parte do processo diferente, primeiro quero que a secacao tenha umas divisorias basicamente quero a secaco de o processo ifual a do lovable https://speed-chicago-drive.lovable.app
-quando for editar um veiculo, nao é possivel editar se a viatura é nova ou usada, como foi inserida é asim que fica nao faz sentido alterar
-e aproveita a ideia do lovable tb, nos cards no home dos veiculos que aparece os que forem usados aparece do ldo diretiro com um cinza muito claro ou algo para diferenciar o fundo e escreve usado ou novo de acordo com o que é, e do lado esquerdo outras tags,
-vi tambem que os veiculos reservados nao aparecem no home, nao faz sentido pode aparecer
-e tambem vi que os veiculos novos aparecem no /usados, nao é suposto
-quero tambem que nos cards dos carros usados, em todos os sitios que aparecer do lado esquerod no sitio da tag se o carro tiver chegado á loja nos ultimos 4 dias ficacom a tag de novidade
-quero que no sobre nos, fique +- como do lovable a parte dos 140 e isso, as fique 140 pontos de inspecao, mais de x viaturas vendidas, mais de x anos de experiencia, mais de x clientes satisfeitos, os x vai ter de ser possivel alterar no bo
+A solução: Substitui os gradientes por uma única cor de acento plana (flat). Assim, a cor passa a ter um significado funcional (ex.: indicar ação ou destaque).
+
+2. Ícones em Quadrados Pastéis Vários
+O problema: Colocar ícones dentro de caixas coloridas em tom pastel (azul, verde, roxo, laranja) em cada cartão. Ter 4 cores para 4 números é mera decoração e distrai o utilizador.
+
+A solução: Remove as caixas de cor dos ícones. O número e a métrica devem ser os elementos principais ("the number is the hero").
+
+3. Falta de Hierarquia Visual nos Cartões
+O problema: Ter 4 cartões com o mesmo tamanho, o mesmo peso visual e o mesmo badge verde. Um dashboard sem hierarquia parece apenas uma folha de cálculo com espaçamento.
+
+A solução: Destaca uma métrica principal num cartão maior e coloca 3 métricas secundárias em menor destaque. O olhar de quem lê deve saber exatamente onde pousar primeiro.
+
+4. Borda Arredondada (Border Radius) Elevada e Sombras em Tudo
+O problema: Cantos muito arredondados (ex.: 16px) e drop shadows aplicados a todos os elementos (cartões, inputs, badges, gráficos). Quando tudo "flutua", nada ganha destaque real.
+
+A solução:
+
+Usa bordas finas (hairline borders) para definir contornos.
+
+Mantém cantos mais retos/apertados em elementos mais pequenos.
+
+Reserva as sombras apenas para elementos que realmente sobrepõem a página (como modais ou menus dropdown).
+
+5. Textos de Preenchimento e Métricas Genéricas
+O problema: Mensagens de boas-vindas genéricas ("Welcome back..."), percentagens sem contexto e números com alinhamento mal formatado.
+
+A solução:
+
+Define explicitamente o período a que a métrica se refere (ex.: "Últimos 30 dias").
+
+Usa fontes com dígitos tabulares (tabular digits) para que os números alinhem verticalmente de forma limpa.
+
+Considera usar pequenos gráficos de tendência (sparklines) em vez de simples badges genéricos com percentagens.
+
+1. TLS Fingerprinting (Impressão Digital da Conexão)
+O problema: Limitar por IP (Rate Limiting) ou bloquear a conta após X tentativas falhadas não funciona, porque os atacantes rodam entre dezenas de milhares de IPs e tentam poucas vezes por conta.
+
+A solução: Analisar o handshake TLS/SSL antes do pedido chegar ao servidor de aplicação.
+
+Ferramentas e linguagens (como Python scripts vs. apps mobile ou browsers reais) enviam listas e ordens de cifra diferentes. Se o bot afirma ser um browser mas a assinatura TLS condiz com um script Python, identificas logo o pedido.
+
+Custo computacional: Validar a assinatura TLS é infinitamente mais leve para o servidor do que correr a função de hash do BCrypt.
+
+2. Validação por Nível de Risco (Risk-Based Routing)
+Em vez de rejeitar ou passar tudo pelo BCrypt, divide os pedidos recebidos em 3 níveis de risco:
+
+Baixo Risco (Low Risk):
+
+Dispositivos conhecidos (utilizadores com tokens de sessão prévios ou cookies de confiança).
+
+Ação: Seguem o fluxo normal de validação com BCrypt.
+
+Médio Risco (Medium Risk / Anomaly):
+
+Pedidos com padrão suspeito (ex.: TLS ligeiramente atípico ou falhas consecutivas vindas do mesmo bloco).
+
+Ação: Aplica Rate Limiting progressivo, CAPTCHA (Cloudflare Turnstile, hCaptcha) ou pede autenticação de dois fatores (2FA). Isso atrasa os bots sem bloquear utilizadores reais que tenham sido sinalizados por engano.
+
+Alto Risco (High Risk - Confirmed Bot):
+
+Pedidos com TLS incompatível ou IPs catalogados em listas de botnets.
+
+Ação: Short-circuiting / Rejeição Imediata. Retorna diretamente uma resposta 401 Unauthorized ou 400 Bad Request genérica sem sequer executar o cálculo do BCrypt.
+
+3. Boas Práticas Práticas para a tua Arquitetura
+Delega o TLS Fingerprinting na Edge/Reverse Proxy: Coloca uma Firewall de Aplicações Web (WAF) como Cloudflare, AWS WAF ou HAProxy/Nginx à frente da API para filtrar assinaturas TLS e bots antes de baterem no teu servidor Node.js/Next.js.
+
+Tokens de Dispositivo Conhecido: Guarda um token assinado num cookie HttpOnly seguro após o primeiro login bem-sucedido. Em logins futuros, a presença deste token reduz drasticamente o score de risco do pedido.
+
+Ajuste do Factor de Custo do BCrypt: Garante que o work factor (salts/rounds) do BCrypt está equilibrado (ex.: 10 a 12) para proteger as passwords sem sobrecarregar a CPU desnecessariamente.
+
+1. Posicionamento (Position)
+Desktop: Coloca no canto inferior direito (bottom-right).
+
+Mobile: Coloca no topo (top).
+
+Regra de ouro: Nunca coloques no centro. O centro bloqueia aquilo que o utilizador está a fazer ou a tentar ler na página.
+
+2. Tempo de Exibição (Timing)
+Informações: Desaparecem automaticamente após 4 segundos.
+
+Avisos (Warnings): Ficam visíveis durante 7 segundos.
+
+Erros (Errors): Permanecem no ecrã até que o utilizador feche explicitamente.
+
+Não uses um temporizador único/fixo para todas as notificações.
+
+3. Empilhamento e Animação (Stacking)
+Mostra no máximo 3 toasts em simultâneo.
+
+As novas notificações devem empurrar as antigas para cima utilizando uma animação suave com física de mola (spring physics: ex. amortecimento/damping 20, rigidez/stiffness 180).
+
+4. Cancelamento/Descarte (Always Dismissible)
+Garante sempre uma forma de fechar a notificação:
+
+Botão de fechar (X) em desktop.
+
+Gesto de deslizar (swipe) no mobile.
+
+Pausa no temporizador ao passar o cursor (pause on hover).
+
+Se o utilizador não consegue fechar a notificação, deixa de ser um toast e passa a ser uma janela modal.
+
+5. Código de Cores e Acessibilidade (Color Coding)
+Cada tipo de notificação (sucesso, aviso, erro, info) deve ter um ícone dedicado e uma borda colorida à esquerda.
+
+Não te fies apenas na cor de fundo: Cerca de 6% dos utilizadores têm dificuldades a distinguir certas tonalidades de fundo (daltonismo).
+
+
+1. Alinhamento de Texto e Números
+O problema: Alinhar valores numéricos ao centro impede que os dígitos fiquem alinhados verticalmente, dificultando a comparação visual.
+
+A solução:
+
+Números: Alinha à direita e ativa a propriedade CSS font-variant-numeric: tabular-nums (para que todos os números ocupem a mesma largura).
+
+Texto: Alinha à esquerda.
+
+Desta forma, a coluna de valores lê-se com a facilidade de um recibo.
+
+2. Linhas de Contraste (Zebra Stripes) vs. Bordas
+O problema: Usar zebra stripes (linhas intercaladas com cores de fundo) em todas as tabelas polui visualmente o conteúdo sem necessidade.
+
+A solução:
+
+Usa apenas uma linha fina (hairline border) entre cada linha.
+
+Adiciona um efeito de hover para destacar a linha sobre a qual o cursor se encontra.
+
+Reserva as zebra stripes apenas para tabelas muito largas (com muitas colunas).
+
+3. Densidade e Altura das Linhas (Row Height)
+O problema: Tratar a altura das linhas como mero padding fixo.
+
+A solução: Oferece 3 modos de densidade com um botão de alternância (toggle):
+
+Compacto: 40px (ideal para equipas de operações/muitos dados).
+
+Padrão: 48px.
+
+Confortável: 56px (ideal para revisão visual).
+
+4. Fixação de Colunas e Cabeçalhos (Pinning)
+O problema: Ao fazer scroll horizontal ou vertical, perde-se o contexto do que se está a ver.
+
+A solução:
+
+Fixa a primeira coluna (sticky first column) ao fazer scroll horizontal para nunca perder a identificação do registo.
+
+Fixa o cabeçalho (sticky header) ao fazer scroll vertical.
+
+5. Tratamento de Células Vazias e Textos Longos
+Células Vazias: Nunca deixes uma célula em branco (gera dúvida se é zero, falta de informação ou se ainda está a carregar). Usa um traço (-).
+
+Textos Longos: Trunca o texto com reticências (...) e mostra o texto completo num tooltip ao passar o cursor. Atenção: Números nunca devem ser truncados.
+
+6. Limpeza da Coluna de Ações e Ordenação
+Ações: Mostrar botões de ação (ex.: lápis de edição) em todas as 50 linhas gera demasiado ruído visual. Mostra as ações apenas no hover (ou foco) do cursor na linha; em dispositivos móveis (touch), usa um menu de três pontos (kebab menu).
+
+Ordenação: Mostra as setas de ordenação apenas na coluna que está atualmente ativa.
+
+1. Torna o Acionador (Trigger) Evidente
+O problema: O utilizador não saber se o campo/menu é clicável.
+
+A solução:
+
+Inclui sempre um ícone de seta/indicador (caret arrow).
+
+Adiciona um estado de hover visualmente claro.
+
+Mantém uma área de clique (click target) mínima de 44px (ideal para ecrãs táteis/mobile).
+
+2. Inversão Automática nas Bordas (Flip on Edge)
+O problema: O menu abrir para baixo e ficar cortado quando está junto ao fundo da janela do navegador (viewport).
+
+A solução:
+
+Implementa lógica de reposicionamento: se o dropdown tocar na margem inferior do ecrã, ele deve abrir para cima.
+
+Nenhum item da lista deve ficar cortado ou inacessível.
+
+3. Navegação por Teclado É Obrigatória
+As teclas essenciais:
+
+Setas (Cima/Baixo): Para navegar entre as opções.
+
+Enter: Para selecionar a opção pretendida.
+
+Escape (Esc): Para fechar o menu imediatamente.
+
+Porquê: Garante acessibilidade total (WCAG) para utilizadores que navegam sem rato.
+
+4. Pesquisa e Virtualização para Listas Longas
+Mais de 10 itens: Adiciona um campo de pesquisa/filtro no topo do dropdown. Filtrar é sempre mais rápido do que fazer scroll.
+
+Mais de 100 itens: Implementa virtualização da lista (virtual scrolling / windowing), renderizando no DOM apenas os elementos visíveis para não comprometer a performance.
+
+5. Animações Abaixo dos 150ms
+O tempo ideal: As animações de abertura e fecho devem durar menos de 150 milissegundos.
+
+Porquê: Rápido o suficiente para parecer instantâneo, mas suave o suficiente para a transição ser percetível. Animações mais longas fazem o site parecer lento ou travado.
+
