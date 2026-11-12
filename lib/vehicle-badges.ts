@@ -25,3 +25,15 @@ export function isVehicleNovidade(vehicle: VehicleBadgeInfo): boolean {
 export function saleTypeLabel(vehicle: { sale_type?: string | null }): string {
   return vehicle.sale_type === "new" ? "Novo" : "Usado";
 }
+
+/**
+ * Etiqueta do canto superior esquerdo dos cartões: só uma de cada vez.
+ * A novidade tem prioridade sobre o estado "reservado".
+ */
+export type LeftBadge = "novidade" | "reserved" | null;
+
+export function primaryLeftBadge(vehicle: VehicleBadgeInfo): LeftBadge {
+  if (isVehicleNovidade(vehicle)) return "novidade";
+  if (vehicle.status === "reserved") return "reserved";
+  return null;
+}

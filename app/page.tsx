@@ -7,7 +7,7 @@ import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { Reveal } from "@/components/ui/reveal";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
-import { isVehicleNovidade, saleTypeLabel } from "@/lib/vehicle-badges";
+import { saleTypeLabel, primaryLeftBadge } from "@/lib/vehicle-badges";
 import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import type { SiteSettings } from "@/lib/site-settings";
 
@@ -263,17 +263,9 @@ export default async function HomePage() {
                 <span className="absolute left-0 top-6 bg-copper px-4 py-1.5 font-display text-[0.62rem] tracking-[0.3em] text-black">
                   SPOTLIGHT
                 </span>
-                {isVehicleNovidade(spotlight) && (
-                  <span className="absolute left-0 top-[3.5rem] bg-background/85 px-4 py-1.5 font-display text-[0.62rem] tracking-[0.3em] text-silver backdrop-blur-sm">
-                    NOVIDADE
-                  </span>
-                )}
                 <span className="absolute bottom-0 right-0 bg-white/15 px-4 py-1.5 font-display text-[0.6rem] tracking-[0.3em] text-white backdrop-blur-sm">
                   {saleTypeLabel(spotlight).toUpperCase()}
                 </span>
-                <div className="absolute right-3 top-3 z-20">
-                  <FavoriteButton vehicleId={spotlight.id} />
-                </div>
               </Link>
 
               <div className="clip-chicane relative z-10 border border-copper/40 bg-surface p-5 sm:-mt-10 sm:p-10 lg:-ml-16 lg:mt-16">
@@ -358,19 +350,17 @@ export default async function HomePage() {
                               className="scale-[1.06] object-cover opacity-0 transition-all duration-700 group-hover:opacity-100"
                             />
                           )}
-                          {/* Etiquetas à esquerda: novidade (usados recentes) e estado */}
-                          <div className="absolute left-0 top-4 z-10 flex flex-col items-start gap-1.5">
-                            {isVehicleNovidade(v) && (
-                              <span className="bg-copper px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-black">
-                                NOVIDADE
-                              </span>
-                            )}
-                            {v.status === "reserved" && (
-                              <span className="bg-red px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-white">
-                                RESERVADO
-                              </span>
-                            )}
-                          </div>
+                          {/* Etiqueta à esquerda: só uma, novidade tem prioridade */}
+                          {primaryLeftBadge(v) === "novidade" && (
+                            <span className="absolute left-0 top-4 z-10 bg-copper px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-black">
+                              NOVIDADE
+                            </span>
+                          )}
+                          {primaryLeftBadge(v) === "reserved" && (
+                            <span className="absolute left-0 top-4 z-10 bg-red px-3 py-1 font-display text-[0.62rem] tracking-[0.28em] text-white">
+                              RESERVADO
+                            </span>
+                          )}
                           {/* Canto direito: cinza claro com o tipo de venda */}
                           <span className="absolute bottom-0 right-0 bg-white/15 px-3 py-1 font-display text-[0.6rem] tracking-[0.28em] text-white backdrop-blur-sm">
                             {saleTypeLabel(v).toUpperCase()}
