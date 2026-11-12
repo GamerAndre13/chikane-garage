@@ -192,6 +192,14 @@ export default function NovoVeiculo() {
     });
   }, []);
 
+  // Campos que o utilizador já preencheu/editou. Só esses são validados
+  // enquanto se escreve (não vale a pena marcar de vermelho o que ainda
+  // ninguém tocou).
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const markTouched = useCallback((field: string) => {
+    setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
+  }, []);
+
   // A primeira decisão do formulário é usado vs. novo: esconde os campos que
   // não fazem sentido numa viatura por encomenda (0 km, sem donos anteriores)
   // e limpa os extras selecionados quando passa a usado. Numa viatura nova o
@@ -225,7 +233,8 @@ export default function NovoVeiculo() {
   const handleFieldChange = useCallback((field: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     handleChange(field)(event);
     clearError(field);
-  }, [clearError, handleChange]);
+    markTouched(field);
+  }, [clearError, handleChange, markTouched]);
 
   // Validação feita no submit (o form usa noValidate) para marcar a vermelho
   // os campos obrigatórios que ficaram vazios.
@@ -256,6 +265,25 @@ export default function NovoVeiculo() {
     setMultiple({ origin: value, origin_country: value === "national" ? "Portugal" : countryInputLabel("DE") });
   }, [setMultiple]);
 
+  // Validação imediata: pouco depois de parar de escrever, os campos já
+  // tocados são revalidados, para o erro aparecer sem ser preciso submeter.
+  useEffect(() => {
+    const fields = Object.keys(touched);
+    if (!fields.length) return;
+    const timer = setTimeout(() => {
+      const next = validate();
+      setErrors((prev) => {
+        const merged = { ...prev };
+        for (const field of fields) {
+          if (next[field]) merged[field] = next[field];
+          else delete merged[field];
+        }
+        return merged;
+      });
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [form, touched, validate]);
+
   const generateSlug = (brand: string, model: string, trim: string, year: string) => {
     return `${brand}-${model}-${trim}-${year}`.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   };
@@ -264,6 +292,13 @@ export default function NovoVeiculo() {
     e.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
+    // A partir daqui os campos em falta também passam a ser revalidados
+    // enquanto o utilizador os corrige.
+    setTouched((prev) => {
+      const next = { ...prev };
+      for (const field of Object.keys(nextErrors)) next[field] = true;
+      return next;
+    });
     if (Object.keys(nextErrors).length) {
       // Foca o primeiro campo em falta para o utilizador saber onde corrigir.
       document.getElementById(`vehicle-${Object.keys(nextErrors)[0]}`)?.focus();
@@ -406,13 +441,13 @@ export default function NovoVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Marca *" error={errors.brand}>
-            <select id="vehicle-brand" aria-invalid={Boolean(errors.brand)} style={withError(selectStyle, errors.brand)} value={form.brand} onChange={(e) => { handleBrandChange(e.target.value); clearError("brand"); }}>
+            <select id="vehicle-brand" aria-invalid={Boolean(errors.brand)} style={withError(selectStyle, errors.brand)} value={form.brand} onChange={(e) => { handleBrandChange(e.target.value); clearError("brand"); markTouched("brand"); }}>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </Field>
           <Field label="Modelo *" error={errors.model}>
             <>
-              <input id="vehicle-model" required list="vehicle-models" aria-invalid={Boolean(errors.model)} style={withError(inputStyle, errors.model)} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => { handleModelChange(e.target.value); clearError("model"); }} />
+              <input id="vehicle-model" required list="vehicle-models" aria-invalid={Boolean(errors.model)} style={withError(inputStyle, errors.model)} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => { handleModelChange(e.target.value); clearError("model"); markTouched("model"); }} />
               <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
             </>
           </Field>
@@ -431,7 +466,7 @@ export default function NovoVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Especificações Técnicas</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Motor" error={errors.engine}>
-            <input id="vehicle-engine" inputMode="decimal" maxLength={3} placeholder="ex: 2.0" aria-invalid={Boolean(errors.engine)} style={withError(inputStyle, errors.engine)} value={form.engine} onChange={(e) => { setField("engine", maskEngineValue(e.target.value)); clearError("engine"); }} />
+            <input id="vehicle-engine" inputMode="decimal" maxLength={3} placeholder="ex: 2.0" aria-invalid={Boolean(errors.engine)} style={withError(inputStyle, errors.engine)} value={form.engine} onChange={(e) => { setField("engine", maskEngineValue(e.target.value)); clearError("engine"); markTouched("engine"); }} />
           </Field>
           <Field label="Potência (CV)"><input type="number" min="0" style={inputStyle} value={form.power_hp} onChange={handleChange("power_hp")} /></Field>
           <Field label="Binário (Nm)"><input type="number" min="0" style={inputStyle} value={form.torque_nm} onChange={handleChange("torque_nm")} /></Field>

@@ -39,6 +39,12 @@ const navGroups = [
 // Destaca a aba aberta e permite esconder/mostrar a barra lateral.
 export default function AdminSidebar() {
   const pathname = usePathname();
+  // Só uma entrada ativa: escolhe-se o caminho mais específico que corresponde
+  // ao URL (senão "/admin/veiculos/extras" acendia também "Viaturas").
+  const activeHref = navGroups
+    .flatMap((group) => group.links.map((link) => link.href))
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("chikane-admin-sidebar-collapsed") === "1";
@@ -98,7 +104,7 @@ export default function AdminSidebar() {
             </p>
             <div className="space-y-1">
               {group.links.map((link) => {
-                const active = pathname === link.href || (link.href !== "/admin" && pathname.startsWith(link.href));
+                const active = link.href === activeHref;
                 return (
                   <Link
                     key={link.href}
