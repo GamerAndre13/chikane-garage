@@ -2,9 +2,9 @@ import AdminSidebar from "./AdminSidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: "var(--background-alt)" }}>
+    <div className="min-h-screen md:flex" style={{ backgroundColor: "var(--background-alt)" }}>
       <AdminSidebar />
-      <div className="flex-1 p-8" style={{ color: "var(--foreground)" }}>
+      <div className="min-w-0 flex-1 p-4 pb-16 sm:p-6 lg:p-8" style={{ color: "var(--foreground)" }}>
         {children}
       </div>
     </div>

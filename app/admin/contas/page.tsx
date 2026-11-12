@@ -124,8 +124,8 @@ export default function ContasPage() {
         </div>
       )}
 
-      <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
-        <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
+      <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>
+        <table className="admin-table w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
           <thead>
             <tr className="border-b" style={{ borderColor: "var(--border)" }}>
               <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Utilizador</th>
@@ -137,14 +137,14 @@ export default function ContasPage() {
           <tbody>
             {items.map((item) => (
               <tr key={item.id} className="border-b" style={{ borderColor: "var(--border)" }}>
-                <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.full_name || "-"}</td>
-                <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.email || "-"}</td>
-                <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(item.deletion_requested_at)}</td>
+                <td data-label="Utilizador" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.full_name || "-"}</td>
+                <td data-label="Email" className="px-4 py-3 break-all" style={{ color: "var(--foreground)" }}>{item.email || "-"}</td>
+                <td data-label="Pedido em" className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(item.deletion_requested_at)}</td>
                 <td className="px-4 py-3 text-right flex gap-2 justify-end">
                   <button
                     onClick={() => approveDelete(item.id)}
                     disabled={actingId === item.id}
-                    className="text-xs px-2 py-1 rounded"
+                    className="min-h-11 rounded px-2 py-1 text-xs md:min-h-0"
                     style={{ backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e" }}
                   >
                     {actingId === item.id ? "A eliminar..." : "Eliminar definitivamente"}
@@ -152,7 +152,7 @@ export default function ContasPage() {
                   <button
                     onClick={() => rejectDelete(item.id)}
                     disabled={actingId === item.id}
-                    className="text-xs px-2 py-1 rounded"
+                    className="min-h-11 rounded px-2 py-1 text-xs md:min-h-0"
                     style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                   >
                     {actingId === item.id ? "A recusar..." : "Recusar"}

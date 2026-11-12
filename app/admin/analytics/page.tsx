@@ -393,8 +393,8 @@ export default async function AnalyticsPage() {
             Viaturas Mais Recentes
           </h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="md:overflow-x-auto">
+          <table className="admin-table w-full text-sm">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 <th className="px-5 py-3 text-left text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Viatura</th>
@@ -408,20 +408,20 @@ export default async function AnalyticsPage() {
             <tbody>
               {recent.map((car) => (
                 <tr key={car.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td className="px-5 py-3" style={{ color: "var(--foreground)" }}>
+                  <td data-label="Viatura" className="px-5 py-3" style={{ color: "var(--foreground)" }}>
                     {car.brand} {car.model}
                   </td>
-                  <td className="px-5 py-3" style={{ color: "var(--muted)" }}>{car.registration_year}</td>
-                  <td className="px-5 py-3" style={{ color: "var(--muted)" }}>
+                  <td data-label="Ano" className="px-5 py-3 tabular-nums" style={{ color: "var(--muted)" }}>{car.registration_year}</td>
+                  <td data-label="KM" className="px-5 py-3 tabular-nums" style={{ color: "var(--muted)" }}>
                     {car.mileage_km != null ? car.mileage_km.toLocaleString("pt-PT") : "—"} km
                   </td>
-                  <td className="px-5 py-3" style={{ color: "var(--muted)" }}>
+                  <td data-label="Potência" className="px-5 py-3 tabular-nums" style={{ color: "var(--muted)" }}>
                     {car.power_hp != null ? `${car.power_hp} cv` : "—"}
                   </td>
-                  <td className="px-5 py-3" style={{ color: "var(--copper-deep)" }}>
+                  <td data-label="Preço" className="px-5 py-3 tabular-nums" style={{ color: "var(--copper-deep)" }}>
                     {car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "—"}
                   </td>
-                  <td className="px-5 py-3">
+                  <td data-label="Estado" className="px-5 py-3">
                     <span
                       className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
                       style={{

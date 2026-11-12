@@ -146,13 +146,13 @@ export default function VeiculosList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
           Viaturas
         </h1>
         <Link
           href="/admin/veiculos/novo"
-          className="px-4 py-2 rounded text-sm font-medium transition-colors"
+          className="inline-flex min-h-11 items-center rounded px-4 py-2 text-sm font-medium transition-colors"
           style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
         >
           + Nova Viatura
@@ -161,17 +161,17 @@ export default function VeiculosList() {
 
       <div className="mb-4 flex flex-wrap gap-3 items-center">
         <input
-          type="text"
+          type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Pesquisar (marca, modelo, ano, preço)"
-          className="px-3 py-2 text-sm border rounded bg-background"
+          className="min-h-11 w-full px-3 py-2 text-sm border rounded bg-background sm:w-auto"
           style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 text-sm border rounded bg-background"
+          className="min-h-11 w-full px-3 py-2 text-sm border rounded bg-background sm:w-auto"
           style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
         >
           <option value="all">Todos os estados</option>
@@ -181,7 +181,7 @@ export default function VeiculosList() {
           <option value="archived">Arquivada</option>
         </select>
         {(search || statusFilter !== "all") && (
-          <button onClick={clearFilters} className="px-3 py-2 text-xs border rounded" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
+          <button onClick={clearFilters} className="min-h-11 w-full rounded border px-3 py-2 text-xs sm:w-auto" style={{ borderColor: "var(--border)", color: "var(--silver)" }}>
             Limpar filtros
           </button>
         )}
@@ -190,8 +190,8 @@ export default function VeiculosList() {
         </div>
       </div>
 
-      <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
-        <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
+      <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>
+        <table className="admin-table w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
           <thead>
             <tr className="border-b" style={{ borderColor: "var(--border)" }}>
               <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Modelo</th>
@@ -217,7 +217,7 @@ export default function VeiculosList() {
                 statusOptions[0];
               return (
                 <tr key={v.id} className="border-b transition-colors" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
+                  <td data-label="Modelo" className="px-4 py-3" style={{ color: "var(--foreground)" }}>
                     {v.brand} {v.model} {v.trim || ""}
                     {v.sale_type === "new" && (
                       <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "rgba(244,119,36,0.15)", color: "var(--copper-deep)", border: "1px solid rgba(244,119,36,0.4)" }}>
@@ -225,16 +225,16 @@ export default function VeiculosList() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{v.registration_year}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
+                  <td data-label="Ano" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{v.registration_year}</td>
+                  <td data-label="Preço" className="px-4 py-3 tabular-nums" style={{ color: "var(--foreground)" }}>
                     {v.price ? `${v.price.toLocaleString("pt-PT")} €` : "-"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Status" className="px-4 py-3">
                     <select
                       value={v.status}
                       onChange={(e) => handleStatusChange(v.id, e.target.value)}
                       disabled={updating === v.id}
-                      className="px-2 py-1 rounded text-xs font-medium"
+                      className="min-h-11 rounded px-2 py-1 text-xs font-medium md:min-h-0"
                       style={{
                         backgroundColor: `${statusOpt.color}20`,
                         color: statusOpt.color,
@@ -250,7 +250,7 @@ export default function VeiculosList() {
                       )}
                     </select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Destaque" className="px-4 py-3">
                     <button
                       onClick={() => handleSpotlight(v.id, !!v.spotlight)}
                       disabled={updating === v.id}
@@ -265,17 +265,17 @@ export default function VeiculosList() {
                       {v.spotlight ? "★ Destaque" : "☆ Destaque"}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td data-label="Ações" className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/veiculos/editar/${v.id}`}
-                      className="mr-3 text-xs transition-colors"
+                      className="mr-1 inline-flex min-h-11 items-center px-2 text-xs transition-colors md:mr-3 md:min-h-0 md:px-0"
                       style={{ color: "var(--copper-deep)" }}
                     >
                       Editar
                     </Link>
                     <button
                       onClick={() => handleDelete(v.id)}
-                      className="text-xs transition-colors"
+                      className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
                       style={{ color: "#ef4444" }}
                     >
                       Apagar

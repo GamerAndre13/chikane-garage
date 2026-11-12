@@ -630,8 +630,8 @@ export default function PedidosPage() {
 
       {/* Contact Requests Table */}
       {activeTab === "contactos" && (
-        <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
-          <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
+        <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>
+          <table className="admin-table w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
             <thead>
               <tr className="border-b" style={{ borderColor: "var(--border)" }}>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Nome</th>
@@ -647,11 +647,11 @@ export default function PedidosPage() {
             <tbody>
               {contacts.map((c) => (
                 <tr key={c.id} className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.name}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.email}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.phone || "-"}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{c.vehicle_id ? formatVehicle(c) : "-"}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Nome" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.name}</td>
+                  <td data-label="Email" className="px-4 py-3 break-all" style={{ color: "var(--foreground)" }}>{c.email}</td>
+                  <td data-label="Telefone" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.phone || "-"}</td>
+                  <td data-label="Carro" className="px-4 py-3" style={{ color: "var(--silver)" }}>{c.vehicle_id ? formatVehicle(c) : "-"}</td>
+                  <td data-label="Mensagem" className="px-4 py-3">
                     <button
                       onClick={() => setModal({
                         title: "Mensagem",
@@ -663,9 +663,9 @@ export default function PedidosPage() {
                       mensagem
                     </button>
                   </td>
-                  <td className="px-4 py-3">{statusBadge(c.status)}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(c.created_at)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td data-label="Estado" className="px-4 py-3">{statusBadge(c.status)}</td>
+                  <td data-label="Data" className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(c.created_at)}</td>
+                  <td data-label="Ações" className="px-4 py-3 text-right">
                     <button
                       onClick={() => openReply({
                         to: c.email,
@@ -715,8 +715,8 @@ export default function PedidosPage() {
 
       {/* Test Drives Table */}
       {activeTab === "testdrives" && (
-        <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
-          <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
+        <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>
+          <table className="admin-table w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
             <thead>
               <tr className="border-b" style={{ borderColor: "var(--border)" }}>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Nome</th>
@@ -733,8 +733,8 @@ export default function PedidosPage() {
             <tbody>
               {testDrives.map((d) => (
                 <tr key={d.id} className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{d.name}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Nome" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{d.name}</td>
+                  <td data-label="Contactos" className="px-4 py-3">
                     <button
                       onClick={() =>
                         setModal({
@@ -751,12 +751,12 @@ export default function PedidosPage() {
                       contactos
                     </button>
                   </td>
-                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{formatVehicle(d)}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{formatPreferred(d)}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "-"}</td>
-                  <td className="px-4 py-3">{statusBadge(d.status)}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(d.created_at)}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Carro" className="px-4 py-3" style={{ color: "var(--silver)" }}>{formatVehicle(d)}</td>
+                  <td data-label="Data preferida" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{formatPreferred(d)}</td>
+                  <td data-label="Confirmada" className="px-4 py-3" style={{ color: "var(--silver)" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "-"}</td>
+                  <td data-label="Estado" className="px-4 py-3">{statusBadge(d.status)}</td>
+                  <td data-label="Data" className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(d.created_at)}</td>
+                  <td data-label="Mensagem" className="px-4 py-3">
                     <button
                       onClick={() =>
                         setModal({
@@ -772,7 +772,7 @@ export default function PedidosPage() {
                       mensagem
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Ações" className="px-4 py-3">
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2 flex-wrap">
                         <button
@@ -868,8 +868,8 @@ export default function PedidosPage() {
 
       {/* Reservas Table */}
       {activeTab === "reservas" && (
-        <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
-          <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
+        <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>
+          <table className="admin-table w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
             <thead>
               <tr className="border-b" style={{ borderColor: "var(--border)" }}>
                 <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>Nome</th>
@@ -885,8 +885,8 @@ export default function PedidosPage() {
             <tbody>
               {reservations.map((r) => (
                 <tr key={r.id} className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>{r.name}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Nome" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{r.name}</td>
+                  <td data-label="Contactos" className="px-4 py-3">
                     <button
                       onClick={() =>
                         setModal({
@@ -903,8 +903,8 @@ export default function PedidosPage() {
                       contactos
                     </button>
                   </td>
-                  <td className="px-4 py-3" style={{ color: "var(--silver)" }}>{formatVehicle(r)}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Carro" className="px-4 py-3" style={{ color: "var(--silver)" }}>{formatVehicle(r)}</td>
+                  <td data-label="Motivo" className="px-4 py-3">
                     <button
                       onClick={() =>
                         setModal({
@@ -921,12 +921,12 @@ export default function PedidosPage() {
                       motivo
                     </button>
                   </td>
-                  <td className="px-4 py-3" style={{ color: r.extension_requested ? "#f59e0b" : "var(--muted)" }}>
+                  <td data-label="Extensão" className="px-4 py-3" style={{ color: r.extension_requested ? "#f59e0b" : "var(--muted)" }}>
                     {r.extension_requested ? "Sim" : "Não"}
                   </td>
-                  <td className="px-4 py-3">{statusBadge(r.status)}</td>
-                  <td className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(r.created_at)}</td>
-                  <td className="px-4 py-3">
+                  <td data-label="Estado" className="px-4 py-3">{statusBadge(r.status)}</td>
+                  <td data-label="Data" className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(r.created_at)}</td>
+                  <td data-label="Ações" className="px-4 py-3">
                     <div className="flex flex-col gap-1.5 items-start">
                       <button
                         onClick={() => openReply({

@@ -101,8 +101,8 @@ export default function PropostasPage() {
         </div>
       </div>
 
-      <div className="border rounded overflow-hidden" style={{ borderColor: "var(--border)" }}>
-        <table className="w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
+      <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>
+        <table className="admin-table w-full text-sm" style={{ backgroundColor: "var(--surface-mid)" }}>
           <thead>
             <tr className="border-b" style={{ borderColor: "var(--border)" }}>
               <th className="px-4 py-3 text-left uppercase tracking-wide text-xs" style={{ color: "var(--muted)" }}>
@@ -135,17 +135,17 @@ export default function PropostasPage() {
               const date = new Date(p.created_at).toLocaleString("pt-PT");
               return (
                 <tr key={p.id} className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <td className="px-4 py-3">
+                  <td data-label="Cliente" className="px-4 py-3">
                     <div style={{ color: "var(--foreground)" }}>{p.name}</div>
                     <div className="text-xs" style={{ color: "var(--muted)" }}>
                       {p.email}
                       {p.phone ? ` • ${p.phone}` : ""}
                     </div>
                   </td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
+                  <td data-label="NIF" className="px-4 py-3 tabular-nums" style={{ color: "var(--foreground)" }}>
                     {p.nif}
                   </td>
-                  <td className="px-4 py-3" style={{ color: "var(--foreground)" }}>
+                  <td data-label="Total" className="px-4 py-3 tabular-nums" style={{ color: "var(--foreground)" }}>
                     {total}
                     {hasDiscount && original != null && (
                       <div className="text-xs" style={{ color: "var(--muted)" }}>
@@ -154,12 +154,12 @@ export default function PropostasPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td data-label="Estado" className="px-4 py-3">
                     <select
                       value={p.status}
                       onChange={(e) => handleStatusChange(p.id, e.target.value)}
                       disabled={updating === p.id}
-                      className="px-2 py-1 rounded text-xs font-medium"
+                      className="min-h-11 rounded px-2 py-1 text-xs font-medium md:min-h-0"
                       style={{
                         backgroundColor: `${statusOpt.color}20`,
                         color: statusOpt.color,
@@ -174,13 +174,13 @@ export default function PropostasPage() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: "var(--muted)" }}>
+                  <td data-label="Data" className="px-4 py-3 text-xs" style={{ color: "var(--muted)" }}>
                     {date}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td data-label="Ações" className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/propostas/${p.id}`}
-                      className="text-xs transition-colors"
+                      className="inline-flex min-h-11 items-center text-xs transition-colors md:min-h-0"
                       style={{ color: "var(--copper-deep)" }}
                     >
                       Ver detalhes
