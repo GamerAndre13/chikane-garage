@@ -3,6 +3,7 @@ import { Oswald, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { ScrollToTop } from "@/components/layout/scroll-to-top";
 import { CookieConsent } from "@/components/cookie-consent";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <Header />
+        <ScrollToTop />
         <main id="main-content" className="flex-1">{children}</main>
         <Footer />
         <CookieConsent />

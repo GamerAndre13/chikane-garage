@@ -47,6 +47,18 @@ export default function PerfilPage() {
   // Mensagens do formulário de alteração de password (mostradas junto ao botão)
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState<string | null>(null);
+  // Saudação conforme a hora local do utilizador. O cálculo só acontece
+  // depois de montar — o servidor não conhece o fuso do visitante e não vale a
+  // pena arriscar uma diferença na hidratação.
+  const [greeting, setGreeting] = useState("Bem-vindo");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const hour = new Date().getHours();
+      setGreeting(hour >= 5 && hour < 12 ? "Bom dia" : hour >= 12 && hour < 21 ? "Boa tarde" : "Boa noite");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const loadProfileInternal = async (user: { id: string; email?: string | null }) => {
     setLoading(true);
@@ -275,7 +287,7 @@ export default function PerfilPage() {
           </div>
         </div>
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-widest text-copper">Bem-vindo,</p>
+          <p className="text-xs uppercase tracking-widest text-copper">{greeting},</p>
           <h1 className="mt-2 font-display text-4xl uppercase tracking-wide">
             {profile.full_name || profile.email?.split("@")[0] || "Utilizador"}
           </h1>

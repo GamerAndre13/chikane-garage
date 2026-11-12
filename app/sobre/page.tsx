@@ -110,7 +110,7 @@ export default async function SobrePage() {
               de série Chikane.
             </p>
           </div>
-          <div className="relative min-h-[320px] sm:min-h-[420px] lg:min-h-[520px]">
+          <div className="relative min-h-[280px] overflow-hidden sm:min-h-[360px] lg:min-h-0 lg:h-[calc(100%+3rem)]">
             <Image
               src={photos?.photo_about_garage || "https://images.unsplash.com/photo-1486262715619-01b8c2297602?auto=format&fit=crop&w=1000&q=75"}
               alt="Detalhe de manutenção automóvel"
