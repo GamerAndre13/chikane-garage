@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { uploadSiteImage } from "@/app/actions/upload";
+import { useToast } from "@/components/ui/toast";
 import type { SiteSettings } from "@/lib/site-settings";
 
 type SettingsRow = SiteSettings & { id: string };
@@ -92,10 +93,9 @@ const GROUPS: { title: string; description: string; fields: FieldDef[] }[] = [
 ];
 
 export default function DefinicoesPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [rowId, setRowId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
@@ -145,7 +145,6 @@ export default function DefinicoesPage() {
 
   const handlePhotoUpload = async (key: string, file: File) => {
     setUploadingKey(key);
-    setError(null);
 
     const fd = new FormData();
     fd.append("file", file);
@@ -154,7 +153,7 @@ export default function DefinicoesPage() {
 
     setUploadingKey(null);
     if (res.error) {
-      setError(res.error);
+      toast({ variant: "error", title: "Falha ao carregar a fotografia", description: res.error });
       return;
     }
     const url = res.url;
@@ -163,8 +162,6 @@ export default function DefinicoesPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    setSaved(false);
-    setError(null);
 
     const payloadRaw: Record<string, unknown> = { ...form, updated_at: new Date().toISOString() };
     // Campos INT na BD — convertem a string do formulário (vazio = 0).
@@ -198,16 +195,17 @@ export default function DefinicoesPage() {
 
     if (saveError) {
       const faltaMigration = /does not exist|row-level security/i.test(saveError.message);
-      setError(
-        faltaMigration
-          ? "Não foi possível guardar. Corre o ficheiro supabase/setup.sql no SQL Editor do Supabase e volta a tentar."
-          : `Erro ao guardar: ${saveError.message}`
-      );
+      toast({
+        variant: "error",
+        title: "Não foi possível guardar",
+        description: faltaMigration
+          ? "Corre o ficheiro supabase/setup.sql no SQL Editor do Supabase e volta a tentar."
+          : saveError.message,
+      });
       return;
     }
 
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+    toast({ variant: "success", title: "Definições guardadas", description: "As alterações já estão visíveis no site." });
   };
 
   const inputStyle = {
@@ -264,7 +262,7 @@ export default function DefinicoesPage() {
       {/* Barra de gravação fixa no topo: o botão fica sempre à vista, mesmo a
           rolar as secções abertas. */}
       <div
-        className="sticky top-0 z-20 -mx-8 mb-6 border-b px-8 py-3"
+        className="relative z-20 -mx-4 mb-6 border-b px-4 py-3 sm:-mx-6 sm:px-6 md:sticky md:top-0 lg:-mx-8 lg:px-8"
         style={{ backgroundColor: "var(--background-alt)", borderColor: "var(--border)" }}
       >
         <div className="flex flex-wrap items-center gap-4">
@@ -280,30 +278,11 @@ export default function DefinicoesPage() {
             </svg>
             {saving ? "A guardar..." : "Guardar definições"}
           </button>
-          {saved && (
-            <span className="pulse-success inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: "#4ade80" }}>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-              Guardado
-            </span>
-          )}
-          {!saved && (
-            <span style={{ color: "var(--muted)", fontSize: "0.8125rem" }}>
-              As alterações só ficam visíveis no site depois de guardares.
-            </span>
-          )}
+          <span style={{ color: "var(--muted)", fontSize: "0.8125rem" }}>
+            As alterações só ficam visíveis no site depois de guardares.
+          </span>
         </div>
       </div>
-
-      {error && (
-        <div
-          className="mb-4 border-l-4 p-4 text-sm"
-          style={{ borderColor: "#ef4444", backgroundColor: "rgba(239,68,68,0.1)", color: "#f87171" }}
-        >
-          {error}
-        </div>
-      )}
 
       <p className="mb-4" style={{ color: "var(--muted)", fontSize: "0.8125rem" }}>
         Abre apenas a secção que queres alterar. As alterações só ficam visíveis no site depois de clicares em{" "}
@@ -487,13 +466,14 @@ export default function DefinicoesPage() {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   setUploadingKey("avatar_pool");
-                                  setError(null);
                                   const fd = new FormData();
                                   fd.append("file", file);
                                   fd.append("name", "avatar_pool");
                                   uploadSiteImage(fd).then((res) => {
                                     setUploadingKey(null);
-                                    if (res.error) setError(res.error);
+                                    if (res.error) {
+                                      toast({ variant: "error", title: "Falha ao carregar a fotografia", description: res.error });
+                                    }
                                     if (res.url) {
                                       const current = form[field.key] ?? "";
                                       const newVal = current ? current + "\n" + res.url : res.url;

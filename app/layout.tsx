@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
+import { ToastProvider } from "@/components/ui/toast";
 import { CookieConsent } from "@/components/cookie-consent";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -65,7 +66,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <Header />
         <ScrollToTop />
-        <main id="main-content" className="flex-1">{children}</main>
+        <ToastProvider>
+          <main id="main-content" className="flex-1">{children}</main>
+        </ToastProvider>
         <Footer />
         <CookieConsent />
       </body>
