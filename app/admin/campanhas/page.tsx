@@ -244,6 +244,18 @@ export default function AdminCampanhasPage() {
     setImages((prev) => prev.filter((image) => image !== url));
   };
 
+  // A ordem desta galeria é a ordem em que as fotos aparecem na página da
+  // campanha: sobe/desce uma posição de cada vez (igual às fotos das viaturas).
+  const moveImage = (index: number, delta: number) => {
+    setImages((prev) => {
+      const target = index + delta;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -467,7 +479,7 @@ export default function AdminCampanhasPage() {
                   </button>
                 )}
                 <span className="text-[11px]" style={{ color: "var(--muted)" }}>
-                  Uma só imagem (JPG, PNG ou WEBP).
+                  Uma só imagem (JPG, PNG ou WEBP). Aparece com 16:9 — recomendado 1600 × 900 px.
                 </span>
               </div>
 
@@ -496,7 +508,30 @@ export default function AdminCampanhasPage() {
                   <div key={`${url}-${index}`} className="group relative overflow-hidden rounded border" style={{ borderColor: "var(--border)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element -- imagens vêm do R2 (domínio configurável) */}
                     <img src={url} alt="" className="aspect-[16/10] w-full object-cover" />
+                    <span className="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] tabular-nums" style={{ backgroundColor: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                      {index + 1}
+                    </span>
                     <div className="flex flex-wrap items-center gap-2 p-2">
+                      <button
+                        type="button"
+                        onClick={() => moveImage(index, -1)}
+                        disabled={index === 0}
+                        aria-label={`Mover foto ${index + 1} para cima`}
+                        className="rounded border px-2 py-1 text-[11px] transition-colors hover:border-copper disabled:opacity-30"
+                        style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveImage(index, 1)}
+                        disabled={index === images.length - 1}
+                        aria-label={`Mover foto ${index + 1} para baixo`}
+                        className="rounded border px-2 py-1 text-[11px] transition-colors hover:border-copper disabled:opacity-30"
+                        style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+                      >
+                        ↓
+                      </button>
                       <button type="button" onClick={() => removeImage(url)} className="ml-auto text-[11px]" style={{ color: "#ef4444" }}>
                         Remover
                       </button>
@@ -522,6 +557,9 @@ export default function AdminCampanhasPage() {
                 onChange={(e) => { void handleUpload(e.target.files); e.target.value = ""; }}
               />
             </div>
+            <p className="mt-2 text-[11px]" style={{ color: "var(--muted)" }}>
+              Aparecem na galeria da campanha com 16:10 (recomendado 1600 × 1000 px) e largura até 1200 px no ecrã.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>

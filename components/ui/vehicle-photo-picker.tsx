@@ -62,10 +62,14 @@ export function VehiclePhotoPicker({ onChange }: { onChange: (files: File[], cov
           <p className="text-xs uppercase tracking-widest text-[#b87333]">Fotografias</p>
           <p className="mt-1 text-xs text-[#9a9a94]">Escolhe a capa e ajusta a ordem antes de guardar.</p>
         </div>
-        <label className="cursor-pointer rounded border border-[#b87333]/50 bg-[#b87333]/10 px-3 py-2 text-xs font-medium uppercase tracking-wider text-[#d39453] hover:bg-[#b87333]/20">
-          Selecionar fotografias
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} className="sr-only" />
-        </label>
+        <div className="flex flex-col items-start gap-1">
+          <label className="cursor-pointer rounded border border-[#b87333]/50 bg-[#b87333]/10 px-3 py-2 text-xs font-medium uppercase tracking-wider text-[#d39453] hover:bg-[#b87333]/20">
+            Selecionar fotografias
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} className="sr-only" />
+          </label>
+          {/* Item 6: tamanho em px onde a foto aparece, para se cortar antes. */}
+          <span className="text-[11px] text-[#9a9a94]">Aparecem a 4:3 — cortadas ao centro em 1600 × 1200 px.</span>
+        </div>
       </div>
 
       {files.length === 0 ? (

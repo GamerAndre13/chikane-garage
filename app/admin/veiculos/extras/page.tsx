@@ -108,6 +108,8 @@ function ExtraImageField({
         </div>
       </div>
       <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>JPG, PNG, WEBP ou AVIF · máx. 5 MB</p>
+      {/* Item 6: tamanho onde a foto aparece no configurador da viatura nova. */}
+      <p className="mt-0.5 text-[10px]" style={{ color: "var(--muted-deep)" }}>Aparece num quadrado de 80 × 80 px — envia o motivo ao centro (recomendado 320 × 320 px).</p>
       {error && <p className="mt-1 text-[11px]" style={{ color: "#ef4444" }}>{error}</p>}
     </div>
   );
@@ -586,15 +588,24 @@ export default function VehicleExtrasCatalogPage() {
                     <div className="space-y-2">
                       {itemVariants.length === 0 && <p className="text-xs" style={{ color: "var(--muted)" }}>Sem variantes — o cliente escolhe apenas o extra.</p>}
                       {itemVariants.map((variant) => (
-                        <form key={variant.id} onSubmit={(e) => { e.preventDefault(); handleUpdateVariant(variant, e.currentTarget); }} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_90px_80px_auto]">
-                          <input name="name" defaultValue={variant.name} required aria-label="Nome da variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                          <input name="price" defaultValue={variant.price} aria-label="Preço da variante" inputMode="decimal" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                          <input name="position" defaultValue={variant.position} aria-label="Ordem da variante" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
-                          <label className="flex items-center gap-2 text-xs" style={{ color: "var(--foreground)" }}>
+                        <form key={variant.id} onSubmit={(e) => { e.preventDefault(); handleUpdateVariant(variant, e.currentTarget); }} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_120px_90px_80px_auto]">
+                          <div>
+                            <label htmlFor={`variante-${variant.id}-nome`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome</label>
+                            <input id={`variante-${variant.id}-nome`} name="name" defaultValue={variant.name} required placeholder='Ex.: 20"' className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                          </div>
+                          <div>
+                            <label htmlFor={`variante-${variant.id}-preco`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
+                            <input id={`variante-${variant.id}-preco`} name="price" defaultValue={variant.price} inputMode="decimal" placeholder="0,00" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                          </div>
+                          <div>
+                            <label htmlFor={`variante-${variant.id}-ordem`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
+                            <input id={`variante-${variant.id}-ordem`} name="position" defaultValue={variant.position} inputMode="numeric" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                          </div>
+                          <label className="flex items-center gap-2 pb-1 text-xs" style={{ color: "var(--foreground)" }}>
                             <input name="is_active" type="checkbox" defaultChecked={variant.is_active} />
                             Ativa
                           </label>
-                          <div className="whitespace-nowrap text-right">
+                          <div className="whitespace-nowrap pb-1 text-right">
                             <button disabled={saving} className="mr-3 text-xs" style={{ color: "var(--copper-deep)" }}>Guardar</button>
                             <button type="button" onClick={() => handleDeleteVariant(variant.id)} className="text-xs" style={{ color: "#ef4444" }}>Apagar</button>
                           </div>
