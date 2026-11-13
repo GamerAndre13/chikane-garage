@@ -130,7 +130,10 @@ export default function AdminSidebar() {
 
         {navGroups.map((group) => (
           <div key={group.title} className="mb-4">
-            <p className="mb-1 px-2 text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--muted)" }}>
+            <p
+              className="mb-2 border-t px-2 pt-3 text-[10px] uppercase tracking-[0.18em]"
+              style={{ color: "var(--foreground)", borderColor: "var(--border)" }}
+            >
               {group.title}
             </p>
             <div className="space-y-1">
@@ -215,7 +218,10 @@ export default function AdminSidebar() {
         <nav className="p-3 flex-1 overflow-y-auto">
           {navGroups.map((group) => (
             <div key={group.title} className="mb-4">
-              <p className="px-3 mb-1 text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--muted)" }}>
+              <p
+                className="mb-2 border-t px-3 pt-3 text-[10px] uppercase tracking-[0.18em]"
+                style={{ color: "var(--foreground)", borderColor: "var(--border)" }}
+              >
                 {group.title}
               </p>
               <div className="space-y-1">

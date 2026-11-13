@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
 interface ContactRequest {
@@ -68,12 +69,30 @@ type ReplyState = null | {
 
 const RESERVATION_DAYS = 7;
 
+// Aba inicial: o dashboard liga com ?tab=testdrives (ou contactos/reservas) para
+// abrir logo a lista certa em vez de obrigar a clicar outra vez.
+const TAB_VALUES = ["contactos", "testdrives", "reservas"] as const;
+type Tab = (typeof TAB_VALUES)[number];
+
 export default function PedidosPage() {
+  // useSearchParams obriga a um limite de Suspense nesta página.
+  return (
+    <Suspense fallback={null}>
+      <PedidosContent />
+    </Suspense>
+  );
+}
+
+function PedidosContent() {
+  const searchParams = useSearchParams();
   const [contacts, setContacts] = useState<ContactRequest[]>([]);
   const [testDrives, setTestDrives] = useState<TestDrive[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"contactos" | "testdrives" | "reservas">("contactos");
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tab = searchParams.get("tab");
+    return TAB_VALUES.includes(tab as Tab) ? (tab as Tab) : "contactos";
+  });
   const [modal, setModal] = useState<ModalState>(null);
   const [reply, setReply] = useState<ReplyState>(null);
 

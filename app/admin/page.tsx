@@ -36,6 +36,9 @@ export default async function AdminDashboard() {
     { count: soldVehicles },
     { count: newContacts },
     { count: pendingTestDrives },
+    { count: pendingReservations },
+    { count: openProposals },
+    { count: activeCampaigns },
   ] = await Promise.all([
     supabase.from("vehicles").select("*", { count: "exact", head: true }),
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "available"),
@@ -43,6 +46,10 @@ export default async function AdminDashboard() {
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "sold"),
     supabase.from("contact_requests").select("*", { count: "exact", head: true }).eq("status", "new"),
     supabase.from("test_drives").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("reservations").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    // Propostas abertas = ainda não fechadas (ganhas ou perdidas).
+    supabase.from("sale_proposals").select("*", { count: "exact", head: true }).in("status", ["pending", "contacted", "in_progress"]),
+    supabase.from("campaigns").select("*", { count: "exact", head: true }).eq("is_active", true),
   ]);
 
   // Recent contacts
@@ -65,10 +72,20 @@ export default async function AdminDashboard() {
   const sold = soldVehicles ?? 0;
   const contacts = newContacts ?? 0;
   const testDrives = pendingTestDrives ?? 0;
-  const awaitingReply = contacts + testDrives;
+  const reservations = pendingReservations ?? 0;
+  const proposals = openProposals ?? 0;
+  const campaigns = activeCampaigns ?? 0;
   const share = (value: number) => (total > 0 ? Math.round((value / total) * 100) : 0);
 
-  // Catálogo: três métricas secundárias, todas com o mesmo peso.
+  // Os três pedidos à espera de resposta: mesma forma, mesmo peso e uma linha
+  // com três colunas. Cada um abre a aba certa dos pedidos.
+  const awaiting = [
+    { label: "Pedidos", value: reservations, hint: "Reservas à espera de decisão", href: "/admin/pedidos?tab=reservas" },
+    { label: "Test drives", value: testDrives, hint: "Marcações por confirmar", href: "/admin/pedidos?tab=testdrives" },
+    { label: "Contactos", value: contacts, hint: "Mensagens por responder", href: "/admin/pedidos?tab=contactos" },
+  ];
+
+  // Catálogo: três estados, todos com o mesmo peso (a cor tem significado).
   const catalog = [
     { label: "Disponíveis", value: available, color: "var(--copper)" },
     { label: "Reservadas", value: reserved, color: "var(--warning)" },
@@ -108,69 +125,10 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Métrica principal: o que está à espera de resposta. O número é o herói. */}
+      {/* Por responder: três valores com o mesmo tamanho, espaçamento e forma,
+          numa só linha com três colunas. O número é o herói. */}
       <section
-        className="rounded-md border p-5 sm:p-6"
-        style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
-      >
-        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: "var(--copper-deep)" }}>
-          Pedidos por responder
-        </p>
-        <p
-          className="mt-2 text-5xl leading-none tabular-nums"
-          style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-        >
-          {awaitingReply}
-        </p>
-        <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-          {awaitingReply === 0
-            ? "Nada à espera de resposta. Tudo tratado."
-            : "Contactos e pedidos de test drive que ainda não tiveram resposta."}
-        </p>
-
-        <div
-          className="mt-5 grid gap-3 border-t pt-4 sm:grid-cols-2"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <Link
-            href="/admin/pedidos"
-            className="group flex items-baseline justify-between gap-3 rounded px-1 py-1 transition-colors hover:text-foreground"
-            style={{ color: "var(--muted)" }}
-          >
-            <span className="text-sm">Contactos novos</span>
-            <span className="flex items-baseline gap-2">
-              <span
-                className="text-xl tabular-nums"
-                style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-              >
-                {contacts}
-              </span>
-              <span aria-hidden="true" className="text-xs transition-transform group-hover:translate-x-0.5">→</span>
-            </span>
-          </Link>
-          <Link
-            href="/admin/pedidos"
-            className="group flex items-baseline justify-between gap-3 rounded px-1 py-1 transition-colors hover:text-foreground sm:border-l sm:pl-4"
-            style={{ color: "var(--muted)", borderColor: "var(--border)" }}
-          >
-            <span className="text-sm">Test drives pendentes</span>
-            <span className="flex items-baseline gap-2">
-              <span
-                className="text-xl tabular-nums"
-                style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
-              >
-                {testDrives}
-              </span>
-              <span aria-hidden="true" className="text-xs transition-transform group-hover:translate-x-0.5">→</span>
-            </span>
-          </Link>
-        </div>
-      </section>
-
-      {/* Catálogo: 3 métricas secundárias, mais pequenas, com uma barra plana
-          que dá o peso relativo de cada estado (a cor tem significado). */}
-      <section
-        className="mt-3 rounded-md border"
+        className="rounded-md border"
         style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
       >
         <div
@@ -181,10 +139,79 @@ export default async function AdminDashboard() {
             className="text-xs uppercase tracking-[0.18em]"
             style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
           >
-            Catálogo
+            Por responder
           </h2>
-          <p className="text-xs tabular-nums" style={{ color: "var(--muted)" }}>
-            {total} {total === 1 ? "viatura" : "viaturas"} no total
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Estado atual — atualiza a cada carregamento
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3">
+          {awaiting.map((item, index) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`group block px-4 py-5 transition-colors hover:bg-surface-raised ${
+                index > 0 ? "border-t sm:border-t-0 sm:border-l" : ""
+              }`}
+              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+            >
+              <p className="text-xs uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+                {item.label}
+              </p>
+              <p className="mt-2 flex items-baseline gap-2">
+                <span
+                  className="text-4xl leading-none tabular-nums"
+                  style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+                >
+                  {item.value}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="text-xs transition-transform group-hover:translate-x-0.5"
+                  style={{ color: "var(--muted)" }}
+                >
+                  →
+                </span>
+              </p>
+              <p className="mt-2 text-xs" style={{ color: "var(--muted-deep)" }}>
+                {item.hint}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Catálogo: total em destaque e os três estados com números maiores. */}
+      <section
+        className="mt-3 rounded-md border"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+      >
+        <div
+          className="flex flex-wrap items-end justify-between gap-3 border-b px-4 py-3"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <div>
+            <h2
+              className="text-xs uppercase tracking-[0.18em]"
+              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            >
+              Catálogo
+            </h2>
+            <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+              Viaturas no total
+            </p>
+          </div>
+          <p className="flex items-baseline gap-2">
+            <span
+              className="text-4xl leading-none tabular-nums"
+              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            >
+              {total}
+            </span>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              {total === 1 ? "viatura" : "viaturas"}
+            </span>
           </p>
         </div>
 
@@ -193,7 +220,7 @@ export default async function AdminDashboard() {
             <Link
               key={item.label}
               href="/admin/veiculos"
-              className={`block px-4 py-3 transition-colors hover:bg-surface-raised ${
+              className={`block px-4 py-4 transition-colors hover:bg-surface-raised ${
                 index > 0 ? "border-t sm:border-t-0 sm:border-l" : ""
               }`}
               style={{ borderColor: "var(--border)" }}
@@ -201,8 +228,11 @@ export default async function AdminDashboard() {
               <p className="text-xs uppercase tracking-widest" style={{ color: "var(--muted)" }}>
                 {item.label}
               </p>
-              <p className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+              <p className="mt-2 flex items-baseline gap-2">
+                <span
+                  className="text-3xl leading-none tabular-nums"
+                  style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+                >
                   {item.value}
                 </span>
                 <span className="text-xs tabular-nums" style={{ color: "var(--muted)" }}>
@@ -222,6 +252,61 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
+      {/* Em curso: propostas e campanhas, no mesmo tom das listas abaixo. */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/admin/propostas"
+          className="group flex items-baseline justify-between gap-3 rounded-md border px-4 py-4 transition-colors hover:bg-surface-raised"
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+              Propostas abertas
+            </span>
+            <span className="mt-1 block text-xs" style={{ color: "var(--muted-deep)" }}>
+              Por fechar (ganhas ou perdidas)
+            </span>
+          </span>
+          <span className="flex items-baseline gap-2">
+            <span
+              className="text-3xl leading-none tabular-nums"
+              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            >
+              {proposals}
+            </span>
+            <span aria-hidden="true" className="text-xs transition-transform group-hover:translate-x-0.5" style={{ color: "var(--muted)" }}>
+              →
+            </span>
+          </span>
+        </Link>
+
+        <Link
+          href="/admin/campanhas"
+          className="group flex items-baseline justify-between gap-3 rounded-md border px-4 py-4 transition-colors hover:bg-surface-raised"
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+              Campanhas ativas
+            </span>
+            <span className="mt-1 block text-xs" style={{ color: "var(--muted-deep)" }}>
+              Ligadas no backoffice
+            </span>
+          </span>
+          <span className="flex items-baseline gap-2">
+            <span
+              className="text-3xl leading-none tabular-nums"
+              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            >
+              {campaigns}
+            </span>
+            <span aria-hidden="true" className="text-xs transition-transform group-hover:translate-x-0.5" style={{ color: "var(--muted)" }}>
+              →
+            </span>
+          </span>
+        </Link>
+      </div>
+
       {/* Atividade recente */}
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <div className="rounded-md border" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
@@ -232,7 +317,7 @@ export default async function AdminDashboard() {
             >
               Contactos recentes
             </h2>
-            <Link href="/admin/pedidos" className="text-xs transition-colors hover:text-foreground" style={{ color: "var(--copper-deep)" }}>
+            <Link href="/admin/pedidos?tab=contactos" className="text-xs transition-colors hover:text-foreground" style={{ color: "var(--copper-deep)" }}>
               Ver todos →
             </Link>
           </div>
@@ -280,7 +365,7 @@ export default async function AdminDashboard() {
             >
               Test drives recentes
             </h2>
-            <Link href="/admin/pedidos" className="text-xs transition-colors hover:text-foreground" style={{ color: "var(--copper-deep)" }}>
+            <Link href="/admin/pedidos?tab=testdrives" className="text-xs transition-colors hover:text-foreground" style={{ color: "var(--copper-deep)" }}>
               Ver todos →
             </Link>
           </div>
