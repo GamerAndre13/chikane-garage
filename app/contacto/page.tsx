@@ -700,16 +700,23 @@ function ContactoContent() {
           </div>
         )}
 
-        {reservaIndisponivel ? (
+        {reservaIndisponivel && (
           <div className="mt-8 rounded border border-white/10 bg-surface px-5 py-6">
-            <p className="font-display text-xs uppercase tracking-[0.22em] text-copper">Reserva</p>
+            <p className="font-display text-xs uppercase tracking-[0.22em] text-copper">Reserva indisponível</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               {vehicle?.status === "reserved"
                 ? "Esta viatura está reservada no momento. Volta dentro de alguns dias para verificar se ficou disponível."
                 : "Esta viatura não está disponível para reserva neste momento."}
             </p>
           </div>
-        ) : (
+        )}
+
+        {/* Com a viatura reservada o formulário continua visível, mas escurecido
+            e sem poder ser preenchido nem enviado. */}
+        <div
+          className={reservaIndisponivel ? "pointer-events-none select-none opacity-40" : undefined}
+          inert={reservaIndisponivel || undefined}
+        >
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
           <div className="hidden" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" tabIndex={-1} autoComplete="off" /></div>
           <div>
@@ -826,7 +833,7 @@ function ContactoContent() {
             {loading ? "A enviar…" : isReserva ? "Enviar pedido de reserva" : isTestDrive ? "Reservar Test Drive" : "Enviar Mensagem"}
           </button>
         </form>
-        )}
+        </div>
       </div>
     </div>
   );
