@@ -13,7 +13,7 @@ function getResend() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, name, vehicle, vehicleSlug, vehicleImage, confirmedDate } = body;
+    const { email, name, vehicle, vehicleSlug, vehicleImage, confirmedDate, token } = body;
 
     if (!email || !confirmedDate) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     const vehicleUrl = vehicleSlug
       ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}`
       : null;
+    // Página onde o cliente aceita a nova data ou pede outro horário (item 11).
+    const responseUrl = token ? `${siteUrl.replace(/\/$/, "")}/test-drive/resposta/${token}` : null;
     // Date-only ("2026-10-11") é tratada a partir das 10:00 (hora de Lisboa);
     // datas completas são interpretadas como UTC.
     const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(confirmedDate);
@@ -69,9 +71,26 @@ export async function POST(request: NextRequest) {
             ${vehicleEmailBlock({ url: vehicleUrl, imageUrl: vehicleImage, name: vehicle })}
 
             <div style="margin:20px 0;padding:16px;background:#1a1a1a;border:1px solid #222;border-radius:8px">
-              <p style="margin:0;color:#ccc;font-size:14px;line-height:1.7">Nova data e hora confirmadas:</p>
+              <p style="margin:0;color:#ccc;font-size:14px;line-height:1.7">Nova data e hora propostas:</p>
               <p style="margin:8px 0 0;color:#fff;font-size:16px;line-height:1.6;font-weight:bold">${formattedDate}</p>
             </div>
+
+            ${
+              responseUrl
+                ? `<p style="margin:0 0 14px;color:#ccc;font-size:14px;line-height:1.7">Confirma se te dá jeito:</p>
+                   <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
+                     <tr>
+                       <td style="padding:0 6px 0 0;width:50%">
+                         <a href="${responseUrl}" style="display:block;padding:14px 10px;background:#f47724;color:#000;text-decoration:none;font-size:13px;font-weight:bold;border-radius:6px;text-align:center">Aceitar nova data</a>
+                       </td>
+                       <td style="padding:0 0 0 6px;width:50%">
+                         <a href="${responseUrl}" style="display:block;padding:14px 10px;background:#1a1a1a;border:1px solid #555;color:#fff;text-decoration:none;font-size:13px;font-weight:bold;border-radius:6px;text-align:center">Quero outro horário</a>
+                       </td>
+                     </tr>
+                   </table>
+                   <p style="margin:12px 0 0;color:#666;font-size:12px;line-height:1.6">Se o botão não abrir, usa este link: <span style="color:#888;word-break:break-all">${responseUrl}</span></p>`
+                : ""
+            }
 
             <p style="margin:0 0 20px;color:#888;font-size:13px;line-height:1.7">
               Se tiveres alguma dúvida, responde a este email ou contacta-nos através do site.
@@ -89,7 +108,7 @@ export async function POST(request: NextRequest) {
     await resend.emails.send({
       from: "Chikane Garage <no-reply@chikanegarage.blog>",
       to: email,
-      subject: "Test-drive atualizado — Chikane Garage",
+      subject: "Nova data para o teu test-drive — confirma",
       html,
     });
 

@@ -26,6 +26,10 @@ interface TestDrive {
   preferred_date: string;
   preferred_time?: string | null;
   confirmed_date?: string | null;
+  // Data proposta numa remarcação, à espera da resposta do cliente.
+  proposed_date?: string | null;
+  respond_token?: string | null;
+  responded_at?: string | null;
   status: string;
   admin_notes?: string | null;
   notes?: string | null;
@@ -210,7 +214,7 @@ function PedidosContent() {
     return "-";
   };
 
-  const sendTestDriveEmail = async (td: TestDrive, confirmedDate: string, type: "confirm" | "update") => {
+  const sendTestDriveEmail = async (td: TestDrive, confirmedDate: string, type: "confirm" | "update", token?: string) => {
     try {
       const vehicleName = formatVehicle(td);
       await fetch(`/api/admin/test-drive/${type}`, {
@@ -223,6 +227,7 @@ function PedidosContent() {
           vehicleSlug: td.vehicle?.slug || undefined,
           vehicleImage: td.vehicle?.cover_image_url || undefined,
           confirmedDate,
+          token,
         }),
       });
     } catch (e) {
@@ -282,13 +287,21 @@ function PedidosContent() {
       alert("Data/hora inválida.");
       return;
     }
+    // Remarcação: a data fica "proposta" até o cliente responder no email
+    // (aceita → confirmado; pede outro horário → volta a pendente).
+    const token = td.respond_token || crypto.randomUUID();
     try {
-      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: isoDate, confirmed_at: isoDate }).eq("id", td.id);
+      const { error } = await supabase
+        .from("test_drives")
+        .update({ status: "rescheduled", proposed_date: isoDate, responded_at: null, respond_token: token })
+        .eq("id", td.id);
       if (error) {
-        alert(error.message);
+        alert(
+          `${error.message}\n\nSe a coluna ainda não existir, executa supabase/031_test_drive_resposta.sql no SQL Editor do Supabase.`
+        );
         return;
       }
-      await sendTestDriveEmail(td, isoDate, "update");
+      await sendTestDriveEmail(td, isoDate, "update", token);
       fetchData();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Erro");
@@ -414,6 +427,7 @@ function PedidosContent() {
     replied: "#22c55e",
     archived: "#9a9a94",
     pending: "#f59e0b",
+    rescheduled: "#3b82f6",
     approved: "#22c55e",
     completed: "#22c55e",
     cancelled: "#ef4444",
@@ -427,6 +441,7 @@ function PedidosContent() {
     replied: "Respondido",
     archived: "Arquivado",
     pending: "Pendente",
+    rescheduled: "Reagendado",
     approved: "Aprovada",
     completed: "Concluído",
     cancelled: "Cancelado",
@@ -772,7 +787,14 @@ function PedidosContent() {
                   </td>
                   <td data-label="Carro" className="px-4 py-3" style={{ color: "var(--silver)" }}>{formatVehicle(d)}</td>
                   <td data-label="Data preferida" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{formatPreferred(d)}</td>
-                  <td data-label="Confirmada" className="px-4 py-3" style={{ color: "var(--silver)" }}>{d.confirmed_date ? formatDate(d.confirmed_date, true) : "—"}</td>
+                  <td data-label="Confirmada" className="px-4 py-3" style={{ color: "var(--silver)" }}>
+                    {d.confirmed_date ? formatDate(d.confirmed_date, true) : "—"}
+                    {d.proposed_date && (
+                      <div className="text-[11px]" style={{ color: "#3b82f6" }}>
+                        Proposta: {formatDate(d.proposed_date, true)} · à espera de resposta
+                      </div>
+                    )}
+                  </td>
                   <td data-label="Estado" className="px-4 py-3">{statusBadge(d.status)}</td>
                   <td data-label="Data" className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(d.created_at)}</td>
                   <td data-label="Mensagem" className="px-4 py-3">
@@ -860,7 +882,7 @@ function PedidosContent() {
                             style={{ borderColor: "var(--border)", color: "var(--silver)" }}
                           />
                           <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "var(--silver)" }}>
-                            Alterar
+                            Propor data
                           </button>
                         </div>
                       )}
