@@ -128,7 +128,13 @@ export default function PropostasPage() {
           <tbody>
             {visible.map((p) => {
               const statusOpt = STATUS_OPTIONS.find((s) => s.value === p.status) || STATUS_OPTIONS[0];
-              const original = p.total_price != null ? Number(p.total_price) : null;
+              // Total: usa o gravado ou, nas propostas antigas, soma base + extras.
+              const original =
+                p.total_price != null
+                  ? Number(p.total_price)
+                  : p.base_price != null || p.extras_total != null
+                    ? Number(p.base_price || 0) + Number(p.extras_total || 0)
+                    : null;
               const finalPrice = p.final_price != null ? Number(p.final_price) : original;
               const hasDiscount = p.discount != null && Number(p.discount) > 0;
               const total = finalPrice != null ? `${finalPrice.toLocaleString("pt-PT")} €` : "—";

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
+import { vehicleEmailBlock } from "@/lib/email-vehicle-block";
 
 // Notificação das propostas de viaturas novas.
 // Envia para os emails configurados em /admin/definicoes e para o cliente.
@@ -24,6 +25,7 @@ type ProposalExtra = {
 };
 
 type ProposalPayload = {
+  proposal_id?: string | null;
   name?: string;
   email?: string;
   phone?: string;
@@ -35,6 +37,7 @@ type ProposalPayload = {
   selected_extras?: ProposalExtra[];
   vehicle_name?: string;
   vehicle_slug?: string;
+  vehicle_image?: string | null;
 };
 
 const euro = (value?: number | null) =>
@@ -99,10 +102,26 @@ export async function POST(request: NextRequest) {
     }
 
     const vehicleName = escapeHtml(String(payload.vehicle_name || "Viatura nova"));
-    const vehicleUrl = process.env.NEXT_PUBLIC_SITE_URL
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}/catalogo/${payload.vehicle_slug || ""}`
-      : null;
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const vehicleUrl = siteUrl && payload.vehicle_slug ? `${siteUrl}/catalogo/${payload.vehicle_slug}` : null;
+    // Link direto para a proposta no backoffice (email ao gestor).
+    const proposalUrl = siteUrl && payload.proposal_id ? `${siteUrl}/admin/propostas/${payload.proposal_id}` : null;
     const extras = Array.isArray(payload.selected_extras) ? payload.selected_extras : [];
+    // Total sempre com o valor da viatura incluído — mesmo quando o pedido só
+    // traz base + extras (propostas antigas ou falha de cálculo no cliente).
+    const basePrice = payload.base_price != null ? Number(payload.base_price) : null;
+    const extrasTotal = Number(payload.extras_total || 0);
+    const totalPrice =
+      payload.total_price != null
+        ? Number(payload.total_price)
+        : basePrice != null
+          ? basePrice + extrasTotal
+          : null;
+    const vehicleBlock = vehicleEmailBlock({
+      url: vehicleUrl,
+      imageUrl: payload.vehicle_image || null,
+      name: payload.vehicle_name || "Viatura nova",
+    });
 
     const internalHtml = `
 <!DOCTYPE html>
@@ -110,6 +129,7 @@ export async function POST(request: NextRequest) {
   <div style="max-width:620px;margin:0 auto;background:#111;border-radius:12px;padding:28px;">
     <p style="margin:0;color:#f47724;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Chikane Garage</p>
     <h1 style="margin:8px 0 18px;color:#fff;font-size:22px;text-transform:uppercase;letter-spacing:1px;">Nova proposta · ${vehicleName}</h1>
+    ${vehicleBlock}
     <table style="width:100%;border-collapse:collapse;color:#ccc;font-size:14px;">
       <tr><td style="padding:6px 0;color:#888;">Cliente</td><td style="padding:6px 0;text-align:right;color:#fff;">${escapeHtml(String(payload.name))}</td></tr>
       <tr><td style="padding:6px 0;color:#888;">Email</td><td style="padding:6px 0;text-align:right;color:#fff;">${escapeHtml(String(payload.email))}</td></tr>
@@ -119,9 +139,9 @@ export async function POST(request: NextRequest) {
     <h2 style="margin:24px 0 10px;color:#fff;font-size:14px;text-transform:uppercase;letter-spacing:1px;">Extras</h2>
     ${extrasHtml(extras)}
     <table style="width:100%;border-collapse:collapse;color:#ccc;font-size:14px;margin-top:18px;border-top:1px solid #333;">
-      <tr><td style="padding:8px 0;color:#888;">Preço base</td><td style="padding:8px 0;text-align:right;color:#fff;">${euro(payload.base_price)}</td></tr>
-      <tr><td style="padding:8px 0;color:#888;">Extras</td><td style="padding:8px 0;text-align:right;color:#fff;">${euro(payload.extras_total || 0)}</td></tr>
-      <tr><td style="padding:8px 0;color:#f47724;font-weight:bold;">Total</td><td style="padding:8px 0;text-align:right;color:#f47724;font-weight:bold;font-size:18px;">${euro(payload.total_price)}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;">Preço base</td><td style="padding:8px 0;text-align:right;color:#fff;">${euro(basePrice)}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;">Extras</td><td style="padding:8px 0;text-align:right;color:#fff;">${euro(extrasTotal)}</td></tr>
+      <tr><td style="padding:8px 0;color:#f47724;font-weight:bold;">Total</td><td style="padding:8px 0;text-align:right;color:#f47724;font-weight:bold;font-size:18px;">${euro(totalPrice)}</td></tr>
     </table>
     ${
       payload.message
@@ -129,11 +149,11 @@ export async function POST(request: NextRequest) {
         : ""
     }
     ${
-      vehicleUrl
-        ? `<a href="${vehicleUrl}" style="display:inline-block;margin-top:22px;padding:10px 18px;background:#f47724;color:#000;text-decoration:none;font-size:12px;font-weight:bold;border-radius:4px;">Ver viatura</a>`
-        : ""
+      proposalUrl
+        ? `<a href="${proposalUrl}" style="display:inline-block;margin-top:22px;padding:12px 20px;background:#f47724;color:#000;text-decoration:none;font-size:13px;font-weight:bold;border-radius:4px;">Abrir a proposta no backoffice</a>
+           <p style="margin-top:10px;color:#666;font-size:12px;word-break:break-all;">${proposalUrl}</p>`
+        : `<p style="margin-top:22px;color:#666;font-size:12px;">Gerir em ${siteUrl}/admin/propostas</p>`
     }
-    <p style="margin-top:24px;color:#666;font-size:12px;">Gerir em ${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin/propostas</p>
   </div>
 </body></html>`;
 
@@ -144,9 +164,14 @@ export async function POST(request: NextRequest) {
     <h1 style="margin:0 0 10px;color:#fff;font-size:22px;text-transform:uppercase;letter-spacing:2px;">Chikane <span style="color:#f47724;">Garage</span></h1>
     <p style="color:#ccc;font-size:15px;line-height:1.7;">Olá ${escapeHtml(String(payload.name))},</p>
     <p style="color:#ccc;font-size:15px;line-height:1.7;">Recebemos o teu pedido de proposta para a <strong style="color:#fff;">${vehicleName}</strong>. Vamos analisar a configuração e contactar-te brevemente com todos os detalhes.</p>
+    ${vehicleBlock}
     <h2 style="margin:26px 0 10px;color:#fff;font-size:14px;text-transform:uppercase;letter-spacing:1px;">Resumo da configuração</h2>
+    <table style="width:100%;border-collapse:collapse;color:#ccc;font-size:14px;">
+      <tr><td style="padding:8px 0;color:#888;">Preço da viatura</td><td style="padding:8px 0;text-align:right;color:#fff;">${euro(basePrice)}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;">Extras</td><td style="padding:8px 0;text-align:right;color:#fff;">${euro(extrasTotal)}</td></tr>
+    </table>
     ${extrasHtml(extras)}
-    <p style="margin:16px 0 0;color:#f47724;font-size:18px;font-weight:bold;">Total indicativo: ${euro(payload.total_price)}</p>
+    <p style="margin:16px 0 0;padding-top:14px;border-top:1px solid #333;color:#f47724;font-size:18px;font-weight:bold;">Total indicativo: ${euro(totalPrice)}</p>
     <p style="color:#888;font-size:13px;line-height:1.6;margin-top:16px;">Valores sem custos de legalização. Confirmamos tudo contigo antes de qualquer compromisso.</p>
     <div style="margin-top:26px;padding-top:18px;border-top:1px solid #333;">
       <p style="color:#666;font-size:12px;margin:0;">© ${new Date().getFullYear()} Chikane Garage.</p>

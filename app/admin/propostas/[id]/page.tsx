@@ -63,22 +63,71 @@ export default function PropostaDetalhe() {
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [discount, setDiscount] = useState("");
+  // Campos que vinham vazios e foram calculados aqui (viatura + extras).
+  const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data } = await supabase.from("sale_proposals").select("*").eq("id", id).single();
-      if (cancelled) return;
-      if (data) {
-        setProposal(data as Proposal);
-        setStatus(data.status || "pending");
-        setAdminNotes(data.admin_notes || "");
-        setDiscount(data.discount ? String(data.discount) : "");
-        if (data.vehicle_id) {
-          const { data: v } = await supabase.from("vehicles").select("brand, model, trim, slug, registration_year, price").eq("id", data.vehicle_id).maybeSingle();
-          if (!cancelled) setVehicle(v);
-        }
+      if (cancelled || !data) {
+        if (!cancelled) setLoading(false);
+        return;
       }
+
+      // Viatura primeiro: o preço dela é a base do preenchimento automático.
+      let vehicleData: ProposalVehicle | null = null;
+      if (data.vehicle_id) {
+        const { data: v } = await supabase
+          .from("vehicles")
+          .select("brand, model, trim, slug, registration_year, price")
+          .eq("id", data.vehicle_id)
+          .maybeSingle();
+        vehicleData = (v as ProposalVehicle | null) ?? null;
+      }
+      if (cancelled) return;
+
+      // Preenchimento automático: o que veio vazio é calculado a partir do
+      // preço da viatura e dos extras que o cliente escolheu no configurador.
+      const extras = Array.isArray(data.selected_extras) ? (data.selected_extras as ExtraItem[]) : [];
+      const extrasTotal =
+        data.extras_total != null
+          ? Number(data.extras_total)
+          : extras.reduce((sum, extra) => sum + (Number(extra.price) || 0), 0);
+      const basePrice =
+        data.base_price != null
+          ? Number(data.base_price)
+          : vehicleData?.price != null
+            ? Number(vehicleData.price)
+            : null;
+      const totalPrice =
+        data.total_price != null
+          ? Number(data.total_price)
+          : basePrice != null
+            ? basePrice + extrasTotal
+            : null;
+      const discountValue = data.discount != null ? Number(data.discount) : 0;
+      const finalPrice =
+        data.final_price != null
+          ? Number(data.final_price)
+          : totalPrice != null
+            ? Math.max(0, totalPrice - discountValue)
+            : null;
+
+      setProposal({
+        ...(data as Proposal),
+        base_price: basePrice,
+        extras_total: extrasTotal,
+        total_price: totalPrice,
+        final_price: finalPrice,
+      });
+      setVehicle(vehicleData);
+      setAutoFilled(
+        data.base_price == null || data.extras_total == null || data.total_price == null || data.final_price == null
+      );
+      setStatus(data.status || "pending");
+      setAdminNotes(data.admin_notes || "");
+      setDiscount(data.discount ? String(data.discount) : "");
       setLoading(false);
     })();
     return () => {
@@ -96,11 +145,22 @@ export default function PropostaDetalhe() {
     const finalPrice = total != null ? Math.max(0, total - discountValue) : null;
     const { error } = await supabase
       .from("sale_proposals")
-      .update({ status, admin_notes: adminNotes, discount: discountValue, final_price: finalPrice })
+      .update({
+        status,
+        admin_notes: adminNotes,
+        // Os valores automáticos também ficam gravados (útil nas propostas
+        // antigas que só tinham o total em branco).
+        base_price: proposal.base_price,
+        extras_total: proposal.extras_total,
+        total_price: proposal.total_price,
+        discount: discountValue,
+        final_price: finalPrice,
+      })
       .eq("id", proposal.id);
     if (error) alert("Erro ao guardar: " + error.message);
     else {
       setProposal({ ...proposal, status, admin_notes: adminNotes, discount: discountValue, final_price: finalPrice });
+      setAutoFilled(false);
       alert("Guardado com sucesso");
       router.refresh();
     }
@@ -192,6 +252,11 @@ export default function PropostaDetalhe() {
           <p className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--copper-deep)" }}>
             Viatura configurada
           </p>
+          {autoFilled && (
+            <p className="mb-3 rounded px-3 py-2 text-[11px] leading-5" style={{ backgroundColor: "var(--background-alt)", color: "var(--muted)" }}>
+              Os valores em branco foram preenchidos automaticamente com o preço da viatura e os extras escolhidos. Guarda a proposta para fixar estes números.
+            </p>
+          )}
           {vehicle ? (
             <div className="mb-4">
               <p style={{ color: "var(--foreground)" }}>

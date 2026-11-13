@@ -187,7 +187,11 @@ export function VehiclePurchase({
     setSending(true);
     try {
       const { data: authData } = await supabase.auth.getUser();
+      // Id gerado aqui: a política de RLS deixa inserir mas não ler a proposta,
+      // por isso é este id que segue no email ao gestor (link direto ao BO).
+      const proposalId = crypto.randomUUID();
       const payload = {
+        id: proposalId,
         vehicle_id: vehicleId,
         user_id: authData?.user?.id ?? null,
         name: form.name.trim(),
@@ -217,7 +221,13 @@ export function VehiclePurchase({
         const response = await fetch("/api/proposals/notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, vehicle_slug: vehicleSlug, vehicle_name: vehicleName }),
+          body: JSON.stringify({
+            ...payload,
+            proposal_id: proposalId,
+            vehicle_slug: vehicleSlug,
+            vehicle_name: vehicleName,
+            vehicle_image: photoUrl,
+          }),
         });
         if (response.ok) {
           const result = (await response.json().catch(() => null)) as
