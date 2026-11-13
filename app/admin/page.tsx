@@ -1,6 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
+// Datas curtas para as listas de atividade (dd/mm/aaaa).
+const formatDate = (value: string | null) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+// Os estados vivem em inglês na base de dados; aqui só se mostram em português.
+const statusLabels: Record<string, string> = {
+  new: "Novo",
+  read: "Lido",
+  replied: "Respondido",
+  pending: "Pendente",
+  confirmed: "Confirmado",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+};
+
+const statusTone = (status: string) => {
+  if (status === "new" || status === "pending") return "var(--copper-deep)";
+  if (status === "cancelled") return "var(--red-light)";
+  return "var(--muted)";
+};
+
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
@@ -34,144 +59,264 @@ export default async function AdminDashboard() {
     .order("created_at", { ascending: false })
     .limit(5);
 
-  const stats = [
-    { label: "Total Viaturas", value: totalVehicles ?? 0, color: "var(--copper-deep)", href: "/admin/veiculos" },
-    { label: "Disponíveis", value: availableVehicles ?? 0, color: "#22c55e", href: "/admin/veiculos" },
-    { label: "Reservadas", value: reservedVehicles ?? 0, color: "#f59e0b", href: "/admin/veiculos" },
-    { label: "Vendidas", value: soldVehicles ?? 0, color: "#ef4444", href: "/admin/veiculos" },
-    { label: "Contactos Novos", value: newContacts ?? 0, color: "#ec4899", href: "/admin/pedidos" },
-    { label: "Test Drives", value: pendingTestDrives ?? 0, color: "#8b5cf6", href: "/admin/pedidos" },
+  const total = totalVehicles ?? 0;
+  const available = availableVehicles ?? 0;
+  const reserved = reservedVehicles ?? 0;
+  const sold = soldVehicles ?? 0;
+  const contacts = newContacts ?? 0;
+  const testDrives = pendingTestDrives ?? 0;
+  const awaitingReply = contacts + testDrives;
+  const share = (value: number) => (total > 0 ? Math.round((value / total) * 100) : 0);
+
+  // Catálogo: três métricas secundárias, todas com o mesmo peso.
+  const catalog = [
+    { label: "Disponíveis", value: available, color: "var(--copper)" },
+    { label: "Reservadas", value: reserved, color: "var(--warning)" },
+    { label: "Vendidas", value: sold, color: "var(--muted-deep)" },
   ];
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
-          Dashboard
-        </h1>
-        <Link
-          href="/admin/analytics"
-          className="text-xs uppercase tracking-widest px-4 py-2 border rounded"
-          style={{ borderColor: "var(--copper-deep)", color: "var(--copper-deep)" }}
-        >
-          📊 Analytics
-        </Link>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Link
-            key={stat.label}
-            href={stat.href}
-            className="block border p-5 rounded transition-colors hover:border-[var(--copper-deep)]"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+      {/* Cabeçalho: título + a única ação principal (plana, sem gradientes). */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1
+            className="text-2xl uppercase tracking-wide"
+            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
           >
-            <p className="text-3xl font-display" style={{ color: stat.color }}>
-              {stat.value}
-            </p>
-            <p className="mt-1 text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>
-              {stat.label}
-            </p>
+            Dashboard
+          </h1>
+          <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+            Estado atual — os números são lidos a cada carregamento.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/analytics"
+            className="inline-flex min-h-11 items-center rounded border px-3 text-xs uppercase tracking-widest transition-colors hover:text-foreground"
+            style={{ borderColor: "var(--border)", color: "var(--muted)" }}
+          >
+            Analytics
           </Link>
-        ))}
+          <Link
+            href="/admin/veiculos/novo"
+            className="inline-flex min-h-11 items-center rounded px-4 text-xs uppercase tracking-widest transition-opacity hover:opacity-90"
+            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
+          >
+            + Nova viatura
+          </Link>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/admin/veiculos/novo"
-          className="block border p-4 rounded text-center transition-colors hover:border-[#22c55e]"
-          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+      {/* Métrica principal: o que está à espera de resposta. O número é o herói. */}
+      <section
+        className="rounded-md border p-5 sm:p-6"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+      >
+        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: "var(--copper-deep)" }}>
+          Pedidos por responder
+        </p>
+        <p
+          className="mt-2 text-5xl leading-none tabular-nums"
+          style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
         >
-          <span className="text-2xl">🚗</span>
-          <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#22c55e" }}>
-            Nova Viatura
-          </p>
-        </Link>
-        <Link
-          href="/admin/pedidos"
-          className="block border p-4 rounded text-center transition-colors hover:border-[#f59e0b]"
-          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
-        >
-          <span className="text-2xl">📬</span>
-          <p className="mt-2 text-sm font-display uppercase tracking-wide" style={{ color: "#f59e0b" }}>
-            Ver Pedidos
-          </p>
-        </Link>
-      </div>
+          {awaitingReply}
+        </p>
+        <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
+          {awaitingReply === 0
+            ? "Nada à espera de resposta. Tudo tratado."
+            : "Contactos e pedidos de test drive que ainda não tiveram resposta."}
+        </p>
 
-      {/* Recent Activity */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {/* Recent Contacts */}
-        <div className="border rounded p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
-              Contactos Recentes
+        <div
+          className="mt-5 grid gap-3 border-t pt-4 sm:grid-cols-2"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <Link
+            href="/admin/pedidos"
+            className="group flex items-baseline justify-between gap-3 rounded px-1 py-1 transition-colors hover:text-foreground"
+            style={{ color: "var(--muted)" }}
+          >
+            <span className="text-sm">Contactos novos</span>
+            <span className="flex items-baseline gap-2">
+              <span
+                className="text-xl tabular-nums"
+                style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+              >
+                {contacts}
+              </span>
+              <span aria-hidden="true" className="text-xs transition-transform group-hover:translate-x-0.5">→</span>
+            </span>
+          </Link>
+          <Link
+            href="/admin/pedidos"
+            className="group flex items-baseline justify-between gap-3 rounded px-1 py-1 transition-colors hover:text-foreground sm:border-l sm:pl-4"
+            style={{ color: "var(--muted)", borderColor: "var(--border)" }}
+          >
+            <span className="text-sm">Test drives pendentes</span>
+            <span className="flex items-baseline gap-2">
+              <span
+                className="text-xl tabular-nums"
+                style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+              >
+                {testDrives}
+              </span>
+              <span aria-hidden="true" className="text-xs transition-transform group-hover:translate-x-0.5">→</span>
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      {/* Catálogo: 3 métricas secundárias, mais pequenas, com uma barra plana
+          que dá o peso relativo de cada estado (a cor tem significado). */}
+      <section
+        className="mt-3 rounded-md border"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+      >
+        <div
+          className="flex flex-wrap items-baseline justify-between gap-2 border-b px-4 py-3"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <h2
+            className="text-xs uppercase tracking-[0.18em]"
+            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+          >
+            Catálogo
+          </h2>
+          <p className="text-xs tabular-nums" style={{ color: "var(--muted)" }}>
+            {total} {total === 1 ? "viatura" : "viaturas"} no total
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3">
+          {catalog.map((item, index) => (
+            <Link
+              key={item.label}
+              href="/admin/veiculos"
+              className={`block px-4 py-3 transition-colors hover:bg-surface-raised ${
+                index > 0 ? "border-t sm:border-t-0 sm:border-l" : ""
+              }`}
+              style={{ borderColor: "var(--border)" }}
+            >
+              <p className="text-xs uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+                {item.label}
+              </p>
+              <p className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+                  {item.value}
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: "var(--muted)" }}>
+                  {share(item.value)}%
+                </span>
+              </p>
+            </Link>
+          ))}
+        </div>
+
+        <div className="px-4 pb-4" aria-hidden="true">
+          <div className="flex h-1.5 w-full overflow-hidden rounded-sm" style={{ backgroundColor: "var(--surface-raised)" }}>
+            {catalog.map((item) => (
+              <span key={item.label} style={{ width: `${share(item.value)}%`, backgroundColor: item.color }} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Atividade recente */}
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-md border" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+            <h2
+              className="text-xs uppercase tracking-[0.18em]"
+              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            >
+              Contactos recentes
             </h2>
-            <Link href="/admin/pedidos" className="text-xs" style={{ color: "var(--copper-deep)" }}>
+            <Link href="/admin/pedidos" className="text-xs transition-colors hover:text-foreground" style={{ color: "var(--copper-deep)" }}>
               Ver todos →
             </Link>
           </div>
-          {(!recentContacts || recentContacts.length === 0) ? (
-            <p className="text-sm" style={{ color: "var(--muted)" }}>Sem contactos ainda.</p>
+          {!recentContacts || recentContacts.length === 0 ? (
+            <p className="px-4 py-6 text-sm" style={{ color: "var(--muted)" }}>Sem contactos ainda.</p>
           ) : (
-            <div className="space-y-3">
-              {recentContacts.map((c) => (
-                <div key={c.id} className="flex items-start justify-between border-b pb-3" style={{ borderColor: "var(--border)" }}>
-                  <div>
-                    <p className="text-sm" style={{ color: "var(--foreground)" }}>{c.name}</p>
-                    <p className="text-xs" style={{ color: "var(--muted)" }}>{c.email}</p>
-                    {c.message && <p className="text-xs mt-1 truncate max-w-[200px]" style={{ color: "var(--muted-deep)" }}>{c.message}</p>}
+            <ul>
+              {recentContacts.map((contact) => (
+                <li
+                  key={contact.id}
+                  className="flex items-start justify-between gap-3 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-raised"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm" style={{ color: "var(--foreground)" }}>{contact.name}</p>
+                    <p className="truncate text-xs" style={{ color: "var(--muted)" }}>{contact.email || "—"}</p>
+                    {contact.message && (
+                      <p className="mt-1 truncate text-xs" style={{ color: "var(--muted-deep)" }} title={contact.message}>
+                        {contact.message}
+                      </p>
+                    )}
                   </div>
-                  <span
-                    className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
-                    style={{
-                      backgroundColor: c.status === "new" ? "#22c55e20" : "#f59e0b20",
-                      color: c.status === "new" ? "#22c55e" : "#f59e0b",
-                    }}
-                  >
-                    {c.status}
-                  </span>
-                </div>
+                  <div className="shrink-0 text-right">
+                    <span
+                      className="text-[10px] uppercase tracking-wider"
+                      style={{ color: statusTone(contact.status) }}
+                    >
+                      {statusLabels[contact.status] || contact.status || "—"}
+                    </span>
+                    <p className="mt-1 text-[11px] tabular-nums" style={{ color: "var(--muted-deep)" }}>
+                      {formatDate(contact.created_at)}
+                    </p>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
 
-        {/* Recent Test Drives */}
-        <div className="border rounded p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
-              Test Drives Recentes
+        <div className="rounded-md border" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+            <h2
+              className="text-xs uppercase tracking-[0.18em]"
+              style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+            >
+              Test drives recentes
             </h2>
-            <Link href="/admin/pedidos" className="text-xs" style={{ color: "var(--copper-deep)" }}>
+            <Link href="/admin/pedidos" className="text-xs transition-colors hover:text-foreground" style={{ color: "var(--copper-deep)" }}>
               Ver todos →
             </Link>
           </div>
-          {(!recentTestDrives || recentTestDrives.length === 0) ? (
-            <p className="text-sm" style={{ color: "var(--muted)" }}>Sem test drives ainda.</p>
+          {!recentTestDrives || recentTestDrives.length === 0 ? (
+            <p className="px-4 py-6 text-sm" style={{ color: "var(--muted)" }}>Sem test drives ainda.</p>
           ) : (
-            <div className="space-y-3">
-              {recentTestDrives.map((d) => (
-                <div key={d.id} className="flex items-start justify-between border-b pb-3" style={{ borderColor: "var(--border)" }}>
-                  <div>
-                    <p className="text-sm" style={{ color: "var(--foreground)" }}>{d.name}</p>
-                    <p className="text-xs" style={{ color: "var(--muted)" }}>{d.email}</p>
-                    {d.preferred_date && <p className="text-xs mt-1" style={{ color: "var(--muted-deep)" }}>📅 {d.preferred_date}</p>}
+            <ul>
+              {recentTestDrives.map((drive) => (
+                <li
+                  key={drive.id}
+                  className="flex items-start justify-between gap-3 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-raised"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm" style={{ color: "var(--foreground)" }}>{drive.name}</p>
+                    <p className="truncate text-xs" style={{ color: "var(--muted)" }}>{drive.email || "—"}</p>
+                    {drive.preferred_date && (
+                      <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--muted-deep)" }}>
+                        Preferida: {formatDate(drive.preferred_date)}
+                      </p>
+                    )}
                   </div>
-                  <span
-                    className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
-                    style={{
-                      backgroundColor: d.status === "pending" ? "#8b5cf620" : "#22c55e20",
-                      color: d.status === "pending" ? "#8b5cf6" : "#22c55e",
-                    }}
-                  >
-                    {d.status}
-                  </span>
-                </div>
+                  <div className="shrink-0 text-right">
+                    <span
+                      className="text-[10px] uppercase tracking-wider"
+                      style={{ color: statusTone(drive.status) }}
+                    >
+                      {statusLabels[drive.status] || drive.status || "—"}
+                    </span>
+                    <p className="mt-1 text-[11px] tabular-nums" style={{ color: "var(--muted-deep)" }}>
+                      {formatDate(drive.created_at)}
+                    </p>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>

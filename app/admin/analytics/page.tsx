@@ -49,8 +49,6 @@ export default async function AnalyticsPage() {
 
   const kms = v.filter((x) => x.mileage_km != null).map((x) => x.mileage_km as number);
   const avgKm = kms.length ? Math.round(kms.reduce((a, b) => a + b, 0) / kms.length) : 0;
-  const maxKm = kms.length ? Math.max(...kms) : 0;
-  const minKm = kms.length ? Math.min(...kms) : 0;
 
   const powers = v.filter((x) => x.power_hp != null).map((x) => x.power_hp as number);
   const avgPower = powers.length ? Math.round(powers.reduce((a, b) => a + b, 0) / powers.length) : 0;
@@ -59,10 +57,11 @@ export default async function AnalyticsPage() {
   const avgYear = years.length ? Math.round(years.reduce((a, b) => a + b, 0) / years.length) : 0;
 
   // ─── Group by Status ───
+  // Só o estado tem cores com significado (disponível/reservada/vendida).
   const statusGroups = [
-    { label: "Disponíveis", count: available.length, color: "#22c55e" },
-    { label: "Reservadas", count: reserved.length, color: "#f59e0b" },
-    { label: "Vendidas", count: sold.length, color: "#ef4444" },
+    { label: "Disponíveis", count: available.length, color: "var(--success)" },
+    { label: "Reservadas", count: reserved.length, color: "var(--warning)" },
+    { label: "Vendidas", count: sold.length, color: "var(--red-light)" },
   ];
 
   // ─── Group by Fuel ───
@@ -73,7 +72,6 @@ export default async function AnalyticsPage() {
   });
   const fuelGroups = Array.from(fuelMap.entries()).map(([label, count]) => ({
     label, count,
-    color: label === "diesel" ? "var(--copper-deep)" : label === "gasoline" ? "#3b82f6" : "#8b5cf6",
   }));
 
   // ─── Group by Transmission ───
@@ -85,7 +83,6 @@ export default async function AnalyticsPage() {
   const transGroups = Array.from(transMap.entries()).map(([label, count]) => ({
     label: label === "automatic" ? "Automática" : label === "manual" ? "Manual" : label,
     count,
-    color: label === "automatic" ? "#22c55e" : "#f59e0b",
   }));
 
   // ─── Group by Color ───
@@ -121,7 +118,7 @@ export default async function AnalyticsPage() {
   const kmDistribution = kmRanges.map((range) => ({
     label: range.label,
     count: kms.filter((k) => k >= range.min && k < range.max).length,
-    color: "#3b82f6",
+    color: "var(--copper-deep)",
   }));
 
   // ─── Year Distribution ───
@@ -130,7 +127,7 @@ export default async function AnalyticsPage() {
     if (x.registration_year) yearMap.set(x.registration_year, (yearMap.get(x.registration_year) || 0) + 1);
   });
   const yearGroups = Array.from(yearMap.entries())
-    .map(([year, count]) => ({ label: String(year), count, color: "#8b5cf6" }))
+    .map(([year, count]) => ({ label: String(year), count, color: "var(--copper-deep)" }))
     .sort((a, b) => Number(a.label) - Number(b.label));
 
   // ─── Recent vehicles ───
@@ -146,107 +143,115 @@ export default async function AnalyticsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
-            📊 Analytics
+            Analytics
           </h1>
-          <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
-            Dados de viaturas, contactos e test drives
+          <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+            Estado atual do catálogo — sem período histórico.
           </p>
         </div>
-        <Link href="/admin" className="text-xs uppercase tracking-widest px-4 py-2 border rounded" style={{ borderColor: "var(--border)", color: "var(--muted)" }}>
+        <Link
+          href="/admin"
+          className="inline-flex min-h-11 items-center rounded border px-3 text-xs uppercase tracking-widest transition-colors hover:text-foreground"
+          style={{ borderColor: "var(--border)", color: "var(--muted)" }}
+        >
           ← Dashboard
         </Link>
       </div>
 
-      {/* ─── KPI Cards ─── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <p className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Preço Médio</p>
-          <p className="text-2xl font-display mt-1" style={{ color: "var(--copper-deep)" }}>
+      {/* ─── KPI: preço médio em destaque, três métricas de apoio ao lado ─── */}
+      <div className="mb-4 grid gap-3 lg:grid-cols-3">
+        <div
+          className="rounded-md border p-5 lg:col-span-2"
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+        >
+          <p className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Preço médio</p>
+          <p
+            className="mt-2 text-4xl leading-none tabular-nums"
+            style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+          >
             {avgPrice.toLocaleString("pt-PT")} €
           </p>
-          <p className="text-[10px] mt-1" style={{ color: "var(--muted-deep)" }}>
-            Min: {minPrice.toLocaleString("pt-PT")} € · Max: {maxPrice.toLocaleString("pt-PT")} €
+          <p className="mt-2 text-xs tabular-nums" style={{ color: "var(--muted)" }}>
+            {prices.length} {prices.length === 1 ? "viatura com preço" : "viaturas com preço"} · mínimo{" "}
+            {minPrice.toLocaleString("pt-PT")} € · máximo {maxPrice.toLocaleString("pt-PT")} €
           </p>
         </div>
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <p className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>KM Médio</p>
-          <p className="text-2xl font-display mt-1" style={{ color: "#3b82f6" }}>
-            {avgKm.toLocaleString("pt-PT")} km
-          </p>
-          <p className="text-[10px] mt-1" style={{ color: "var(--muted-deep)" }}>
-            Min: {minKm.toLocaleString("pt-PT")} · Max: {maxKm.toLocaleString("pt-PT")}
-          </p>
-        </div>
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <p className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Potência Média</p>
-          <p className="text-2xl font-display mt-1" style={{ color: "#22c55e" }}>
-            {avgPower} cv
-          </p>
-          <p className="text-[10px] mt-1" style={{ color: "var(--muted-deep)" }}>
-            {powers.length} viaturas com dados
-          </p>
-        </div>
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <p className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Ano Médio</p>
-          <p className="text-2xl font-display mt-1" style={{ color: "#8b5cf6" }}>
-            {avgYear}
-          </p>
-          <p className="text-[10px] mt-1" style={{ color: "var(--muted-deep)" }}>
-            {years.length} viaturas
-          </p>
+
+        <div
+          className="divide-y rounded-md border px-4"
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+        >
+          <div className="flex items-baseline justify-between gap-3 py-3">
+            <span className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>KM médio</span>
+            <span className="text-lg tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+              {avgKm.toLocaleString("pt-PT")} km
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 py-3">
+            <span className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Potência média</span>
+            <span className="text-lg tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+              {avgPower} cv
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-3 py-3">
+            <span className="text-xs uppercase tracking-wide" style={{ color: "var(--muted)" }}>Ano médio</span>
+            <span className="text-lg tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+              {avgYear}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ─── Charts Row ─── */}
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         {/* Price Distribution */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Distribuição por Preço
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Distribuição por preço
           </h2>
           <div className="space-y-3">
             {priceDistribution.map((bar) => (
               <div key={bar.label} className="flex items-center gap-3">
-                <span className="text-xs w-12 text-right" style={{ color: "var(--muted)" }}>{bar.label}</span>
-                <div className="flex-1 h-6 rounded overflow-hidden" style={{ backgroundColor: "var(--background-alt)" }}>
+                <span className="w-12 shrink-0 text-right text-xs tabular-nums" style={{ color: "var(--muted)" }}>{bar.label}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-sm" style={{ backgroundColor: "var(--surface-raised)" }}>
                   <div
-                    className="h-full rounded transition-all"
+                    className="h-full transition-all"
                     style={{
                       width: `${maxBarCount > 0 ? (bar.count / maxBarCount) * 100 : 0}%`,
                       backgroundColor: bar.color,
-                      minWidth: bar.count > 0 ? "24px" : "0",
+                      minWidth: bar.count > 0 ? "6px" : "0",
                     }}
                   />
                 </div>
-                <span className="text-xs font-display w-6" style={{ color: "var(--foreground)" }}>{bar.count}</span>
+                <span className="w-8 shrink-0 text-right text-xs tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{bar.count}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* KM Distribution */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Distribuição por Quilometragem
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Distribuição por quilometragem
           </h2>
           <div className="space-y-3">
             {kmDistribution.map((bar) => (
               <div key={bar.label} className="flex items-center gap-3">
-                <span className="text-xs w-12 text-right" style={{ color: "var(--muted)" }}>{bar.label}</span>
-                <div className="flex-1 h-6 rounded overflow-hidden" style={{ backgroundColor: "var(--background-alt)" }}>
+                <span className="w-12 shrink-0 text-right text-xs tabular-nums" style={{ color: "var(--muted)" }}>{bar.label}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-sm" style={{ backgroundColor: "var(--surface-raised)" }}>
                   <div
-                    className="h-full rounded transition-all"
+                    className="h-full transition-all"
                     style={{
                       width: `${maxBarCount > 0 ? (bar.count / maxBarCount) * 100 : 0}%`,
                       backgroundColor: bar.color,
-                      minWidth: bar.count > 0 ? "24px" : "0",
+                      minWidth: bar.count > 0 ? "6px" : "0",
                     }}
                   />
                 </div>
-                <span className="text-xs font-display w-6" style={{ color: "var(--foreground)" }}>{bar.count}</span>
+                <span className="w-8 shrink-0 text-right text-xs tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{bar.count}</span>
               </div>
             ))}
           </div>
@@ -254,143 +259,155 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* ─── Status + Fuel + Transmission ─── */}
-      <div className="grid gap-6 lg:grid-cols-3 mb-8">
-        {/* By Status */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Por Estado
+      <div className="mb-4 grid gap-3 lg:grid-cols-3">
+        {/* By Status — a única lista com cor, porque o estado tem significado. */}
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Por estado
           </h2>
           <div className="space-y-3">
             {statusGroups.map((g) => (
-              <div key={g.label} className="flex items-center justify-between">
+              <div key={g.label} className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
+                  <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
                   <span className="text-sm" style={{ color: "var(--muted)" }}>{g.label}</span>
                 </div>
-                <span className="font-display text-lg" style={{ color: g.color }}>{g.count}</span>
+                <span className="text-lg tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{g.count}</span>
               </div>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
-            <div className="flex justify-between">
+          <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <div className="flex justify-between gap-3">
               <span className="text-xs" style={{ color: "var(--muted)" }}>Total</span>
-              <span className="font-display text-sm" style={{ color: "var(--foreground)" }}>{v.length}</span>
+              <span className="text-sm tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{v.length}</span>
             </div>
           </div>
         </div>
 
         {/* By Fuel */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Por Combustível
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Por combustível
           </h2>
-          <div className="space-y-3">
-            {fuelGroups.map((g) => (
-              <div key={g.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
-                  <span className="text-sm capitalize" style={{ color: "var(--muted)" }}>{g.label}</span>
+          {fuelGroups.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--muted)" }}>—</p>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {fuelGroups.map((g) => (
+                <div key={g.label} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <span className="truncate text-sm capitalize" style={{ color: "var(--muted)" }}>{g.label}</span>
+                  <span className="text-lg tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{g.count}</span>
                 </div>
-                <span className="font-display text-lg" style={{ color: g.color }}>{g.count}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* By Transmission */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Por Caixa
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Por caixa
           </h2>
-          <div className="space-y-3">
-            {transGroups.map((g) => (
-              <div key={g.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
-                  <span className="text-sm" style={{ color: "var(--muted)" }}>{g.label}</span>
+          {transGroups.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--muted)" }}>—</p>
+          ) : (
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {transGroups.map((g) => (
+                <div key={g.label} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <span className="truncate text-sm" style={{ color: "var(--muted)" }}>{g.label}</span>
+                  <span className="text-lg tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{g.count}</span>
                 </div>
-                <span className="font-display text-lg" style={{ color: g.color }}>{g.count}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* ─── Year + Color ─── */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+      <div className="mb-4 grid gap-3 lg:grid-cols-2">
         {/* By Year */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Por Ano
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Por ano
           </h2>
           <div className="space-y-3">
             {yearGroups.map((bar) => (
               <div key={bar.label} className="flex items-center gap-3">
-                <span className="text-xs w-10 text-right" style={{ color: "var(--muted)" }}>{bar.label}</span>
-                <div className="flex-1 h-6 rounded overflow-hidden" style={{ backgroundColor: "var(--background-alt)" }}>
+                <span className="w-10 shrink-0 text-right text-xs tabular-nums" style={{ color: "var(--muted)" }}>{bar.label}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-sm" style={{ backgroundColor: "var(--surface-raised)" }}>
                   <div
-                    className="h-full rounded"
+                    className="h-full"
                     style={{
                       width: `${v.length > 0 ? (bar.count / v.length) * 100 : 0}%`,
                       backgroundColor: bar.color,
-                      minWidth: bar.count > 0 ? "24px" : "0",
+                      minWidth: bar.count > 0 ? "6px" : "0",
                     }}
                   />
                 </div>
-                <span className="text-xs font-display w-6" style={{ color: "var(--foreground)" }}>{bar.count}</span>
+                <span className="w-8 shrink-0 text-right text-xs tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{bar.count}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* By Color */}
-        <div className="border p-5 rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-            Por Cor
+        <div className="rounded-md border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+          <h2 className="mb-4 text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Por cor
           </h2>
-          <div className="space-y-2">
+          <div>
             {colorGroups.map((g) => (
-              <div key={g.label} className="flex items-center justify-between py-1.5 border-b" style={{ borderColor: "var(--border)" }}>
-                <span className="text-sm" style={{ color: "var(--muted)" }}>{g.label}</span>
-                <span className="font-display text-sm" style={{ color: "var(--foreground)" }}>{g.count}</span>
+              <div key={g.label} className="flex items-center justify-between gap-3 border-b py-2 last:border-b-0" style={{ borderColor: "var(--border)" }}>
+                <span className="truncate text-sm" style={{ color: "var(--muted)" }}>{g.label || "—"}</span>
+                <span className="text-sm tabular-nums" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>{g.count}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ─── Summary Stats ─── */}
-      <div className="border p-5 rounded mb-8" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-        <h2 className="text-sm font-display uppercase tracking-wide mb-4" style={{ color: "var(--foreground)" }}>
-          Resumo Geral
+      {/* ─── Resumo geral: uma única cor de destaque, números tabulares ─── */}
+      <section
+        className="mb-4 rounded-md border"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
+      >
+        <h2
+          className="border-b px-4 py-3 text-xs uppercase tracking-[0.18em]"
+          style={{ fontFamily: "var(--font-display)", color: "var(--foreground)", borderColor: "var(--border)" }}
+        >
+          Resumo
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Total Viaturas</p>
-            <p className="font-display text-xl" style={{ color: "var(--copper-deep)" }}>{v.length}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Total Contactos</p>
-            <p className="font-display text-xl" style={{ color: "#ec4899" }}>{totalContacts ?? 0}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Test Drives</p>
-            <p className="font-display text-xl" style={{ color: "#8b5cf6" }}>{totalTestDrives ?? 0}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Valor Total Stock</p>
-            <p className="font-display text-xl" style={{ color: "#22c55e" }}>
-              {prices.reduce((a, b) => a + b, 0).toLocaleString("pt-PT")} €
-            </p>
-          </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Viaturas", value: String(v.length) },
+            { label: "Contactos", value: String(totalContacts ?? 0) },
+            { label: "Test drives", value: String(totalTestDrives ?? 0) },
+            { label: "Valor do stock", value: `${prices.reduce((a, b) => a + b, 0).toLocaleString("pt-PT")} €` },
+          ].map((item, index) => (
+            <div
+              key={item.label}
+              className={`px-4 py-3 ${index > 0 ? "border-t sm:border-t-0 sm:border-l" : ""} ${
+                index === 2 ? "sm:border-t lg:border-t-0" : ""
+              } ${index === 3 ? "sm:border-l-0 lg:border-l" : ""}`}
+              style={{ borderColor: "var(--border)" }}
+            >
+              <p className="text-xs uppercase tracking-widest" style={{ color: "var(--muted)" }}>{item.label}</p>
+              <p
+                className="mt-1 text-xl tabular-nums"
+                style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}
+              >
+                {item.value}
+              </p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
       {/* ─── Recent Vehicles Table ─── */}
-      <div className="border rounded" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
-        <div className="p-5 border-b" style={{ borderColor: "var(--border)" }}>
-          <h2 className="text-sm font-display uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
-            Viaturas Mais Recentes
+      <div className="rounded-md border" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
+        <div className="border-b p-4" style={{ borderColor: "var(--border)" }}>
+          <h2 className="text-xs uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
+            Viaturas mais recentes
           </h2>
         </div>
         <div className="md:overflow-x-auto">
@@ -406,6 +423,13 @@ export default async function AnalyticsPage() {
               </tr>
             </thead>
             <tbody>
+              {recent.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-6 text-center" style={{ color: "var(--muted)" }}>
+                    Sem viaturas registadas.
+                  </td>
+                </tr>
+              )}
               {recent.map((car) => (
                 <tr key={car.id} style={{ borderBottom: "1px solid var(--border)" }}>
                   <td data-label="Viatura" className="px-5 py-3" style={{ color: "var(--foreground)" }}>
@@ -422,14 +446,22 @@ export default async function AnalyticsPage() {
                     {car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "—"}
                   </td>
                   <td data-label="Estado" className="px-5 py-3">
-                    <span
-                      className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded"
-                      style={{
-                        backgroundColor: car.status === "available" ? "#22c55e20" : car.status === "reserved" ? "#f59e0b20" : "#ef444420",
-                        color: car.status === "available" ? "#22c55e" : car.status === "reserved" ? "#f59e0b" : "#ef4444",
-                      }}
-                    >
-                      {car.status === "available" ? "Disponível" : car.status === "reserved" ? "Reservada" : "Vendida"}
+                    <span className="inline-flex items-center gap-2 text-xs">
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor:
+                            car.status === "available"
+                              ? "var(--success)"
+                              : car.status === "reserved"
+                                ? "var(--warning)"
+                                : "var(--red-light)",
+                        }}
+                      />
+                      <span style={{ color: "var(--muted)" }}>
+                        {car.status === "available" ? "Disponível" : car.status === "reserved" ? "Reservada" : "Vendida"}
+                      </span>
                     </span>
                   </td>
                 </tr>
