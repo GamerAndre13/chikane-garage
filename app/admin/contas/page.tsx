@@ -137,10 +137,10 @@ export default function ContasPage() {
           <tbody>
             {items.map((item) => (
               <tr key={item.id} className="border-b" style={{ borderColor: "var(--border)" }}>
-                <td data-label="Utilizador" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.full_name || "-"}</td>
-                <td data-label="Email" className="px-4 py-3 break-all" style={{ color: "var(--foreground)" }}>{item.email || "-"}</td>
+                <td data-label="Utilizador" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.full_name || "—"}</td>
+                <td data-label="Email" className="px-4 py-3 break-all" style={{ color: "var(--foreground)" }}>{item.email || "—"}</td>
                 <td data-label="Pedido em" className="px-4 py-3" style={{ color: "var(--muted)" }}>{formatDate(item.deletion_requested_at)}</td>
-                <td className="px-4 py-3 text-right flex gap-2 justify-end">
+                <td className="table-actions px-4 py-3 text-right flex gap-2 justify-end">
                   <button
                     onClick={() => approveDelete(item.id)}
                     disabled={actingId === item.id}

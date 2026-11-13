@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import TableDensity from "./TableDensity";
 
 const navGroups = [
   {
@@ -237,6 +238,9 @@ export default function AdminSidebar() {
           ))}
         </nav>
         <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
+          <div className="mb-3">
+            <TableDensity />
+          </div>
           <Link
             href="/"
             className="block rounded px-3 py-2 text-xs transition-colors hover:text-foreground"

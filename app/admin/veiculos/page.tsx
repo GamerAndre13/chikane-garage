@@ -218,16 +218,20 @@ export default function VeiculosList() {
               return (
                 <tr key={v.id} className="border-b transition-colors" style={{ borderColor: "var(--border)" }}>
                   <td data-label="Modelo" className="px-4 py-3" style={{ color: "var(--foreground)" }}>
-                    {v.brand} {v.model} {v.trim || ""}
-                    {v.sale_type === "new" && (
-                      <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "rgba(244,119,36,0.15)", color: "var(--copper-deep)", border: "1px solid rgba(244,119,36,0.4)" }}>
-                        Novo
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="min-w-0 max-w-[20rem] truncate" title={`${v.brand ?? ""} ${v.model ?? ""} ${v.trim ?? ""}`.trim()}>
+                        {v.brand} {v.model} {v.trim || ""}
                       </span>
-                    )}
+                      {v.sale_type === "new" && (
+                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "rgba(244,119,36,0.15)", color: "var(--copper-deep)", border: "1px solid rgba(244,119,36,0.4)" }}>
+                          Novo
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td data-label="Ano" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{v.registration_year}</td>
                   <td data-label="Preço" className="px-4 py-3 tabular-nums" style={{ color: "var(--foreground)" }}>
-                    {v.price ? `${v.price.toLocaleString("pt-PT")} €` : "-"}
+                    {v.price ? `${v.price.toLocaleString("pt-PT")} €` : "—"}
                   </td>
                   <td data-label="Status" className="px-4 py-3">
                     <select
@@ -265,7 +269,7 @@ export default function VeiculosList() {
                       {v.spotlight ? "★ Destaque" : "☆ Destaque"}
                     </button>
                   </td>
-                  <td data-label="Ações" className="px-4 py-3 text-right">
+                  <td data-label="Ações" className="table-actions px-4 py-3 text-right">
                     <Link
                       href={`/admin/veiculos/editar/${v.id}`}
                       className="mr-1 inline-flex min-h-11 items-center px-2 text-xs transition-colors md:mr-3 md:min-h-0 md:px-0"

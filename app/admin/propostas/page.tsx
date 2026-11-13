@@ -131,13 +131,17 @@ export default function PropostasPage() {
               const original = p.total_price != null ? Number(p.total_price) : null;
               const finalPrice = p.final_price != null ? Number(p.final_price) : original;
               const hasDiscount = p.discount != null && Number(p.discount) > 0;
-              const total = finalPrice != null ? `${finalPrice.toLocaleString("pt-PT")} €` : "-";
+              const total = finalPrice != null ? `${finalPrice.toLocaleString("pt-PT")} €` : "—";
               const date = new Date(p.created_at).toLocaleString("pt-PT");
               return (
                 <tr key={p.id} className="border-b" style={{ borderColor: "var(--border)" }}>
                   <td data-label="Cliente" className="px-4 py-3">
-                    <div style={{ color: "var(--foreground)" }}>{p.name}</div>
-                    <div className="text-xs" style={{ color: "var(--muted)" }}>
+                    <div className="max-w-[16rem] truncate" title={p.name} style={{ color: "var(--foreground)" }}>{p.name}</div>
+                    <div
+                      className="max-w-[16rem] truncate text-xs"
+                      title={`${p.email}${p.phone ? ` • ${p.phone}` : ""}`}
+                      style={{ color: "var(--muted)" }}
+                    >
                       {p.email}
                       {p.phone ? ` • ${p.phone}` : ""}
                     </div>
@@ -177,7 +181,7 @@ export default function PropostasPage() {
                   <td data-label="Data" className="px-4 py-3 text-xs" style={{ color: "var(--muted)" }}>
                     {date}
                   </td>
-                  <td data-label="Ações" className="px-4 py-3 text-right">
+                  <td data-label="Ações" className="table-actions px-4 py-3 text-right">
                     <Link
                       href={`/admin/propostas/${p.id}`}
                       className="inline-flex min-h-11 items-center text-xs transition-colors md:min-h-0"
