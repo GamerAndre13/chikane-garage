@@ -70,6 +70,10 @@ a, button { -webkit-tap-highlight-color: transparent; touch-action: manipulation
   textarea {
     font-size: 16px;
   }
+  /* Alvo de toque dos selects: 44px de altura no telemóvel. */
+  select {
+    min-height: 44px;
+  }
 }
 
 /* ── Cursor de mão em tudo o que é clicável ──
@@ -136,6 +140,49 @@ button:disabled,
   /* Alvos de toque: 44px nas ações dentro dos cartões. */
   .admin-table td button,
   .admin-table td a { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* ── Tabelas do backoffice no computador ──
+   Hairline entre linhas (sem zebra), destaque suave sob o cursor e as ações
+   escondidas até a linha estar ativa. No telemóvel os cartões mostram tudo. */
+@media (min-width: 641px) {
+  .admin-table tbody tr:hover,
+  .admin-table tbody tr:focus-within {
+    background-color: color-mix(in srgb, var(--foreground) 4%, transparent);
+  }
+  /* Densidade: compacta 40px, padrão 48px, confortável 56px. */
+  html[data-table-density="compact"] .admin-table thead th,
+  html[data-table-density="compact"] .admin-table tbody td {
+    height: 40px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  html[data-table-density="normal"] .admin-table thead th,
+  html[data-table-density="normal"] .admin-table tbody td {
+    height: 48px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  html[data-table-density="comfortable"] .admin-table thead th,
+  html[data-table-density="comfortable"] .admin-table tbody td {
+    height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* Ações da linha: aparecem ao passar o rato ou ao chegar lá pelo teclado.
+   Só em apontadores finos — no toque não há hover, e os cartões mostram tudo. */
+@media (min-width: 641px) and (hover: hover) and (pointer: fine) {
+  .table-actions {
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+  }
+  .admin-table tbody tr:hover .table-actions,
+  .admin-table tbody tr:focus-within .table-actions,
+  .table-actions:focus-within {
+    opacity: 1;
+  }
 }
 
 /* ── Popovers/menus: entram a partir de 0.95, sem bounce ── */

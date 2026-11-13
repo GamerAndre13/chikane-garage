@@ -88,7 +88,22 @@ const inputStyle = {
   fontSize: "0.875rem",
 } as const;
 
-const selectStyle = { ...inputStyle, appearance: "none" as const };
+// Seta desenhada por nós: os selects usam `appearance:none` para ficarem
+// iguais em todos os browsers, por isso a seta nativa desaparece. Altura
+// mínima de 44px para o dedo e espaço à direita para não tapar o texto.
+const selectCaret =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")";
+
+const selectStyle = {
+  ...inputStyle,
+  appearance: "none" as const,
+  minHeight: "2.75rem",
+  paddingRight: "2.1rem",
+  backgroundImage: selectCaret,
+  backgroundRepeat: "no-repeat" as const,
+  backgroundPosition: "right 0.7rem center",
+  backgroundSize: "12px 12px",
+};
 
 const labelStyle = {
   display: "block",

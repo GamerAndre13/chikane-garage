@@ -93,10 +93,40 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, ye
   return <fieldset className="border-0 p-0"><legend className="mb-1.5 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
 }
 
-// Select de filtro simples, sem seta personalizada ("sem nada"): o user abre
-// a lista no clique e escolhe; sem ícones a rodar.
+// Select de filtro. Seta sempre visível (o campo tem de parecer clicável),
+// alvo de 44px no telemóvel e teclado/pesquisa por letras a cargo do select
+// nativo — que também abre para cima quando não há espaço em baixo.
 function SelectField({ label, value, onChange, disabled, placeholder, options }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder: string; options: { value: string; label: string }[] }) {
-  return <label className="block"><span className="mb-1.5 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span><select className={`${control} cursor-pointer`} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}><option value={all}>{placeholder}</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
+  return (
+    <label className="block">
+      <span className="mb-1.5 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span>
+      <span className="relative block">
+        <select
+          className={`${control} min-h-11 cursor-pointer pr-9 hover:border-white/25`}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value={all}>{placeholder}</option>
+          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </span>
+    </label>
+  );
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
