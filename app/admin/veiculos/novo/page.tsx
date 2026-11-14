@@ -18,6 +18,7 @@ import {
   resolveCountryCode,
 } from "@/lib/vehicle-options";
 import { cheapestVariantFor, type ExtraVariantSummary } from "@/lib/extra-variants";
+import { useDialogs } from "@/components/ui/dialogs";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -73,8 +74,8 @@ const initialForm = {
   mileage_km: "",
   previous_owners: "1",
   service_book: "full_dealer",
-  origin: "imported",
-  origin_country: "Alemanha - DE",
+  origin: "national",
+  origin_country: "Portugal",
   price: "",
   warranty_months: "6",
   cover_image_url: "",
@@ -143,6 +144,7 @@ export default function NovoVeiculo() {
   const [extraVariants, setExtraVariants] = useState<ExtraVariantSummary[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { mostrarErro } = useDialogs();
 
   // Catálogo de extras partilhado — gerido em /admin/veiculos/extras.
   // As variantes ativas são carregadas para mostrar sempre a mais barata,
@@ -365,7 +367,11 @@ export default function NovoVeiculo() {
       }).select("id").single();
 
       if (error || !vehicle) {
-        alert("Erro ao guardar: " + (error?.message || "Não foi possível criar a viatura."));
+        mostrarErro({
+          titulo: "Não foi possível criar a viatura",
+          mensagem: "Os dados não foram guardados.",
+          detalhe: error?.message || "Erro inesperado.",
+        });
         return;
       }
 
@@ -373,7 +379,11 @@ export default function NovoVeiculo() {
       if (featureLabels.length) {
         const { error: featureError } = await supabase.from("vehicle_features").insert(featureLabels.map((label) => ({ vehicle_id: vehicle.id, label })));
         if (featureError) {
-          alert("A viatura foi criada, mas o equipamento não foi guardado: " + featureError.message);
+          mostrarErro({
+            titulo: "Viatura criada sem equipamento",
+            mensagem: "A viatura ficou guardada, mas a lista de equipamento não. Completa-a ao editar a viatura.",
+            detalhe: featureError.message,
+          });
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
@@ -393,7 +403,11 @@ export default function NovoVeiculo() {
           })
         );
         if (extrasError) {
-          alert("A viatura foi criada, mas os extras não foram guardados: " + extrasError.message);
+          mostrarErro({
+            titulo: "Viatura criada sem extras",
+            mensagem: "A viatura ficou guardada, mas os extras não. Podes voltar a escolhê-los ao editar.",
+            detalhe: extrasError.message,
+          });
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
@@ -408,14 +422,22 @@ export default function NovoVeiculo() {
         photos.forEach((photo) => formData.append("files", photo));
         const upload = await uploadVehicleImages(formData);
         if (upload.error || !upload.urls?.length) {
-          alert(`A viatura foi criada, mas as fotografias não foram carregadas: ${upload.error || "erro no upload"}. Podes tentar novamente ao editar a viatura.`);
+          mostrarErro({
+            titulo: "Viatura criada sem fotografias",
+            mensagem: "A viatura ficou guardada, mas as fotografias não foram carregadas. Podes tentar novamente ao editar.",
+            detalhe: upload.error || "Erro no upload.",
+          });
           router.push(`/admin/veiculos/editar/${vehicle.id}`);
           return;
         }
       }
       router.push("/admin/veiculos");
     } catch (error) {
-      alert("Erro ao guardar: " + (error instanceof Error ? error.message : "erro inesperado"));
+      mostrarErro({
+        titulo: "Não foi possível criar a viatura",
+        mensagem: "Ocorreu um erro inesperado ao guardar.",
+        detalhe: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setSaving(false);
     }
