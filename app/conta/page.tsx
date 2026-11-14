@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { clearAttempts, getLockRemaining, registerFailedAttempt } from "@/lib/login-attempts";
 import { validarEmail, validarNome, validarPassword } from "@/lib/validacao";
 import { FieldError, campoClasse } from "@/components/ui/field-error";
+import { scrollParaFeedback } from "@/lib/scroll-feedback";
 
 // Converte erros da API de autenticação em mensagens amigáveis em português,
 // sem expor detalhes técnicos do Supabase ao utilizador.
@@ -138,6 +139,8 @@ function ContaPageContent() {
       setError(friendlyAuthError(err instanceof Error ? err.message : "Erro desconhecido"));
     } finally {
       setLoading(false);
+      // Sobe até à mensagem (erro ou confirmação de email).
+      scrollParaFeedback();
     }
   }
 
@@ -166,7 +169,7 @@ function ContaPageContent() {
       </p>
 
       {mensagemErro && (
-        <div role="alert" className="mt-4 border border-red bg-red/10 px-4 py-3 text-sm text-red-light">
+        <div id="form-feedback" tabIndex={-1} role="alert" className="mt-4 border border-red bg-red/10 px-4 py-3 text-sm text-red-light outline-none">
           {mensagemErro}
         </div>
       )}

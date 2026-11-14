@@ -3,6 +3,8 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { useDialogs } from "@/components/ui/dialogs";
+import { useToast } from "@/components/ui/toast";
 
 interface ContactRequest {
   id: string;
@@ -102,6 +104,9 @@ function PedidosContent() {
   // Pesquisa da lista da aba ativa (item 18): filtra por nome, email,
   // telemóvel, viatura e texto do pedido.
   const [search, setSearch] = useState("");
+  // Popups do projeto (em vez de alert/confirm/prompt do browser).
+  const { mostrarErro, perguntar } = useDialogs();
+  const { toast } = useToast();
 
   // Congela a página de fundo enquanto um popup está aberto (sem scroll);
   // repõe o valor anterior ao fechar o popup.
@@ -242,27 +247,25 @@ function PedidosContent() {
     // Usa a data/hora escolhida no campo se houver; senão combina
     // preferred_date + preferred_time (sempre em UTC ISO para a BD).
     const input = document.getElementById(`confirmed-date-${td.id}`) as HTMLInputElement | null;
-    let isoDate: string;
-    if (input?.value) {
-      isoDate = new Date(input.value).toISOString();
-    } else if (td.preferred_date) {
-      const time = td.preferred_time || "10:00";
-      isoDate = new Date(`${td.preferred_date}T${time}`).toISOString();
-    } else {
-      alert("Seleciona uma data e hora para confirmar.");
+    const escolhida = input?.value || (td.preferred_date ? `${td.preferred_date}T${td.preferred_time || "10:00"}` : "");
+    const data = escolhida ? new Date(escolhida) : null;
+    if (!data || Number.isNaN(data.getTime())) {
+      mostrarErro({ titulo: "Falta a data", mensagem: "Seleciona uma data e hora para confirmar o test drive." });
       return;
     }
+    const isoDate = data.toISOString();
 
     try {
       const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: isoDate, confirmed_at: isoDate }).eq("id", td.id);
       if (error) {
-        alert(error.message);
+        mostrarErro({ titulo: "Não foi possível confirmar", mensagem: "O test drive não ficou confirmado.", detalhe: error.message });
         return;
       }
       await sendTestDriveEmail(td, isoDate, "confirm");
+      toast({ variant: "success", title: "Test drive confirmado", description: "O cliente recebeu o email com a data." });
       fetchData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      mostrarErro({ mensagem: e instanceof Error ? e.message : "Erro inesperado ao confirmar o test drive." });
     }
   };
 
@@ -270,26 +273,28 @@ function PedidosContent() {
     try {
       const { error } = await supabase.from("test_drives").update({ status: "rejected" }).eq("id", id);
       if (error) {
-        alert(error.message);
+        mostrarErro({ titulo: "Não foi possível rejeitar", mensagem: "O pedido ficou como estava.", detalhe: error.message });
         return;
       }
+      toast({ variant: "info", title: "Test drive rejeitado" });
       fetchData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      mostrarErro({ mensagem: e instanceof Error ? e.message : "Erro inesperado ao rejeitar o test drive." });
     }
   };
 
   const updateTestDriveConfirmedDate = async (td: TestDrive) => {
     const input = document.getElementById(`confirmed-date-${td.id}`) as HTMLInputElement | null;
-    if (!input || !input.value) {
-      alert("Seleciona uma data e hora para confirmar/alterar.");
+    const valor = input?.value || "";
+    const data = valor ? new Date(valor) : null;
+    if (!data || Number.isNaN(data.getTime())) {
+      mostrarErro({
+        titulo: "Falta a data",
+        mensagem: "Seleciona a nova data e hora antes de propor a alteração ao cliente.",
+      });
       return;
     }
-    const isoDate = new Date(input.value).toISOString();
-    if (Number.isNaN(new Date(input.value).getTime())) {
-      alert("Data/hora inválida.");
-      return;
-    }
+    const isoDate = data.toISOString();
     // Remarcação: a data fica "proposta" até o cliente responder no email
     // (aceita → confirmado; pede outro horário → volta a pendente).
     const token = td.respond_token || crypto.randomUUID();
@@ -299,15 +304,22 @@ function PedidosContent() {
         .update({ status: "rescheduled", proposed_date: isoDate, responded_at: null, respond_token: token })
         .eq("id", td.id);
       if (error) {
-        alert(
-          `${error.message}\n\nSe a coluna ainda não existir, executa supabase/031_test_drive_resposta.sql no SQL Editor do Supabase.`
-        );
+        mostrarErro({
+          titulo: "Não foi possível propor a data",
+          mensagem: "A alteração não foi guardada e o cliente não recebeu email.",
+          detalhe: error.message,
+        });
         return;
       }
       await sendTestDriveEmail(td, isoDate, "update", token);
+      toast({
+        variant: "success",
+        title: "Nova data proposta",
+        description: "O cliente recebeu um email para aceitar ou pedir outro horário.",
+      });
       fetchData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      mostrarErro({ mensagem: e instanceof Error ? e.message : "Erro inesperado ao propor a nova data." });
     }
   };
 
@@ -347,13 +359,18 @@ function PedidosContent() {
         ? await supabase.from("vehicles").update({ status: "reserved", reserved_until: until }).eq("id", reservation.vehicle_id)
         : { error: null };
       if (reservationRes.error || vehicleRes.error) {
-        alert(reservationRes.error?.message || vehicleRes.error?.message || "Erro ao aceitar a reserva.");
+        mostrarErro({
+          titulo: "Não foi possível aceitar a reserva",
+          mensagem: "A reserva e a viatura ficaram como estavam.",
+          detalhe: reservationRes.error?.message || vehicleRes.error?.message || "Erro ao aceitar a reserva.",
+        });
         return;
       }
       await sendReservationEmail(reservation, "approved", until);
+      toast({ variant: "success", title: "Reserva aceite", description: "A viatura ficou reservada 7 dias e o cliente foi avisado." });
       fetchData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      mostrarErro({ mensagem: e instanceof Error ? e.message : "Erro inesperado ao aceitar a reserva." });
     }
   };
 
@@ -364,13 +381,14 @@ function PedidosContent() {
         .update({ status: "rejected", decided_at: new Date().toISOString() })
         .eq("id", reservation.id);
       if (error) {
-        alert(error.message);
+        mostrarErro({ titulo: "Não foi possível rejeitar a reserva", mensagem: "A reserva ficou como estava.", detalhe: error.message });
         return;
       }
       await sendReservationEmail(reservation, "rejected");
+      toast({ variant: "info", title: "Reserva rejeitada", description: "O cliente foi avisado por email." });
       fetchData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      mostrarErro({ mensagem: e instanceof Error ? e.message : "Erro inesperado ao rejeitar a reserva." });
     }
   };
 
@@ -908,11 +926,24 @@ function PedidosContent() {
                         )}
                         {d.status === "completed" && (
                           <button
-                            onClick={() => {
-                              const notes = prompt("Notas do test-drive (ex.: efetuado, alterado, cliente comprou...)", d.admin_notes || "");
-                              if (notes !== null) {
-                                supabase.from("test_drives").update({ admin_notes: notes }).eq("id", d.id).then(() => fetchData());
+                            onClick={async () => {
+                              const notes = await perguntar({
+                                titulo: "Notas do test drive",
+                                mensagem: "Ficam visíveis só no backoffice.",
+                                label: "Notas",
+                                valorInicial: d.admin_notes || "",
+                                placeholder: "Ex.: efetuado, alterado, cliente comprou…",
+                                multilinha: true,
+                                maxLength: 1000,
+                              });
+                              if (notes === null) return;
+                              const { error } = await supabase.from("test_drives").update({ admin_notes: notes }).eq("id", d.id);
+                              if (error) {
+                                mostrarErro({ titulo: "Não foi possível guardar as notas", mensagem: error.message });
+                                return;
                               }
+                              toast({ variant: "success", title: "Notas guardadas" });
+                              fetchData();
                             }}
                             className="text-xs hover:opacity-80 cursor-pointer"
                             style={{ color: "var(--silver)" }}

@@ -8,6 +8,7 @@ import { FieldError, campoEstilo } from "@/components/ui/field-error";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import { mapsUrl } from "@/lib/maps";
+import { scrollParaFeedback } from "@/lib/scroll-feedback";
 
 type VehicleRef = { id: string; brand: string; model: string; slug: string; status?: string | null };
 
@@ -570,6 +571,8 @@ function ContactoContent() {
       }
     }
     setLoading(false);
+    // Sobe até ao aviso de sucesso/erro para o resultado ficar visível.
+    scrollParaFeedback();
   }
 
   const heading = isReserva ? "Reservar Viatura" : isTestDrive ? "Marcar Test Drive" : "Fala Connosco";
@@ -672,16 +675,20 @@ function ContactoContent() {
           )
         )}
 
-        {success && (
-          <div role="status" className="mt-8 border-l-4 border-green-500 bg-green-500/10 p-4 text-sm text-green-400">
-            {isReserva
-              ? "Pedido de reserva enviado! Vamos analisá-lo e responder-te por email. Se for aceite, a viatura fica reservada por 7 dias."
-              : isTestDrive
-                ? "Pedido de test drive enviado! Entramos em contacto para confirmar a data."
-                : "Mensagem enviada com sucesso!"}
+        {(success || error) && (
+          <div id="form-feedback" tabIndex={-1} className="mt-8 space-y-3 outline-none">
+            {success && (
+              <div role="status" className="border-l-4 border-green-500 bg-green-500/10 p-4 text-sm text-green-400">
+                {isReserva
+                  ? "Pedido de reserva enviado! Vamos analisá-lo e responder-te por email. Se for aceite, a viatura fica reservada por 7 dias."
+                  : isTestDrive
+                    ? "Pedido de test drive enviado! Entramos em contacto para confirmar a data."
+                    : "Mensagem enviada com sucesso!"}
+              </div>
+            )}
+            {error && <div role="alert" className="border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
           </div>
         )}
-        {error && <div role="alert" className="mt-8 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
 
         {temContactos && (
           <div className="mt-6 rounded border border-border bg-surface-mid p-5">
