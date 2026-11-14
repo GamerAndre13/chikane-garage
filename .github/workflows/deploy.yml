@@ -36,7 +36,9 @@ jobs:
       run: npx eslint vitest.config.mts playwright.config.ts tests/unit/vehicle-visibility.test.ts tests/e2e/public-journeys.spec.ts scripts/check-staging-supabase.mjs
 
     - name: Construir aplicação
-      run: npm run build
+      # O OpenNext que já publica no Worker usa Webpack; no Next 16 o build
+      # direto escolhe Turbopack e falha ao resolver next/font/google neste repo.
+      run: npx next build --webpack
       env:
         NEXT_PUBLIC_SUPABASE_URL: https://qa-build.supabase.co
         NEXT_PUBLIC_SUPABASE_ANON_KEY: qa-build-anon-key-not-a-secret

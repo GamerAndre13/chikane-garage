@@ -8,7 +8,7 @@ para testes, Lighthouse ou carga.
 ## O que fica preparado
 
 - **Qualidade**: TypeScript, 6 testes unitários, lint focado nos ficheiros de QA
-  e build Next.js. Corre em cada pull request e push para `main`.
+  e build Next.js com Webpack. Corre em cada pull request e push para `main`.
 - **Segurança**: auditoria das dependências, CodeQL e revisão de dependências.
   Corre em pull requests, push para `main`, semanalmente e manualmente.
 - **Staging**: verifica a API/RLS do Supabase de staging e percorre páginas
@@ -90,6 +90,14 @@ incluídos não fazem uploads.
 6. Confirma manualmente que a homepage abre e que o Worker de staging aparece
    separado do Worker `chikane-garage1` de produção. A ligação ao repositório
    pode publicar automaticamente cada atualização do ramo configurado.
+
+Se já criaste o Worker `chikane-garage-tester`, podes usá-lo como destino de
+staging: define `STAGING_BASE_URL` com o seu URL workers.dev no passo 3. Criar
+um Worker na Cloudflare, por si só, não cria uma verificação com o nome dele no
+GitHub. O check **Workers Builds: nome-do-worker** só aparece quando esse Worker
+está ligado ao repositório através de Workers Builds. O workflow GitHub
+**Verificações de staging** testa o URL definido em `STAGING_BASE_URL`; corre em
+pull requests, manualmente e diariamente, não em cada push para `main`.
 
 Consulta a [configuração de builds Cloudflare Workers](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/),
 as [regras de ramos e previews](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/)
@@ -202,6 +210,10 @@ uma versão específica de pull request, essa versão tem de estar publicada nes
 endereço primeiro; o workflow não descobre automaticamente endereços preview
 temporários.
 
+Para executar esse workflow sem um pull request, abre **Actions → Verificações
+de staging → Run workflow** e seleciona `main`. Se o job não aparecer ou for
+ignorado, confirma primeiro as cinco variáveis do passo 3.
+
 ### Lighthouse
 
 Corre à segunda-feira às 04:41 UTC ou manualmente. No GitHub, abre **Actions →
@@ -229,7 +241,7 @@ npm ci
 npm run typecheck
 npm test
 npx eslint vitest.config.mts playwright.config.ts tests/unit/vehicle-visibility.test.ts tests/e2e/public-journeys.spec.ts scripts/check-staging-supabase.mjs
-npm run build
+npx next build --webpack
 ```
 
 O build local precisa de `NEXT_PUBLIC_SUPABASE_URL` e
