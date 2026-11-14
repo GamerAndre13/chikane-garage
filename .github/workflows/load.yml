@@ -1,0 +1,43 @@
+name: Carga k6 em staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacao:
+        description: Escreve TESTAR-STAGING-ATE-1000 para confirmar a carga
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  carga:
+    if: ${{ inputs.confirmacao == 'TESTAR-STAGING-ATE-1000' && vars.STAGING_BASE_URL != '' && vars.PRODUCTION_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    environment: staging-load-test
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Confirmar destino não produtivo
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
+        run: |
+          node -e 'const s=new URL(process.env.STAGING_BASE_URL),p=new URL(process.env.PRODUCTION_BASE_URL); if(s.protocol!=="https:" || s.origin===p.origin || ["chikanegarage.blog","www.chikanegarage.blog"].includes(s.hostname.toLowerCase())) process.exit(1)'
+      - uses: grafana/setup-k6-action@v1
+      - name: Executar rampa de carga até 1000 utilizadores virtuais
+        uses: grafana/run-k6-action@v1
+        with:
+          path: tests/load/staging.js
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
+      - name: Guardar resumo k6
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-k6-staging
+          path: summary.json
+          if-no-files-found: ignore
+          retention-days: 14

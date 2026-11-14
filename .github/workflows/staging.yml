@@ -1,0 +1,51 @@
+name: Verificações de staging
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    if: ${{ vars.STAGING_BASE_URL != '' && vars.STAGING_SUPABASE_URL != '' && vars.STAGING_SUPABASE_ANON_KEY != '' && vars.PRODUCTION_BASE_URL != '' && vars.PRODUCTION_SUPABASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Validar staging e testar RLS
+        run: node scripts/check-staging-supabase.mjs
+        env:
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_ANON_KEY: ${{ vars.STAGING_SUPABASE_ANON_KEY }}
+          PRODUCTION_SUPABASE_URL: ${{ vars.PRODUCTION_SUPABASE_URL }}
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Percorrer jornadas públicas
+        run: npm run test:e2e
+        env:
+          CI: true
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+      - name: Guardar evidências Playwright
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-playwright-staging
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

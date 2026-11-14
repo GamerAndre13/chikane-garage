@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: Qualidade
 
 on:
   push:
@@ -7,35 +7,46 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  qualidade:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
 
     - name: Install dependencies
       run: npm ci
 
-    - name: Build Next.js app
+    - name: Verificar tipos
+      run: npm run typecheck
+
+    - name: Executar testes unitários
+      run: npm test
+
+    - name: Analisar ficheiros de QA
+      run: npx eslint vitest.config.mts playwright.config.ts tests/unit/vehicle-visibility.test.ts tests/e2e/public-journeys.spec.ts scripts/check-staging-supabase.mjs
+
+    - name: Construir aplicação
       run: npm run build
       env:
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        NEXT_PUBLIC_SUPABASE_URL: https://qa-build.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: qa-build-anon-key-not-a-secret
+        NEXT_PUBLIC_SITE_URL: https://qa-build.example.invalid
 
-    - name: Deploy to Cloudflare Pages
-      uses: cloudflare/pages-action@v1
+    - name: Guardar relatório dos testes
+      if: always()
+      uses: actions/upload-artifact@v7
       with:
-        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        projectName: chikane-garage
-        directory: .
-        wranglerVersion: '4'
-        gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        name: relatorio-testes-unitarios
+        path: test-results/
+        if-no-files-found: ignore
+        retention-days: 7
