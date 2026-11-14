@@ -174,12 +174,20 @@ O job de staging é ignorado se faltarem variáveis, por isso não o tornes
 obrigatório até todas estarem configuradas. A Dependency Review só tem resultado
 em pull requests.
 
-Na preparação desta configuração, `npm audit` encontrou 22 vulnerabilidades
-(12 moderadas, 9 altas e 1 crítica). Assim, o job `dependencias` pode falhar até
-a dívida atual ser revista e corrigida. Não uses `npm audit fix --force` sem
-rever as alterações propostas; mantém esta verificação fora da lista obrigatória
-até a auditoria estar resolvida. A regra de proteção de branches está descrita
+Depois da atualização segura do Next.js e de dependências transitivas, a última
+auditoria encontrou 9 vulnerabilidades moderadas e nenhuma alta ou crítica;
+`npm audit --audit-level=high` passou. As moderadas restantes incluem `glob` e
+`minimatch` no OpenNext e nas ferramentas de lint. O `npm audit fix --force`
+sugere um downgrade incompatível do OpenNext, por isso não o uses como correção.
+A regra de proteção de branches está descrita
 na [documentação GitHub](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+
+O workflow CodeQL usa configuração avançada e precisa de Code Scanning ativado
+no repositório. Abre **Settings → Advanced Security → CodeQL analysis → Set up
+→ Advanced**. Não mudes para configuração Default enquanto este workflow avançado
+estiver ativo: a configuração Default substitui o workflow personalizado. A
+[documentação GitHub sobre configuração avançada](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/configure-code-scanning/configuring-advanced-setup-for-code-scanning)
+explica os requisitos de acesso.
 
 ## 7. Usar cada verificação
 
