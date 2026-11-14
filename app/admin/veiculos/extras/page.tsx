@@ -14,6 +14,8 @@ import {
   uploadVehicleExtraImage,
 } from "./actions";
 import { cheapestVariantFor } from "@/lib/extra-variants";
+import { validarNumero } from "@/lib/validacao";
+import { FieldError, campoClasse } from "@/components/ui/field-error";
 
 interface ExtraCatalog {
   id: string;
@@ -139,6 +141,41 @@ export default function VehicleExtrasCatalogPage() {
   // Fotografias em edição (por id do extra), para não escrever no formulário
   // controlado de cada linha da lista.
   const [images, setImages] = useState<Record<string, string>>({});
+  // Erros por campo (itens 13/14): a chave identifica o campo («novo.name»,
+  // «extra-<id>.price», «variante-<id>.position»…). As mensagens aparecem por
+  // baixo do input e o campo fica a vermelho até o valor ficar válido.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+  // Pesquisa do catálogo (item 18).
+  const [search, setSearch] = useState("");
+
+  const calcularErro = (campo: string, valor: string): string | null => {
+    if (campo.endsWith(".name")) {
+      const nome = valor.trim();
+      if (!nome) return "Indica o nome.";
+      if (nome.length > 80) return "O nome não pode ter mais de 80 caracteres.";
+      return null;
+    }
+    if (campo.endsWith(".price")) {
+      return validarNumero(valor, { rotulo: "O preço", min: 0, obrigatorio: false });
+    }
+    if (campo.endsWith(".position")) {
+      return validarNumero(valor, { rotulo: "A ordem", min: 0, inteiro: true, obrigatorio: false });
+    }
+    return null;
+  };
+
+  const validarCampo = (campo: string, valor: string) => {
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+    return msg;
+  };
+
+  // Revalida só quando o campo já estava marcado, para o vermelho desaparecer
+  // assim que o valor fica válido.
+  const aoAlterar = (campo: string, valor: string) => {
+    if (!erros[campo]) return;
+    setErros((prev) => ({ ...prev, [campo]: calcularErro(campo, valor) }));
+  };
 
   const load = useCallback(async () => {
     const [catalogRes, variantsRes, linksRes] = await Promise.all([
@@ -210,6 +247,15 @@ export default function VehicleExtrasCatalogPage() {
     [items]
   );
 
+  // Lista filtrada pela pesquisa (nome, descrição ou categoria).
+  const itemsVisible = useMemo(() => {
+    const termo = search.trim().toLowerCase();
+    if (!termo) return items;
+    return items.filter((item) =>
+      [item.name, item.description, item.category].some((valor) => (valor || "").toLowerCase().includes(termo))
+    );
+  }, [items, search]);
+
   // O mesmo para as variantes, dentro de cada extra.
   const nextVariantPosition = (extraId: string) =>
     variants
@@ -225,8 +271,25 @@ export default function VehicleExtrasCatalogPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
+
+    // Validar o extra e as variantes escritas no formulário antes de guardar.
+    const campos: Record<string, string | null> = {
+      "novo.name": calcularErro("novo.name", newItem.name),
+      "novo.price": calcularErro("novo.price", newItem.price),
+      "novo.position": calcularErro("novo.position", newItem.position),
+    };
+    draftVariants.forEach((variant, index) => {
+      campos[`draft.${index}.name`] = calcularErro("draft.0.name", variant.name);
+      campos[`draft.${index}.price`] = calcularErro("draft.0.price", variant.price);
+    });
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
+      return;
+    }
+
+    setSaving(true);
     try {
       const formData = new FormData();
       formData.append("name", newItem.name);
@@ -254,6 +317,7 @@ export default function VehicleExtrasCatalogPage() {
       setNewItem({ name: "", description: "", category: "", image_url: "", price: "", position: "", is_active: true });
       setDraftVariants([]);
       setAssociations(newVehicles.map((vehicle) => vehicle.id));
+      setErros({});
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar extra.");
@@ -263,14 +327,30 @@ export default function VehicleExtrasCatalogPage() {
   };
 
   const handleUpdate = async (item: ExtraCatalog, form: HTMLFormElement) => {
-    setSaving(true);
     setError(null);
+    const formData = new FormData(form);
+    const nome = String(formData.get("name") || "");
+    const preco = String(formData.get("price") || "");
+    const ordem = String(formData.get("position") || "");
+
+    const campos: Record<string, string | null> = {
+      [`extra-${item.id}.name`]: calcularErro("extra.name", nome),
+      [`extra-${item.id}.price`]: calcularErro("extra.price", preco),
+      [`extra-${item.id}.position`]: calcularErro("extra.position", ordem),
+    };
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
+      return;
+    }
+
+    setSaving(true);
     try {
-      const formData = new FormData(form);
       formData.set("image_url", imageFor(item));
       if ((form.elements.namedItem("is_active") as HTMLInputElement)?.checked) formData.append("is_active", "on");
       else formData.delete("is_active");
       await updateVehicleExtraCatalog(item.id, formData);
+      setErros({});
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar extra.");
@@ -311,8 +391,20 @@ export default function VehicleExtrasCatalogPage() {
 
   const handleCreateVariant = async (extraId: string, e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
+
+    const campos: Record<string, string | null> = {
+      [`nova-${extraId}.name`]: calcularErro("nova.name", newVariant.name),
+      [`nova-${extraId}.price`]: calcularErro("nova.price", newVariant.price),
+      [`nova-${extraId}.position`]: calcularErro("nova.position", newVariant.position),
+    };
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
+      return;
+    }
+
+    setSaving(true);
     try {
       const formData = new FormData();
       formData.append("name", newVariant.name);
@@ -321,6 +413,7 @@ export default function VehicleExtrasCatalogPage() {
       formData.append("position", newVariant.position.trim() || String(nextVariantPosition(extraId)));
       await createVehicleExtraVariant(extraId, formData);
       setNewVariant({ name: "", price: "", position: "" });
+      setErros({});
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar variante.");
@@ -330,13 +423,25 @@ export default function VehicleExtrasCatalogPage() {
   };
 
   const handleUpdateVariant = async (variant: ExtraVariant, form: HTMLFormElement) => {
-    setSaving(true);
     setError(null);
+    const formData = new FormData(form);
+    const campos: Record<string, string | null> = {
+      [`variante-${variant.id}.name`]: calcularErro("variante.name", String(formData.get("name") || "")),
+      [`variante-${variant.id}.price`]: calcularErro("variante.price", String(formData.get("price") || "")),
+      [`variante-${variant.id}.position`]: calcularErro("variante.position", String(formData.get("position") || "")),
+    };
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
+      return;
+    }
+
+    setSaving(true);
     try {
-      const formData = new FormData(form);
       if ((form.elements.namedItem("is_active") as HTMLInputElement)?.checked) formData.append("is_active", "on");
       else formData.append("is_active", "off");
       await updateVehicleExtraVariant(variant.id, formData);
+      setErros({});
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao atualizar variante.");
@@ -391,16 +496,49 @@ export default function VehicleExtrasCatalogPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="md:col-span-2">
               <label htmlFor="extra-nome" className={fieldLabel} style={{ color: "var(--muted)" }}>Nome do extra *</label>
-              <input id="extra-nome" required value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} placeholder='Ex.: Jantes de liga leve' className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="extra-nome"
+                required
+                value={newItem.name}
+                aria-invalid={Boolean(erros["novo.name"])}
+                onBlur={(e) => validarCampo("novo.name", e.target.value)}
+                onChange={(e) => { setNewItem({ ...newItem, name: e.target.value }); aoAlterar("novo.name", e.target.value); }}
+                placeholder='Ex.: Jantes de liga leve'
+                className={campoClasse(inputClass, erros["novo.name"])}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros["novo.name"]} />
             </div>
             <div>
               <label htmlFor="extra-preco" className={fieldLabel} style={{ color: "var(--muted)" }}>Preço base (€)</label>
-              <input id="extra-preco" inputMode="decimal" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} placeholder="0,00" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="extra-preco"
+                inputMode="decimal"
+                value={newItem.price}
+                aria-invalid={Boolean(erros["novo.price"])}
+                onBlur={(e) => validarCampo("novo.price", e.target.value)}
+                onChange={(e) => { setNewItem({ ...newItem, price: e.target.value }); aoAlterar("novo.price", e.target.value); }}
+                placeholder="0,00"
+                className={campoClasse(inputClass, erros["novo.price"])}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros["novo.price"]} />
               <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>0 = incluído no preço da viatura</p>
             </div>
             <div>
               <label htmlFor="extra-ordem" className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem de apresentação</label>
-              <input id="extra-ordem" inputMode="numeric" value={newItem.position} onChange={(e) => setNewItem({ ...newItem, position: e.target.value })} placeholder={String(nextPosition)} className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="extra-ordem"
+                inputMode="numeric"
+                value={newItem.position}
+                aria-invalid={Boolean(erros["novo.position"])}
+                onBlur={(e) => validarCampo("novo.position", e.target.value)}
+                onChange={(e) => { setNewItem({ ...newItem, position: e.target.value }); aoAlterar("novo.position", e.target.value); }}
+                placeholder={String(nextPosition)}
+                className={campoClasse(inputClass, erros["novo.position"])}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros["novo.position"]} />
               <p className="mt-1 text-[10px]" style={{ color: "var(--muted)" }}>Automática ({nextPosition}). Podes alterar se quiseres.</p>
             </div>
           </div>
@@ -435,11 +573,38 @@ export default function VehicleExtrasCatalogPage() {
                   <div key={index} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_140px_auto]">
                     <div>
                       <label htmlFor={`nova-variante-nome-${index}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome da variante</label>
-                      <input id={`nova-variante-nome-${index}`} value={variant.name} onChange={(e) => setDraftVariants(draftVariants.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} placeholder='Ex.: 20"' className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      <input
+                        id={`nova-variante-nome-${index}`}
+                        value={variant.name}
+                        aria-invalid={Boolean(erros[`draft.${index}.name`])}
+                        onBlur={(e) => validarCampo(`draft.${index}.name`, e.target.value)}
+                        onChange={(e) => {
+                          setDraftVariants(draftVariants.map((row, i) => i === index ? { ...row, name: e.target.value } : row));
+                          aoAlterar(`draft.${index}.name`, e.target.value);
+                        }}
+                        placeholder='Ex.: 20"'
+                        className={campoClasse(inputClass, erros[`draft.${index}.name`])}
+                        style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      />
+                      <FieldError message={erros[`draft.${index}.name`]} />
                     </div>
                     <div>
                       <label htmlFor={`nova-variante-preco-${index}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
-                      <input id={`nova-variante-preco-${index}`} inputMode="decimal" value={variant.price} onChange={(e) => setDraftVariants(draftVariants.map((row, i) => i === index ? { ...row, price: e.target.value } : row))} placeholder="0,00" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      <input
+                        id={`nova-variante-preco-${index}`}
+                        inputMode="decimal"
+                        value={variant.price}
+                        aria-invalid={Boolean(erros[`draft.${index}.price`])}
+                        onBlur={(e) => validarCampo(`draft.${index}.price`, e.target.value)}
+                        onChange={(e) => {
+                          setDraftVariants(draftVariants.map((row, i) => i === index ? { ...row, price: e.target.value } : row));
+                          aoAlterar(`draft.${index}.price`, e.target.value);
+                        }}
+                        placeholder="0,00"
+                        className={campoClasse(inputClass, erros[`draft.${index}.price`])}
+                        style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      />
+                      <FieldError message={erros[`draft.${index}.price`]} />
                     </div>
                     <button type="button" onClick={() => setDraftVariants(draftVariants.filter((_, i) => i !== index))} className="pb-2 text-xs" style={{ color: "#ef4444" }}>
                       Remover
@@ -511,13 +676,40 @@ export default function VehicleExtrasCatalogPage() {
         </form>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Pesquisar extras"
+          placeholder="Pesquisar por nome, descrição ou categoria…"
+          className="min-h-11 w-full rounded border bg-background px-3 py-2 text-sm sm:w-96"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="min-h-11 rounded border px-3 py-2 text-xs"
+            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+          >
+            Limpar pesquisa
+          </button>
+        )}
+        <span className="ml-auto text-xs" style={{ color: "var(--muted)" }}>
+          {itemsVisible.length} de {items.length} extras
+        </span>
+      </div>
+
       <div className="space-y-3">
         {loading ? (
           <div className="border rounded px-4 py-6 text-center text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)", color: "var(--muted)" }}>A carregar...</div>
-        ) : items.length === 0 ? (
-          <div className="border rounded px-4 py-6 text-center text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)", color: "var(--muted)" }}>Ainda sem extras no catálogo</div>
+        ) : itemsVisible.length === 0 ? (
+          <div className="border rounded px-4 py-6 text-center text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)", color: "var(--muted)" }}>
+            {search.trim() ? "Nenhum resultado para esta pesquisa." : "Ainda sem extras no catálogo"}
+          </div>
         ) : (
-          items.map((item) => {
+          itemsVisible.map((item) => {
             const itemVariants = variants.filter((v) => v.extra_id === item.id);
             // Com variantes, o valor do extra é sempre o da variante ativa mais
             // barata — é isso que o cliente vê e paga no configurador.
@@ -534,11 +726,32 @@ export default function VehicleExtrasCatalogPage() {
                 >
                   <div>
                     <label htmlFor={`ordem-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
-                    <input id={`ordem-${item.id}`} name="position" defaultValue={item.position} className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    <input
+                      id={`ordem-${item.id}`}
+                      name="position"
+                      defaultValue={item.position}
+                      aria-invalid={Boolean(erros[`extra-${item.id}.position`])}
+                      onBlur={(e) => validarCampo(`extra-${item.id}.position`, e.target.value)}
+                      onChange={(e) => aoAlterar(`extra-${item.id}.position`, e.target.value)}
+                      className={campoClasse("w-full px-2 py-1 text-xs border rounded bg-background", erros[`extra-${item.id}.position`])}
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    />
+                    <FieldError message={erros[`extra-${item.id}.position`]} />
                   </div>
                   <div className="space-y-1">
                     <label htmlFor={`nome-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome do extra</label>
-                    <input id={`nome-${item.id}`} name="name" defaultValue={item.name} required className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                    <input
+                      id={`nome-${item.id}`}
+                      name="name"
+                      defaultValue={item.name}
+                      required
+                      aria-invalid={Boolean(erros[`extra-${item.id}.name`])}
+                      onBlur={(e) => validarCampo(`extra-${item.id}.name`, e.target.value)}
+                      onChange={(e) => aoAlterar(`extra-${item.id}.name`, e.target.value)}
+                      className={campoClasse("w-full px-2 py-1 text-xs border rounded bg-background", erros[`extra-${item.id}.name`])}
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    />
+                    <FieldError message={erros[`extra-${item.id}.name`]} />
                     <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                       <input name="description" defaultValue={item.description || ""} placeholder="Descrição" aria-label="Descrição" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
                       <input name="category" defaultValue={item.category} placeholder="Categoria (opcional)" aria-label="Categoria" list="extra-categorias" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
@@ -559,8 +772,19 @@ export default function VehicleExtrasCatalogPage() {
                         </p>
                       </>
                     ) : (
-                      <input id={`preco-${item.id}`} name="price" defaultValue={item.price} inputMode="decimal" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                      <input
+                        id={`preco-${item.id}`}
+                        name="price"
+                        defaultValue={item.price}
+                        inputMode="decimal"
+                        aria-invalid={Boolean(erros[`extra-${item.id}.price`])}
+                        onBlur={(e) => validarCampo(`extra-${item.id}.price`, e.target.value)}
+                        onChange={(e) => aoAlterar(`extra-${item.id}.price`, e.target.value)}
+                        className={campoClasse("w-full px-2 py-1 text-xs border rounded bg-background", erros[`extra-${item.id}.price`])}
+                        style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      />
                     )}
+                    <FieldError message={erros[`extra-${item.id}.price`]} />
                   </div>
                   <label className="flex items-center gap-2 pt-4 text-xs" style={{ color: "var(--foreground)" }}>
                     <input name="is_active" type="checkbox" defaultChecked={item.is_active} />
@@ -591,15 +815,50 @@ export default function VehicleExtrasCatalogPage() {
                         <form key={variant.id} onSubmit={(e) => { e.preventDefault(); handleUpdateVariant(variant, e.currentTarget); }} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_120px_90px_80px_auto]">
                           <div>
                             <label htmlFor={`variante-${variant.id}-nome`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nome</label>
-                            <input id={`variante-${variant.id}-nome`} name="name" defaultValue={variant.name} required placeholder='Ex.: 20"' className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                            <input
+                              id={`variante-${variant.id}-nome`}
+                              name="name"
+                              defaultValue={variant.name}
+                              required
+                              placeholder='Ex.: 20"'
+                              aria-invalid={Boolean(erros[`variante-${variant.id}.name`])}
+                              onBlur={(e) => validarCampo(`variante-${variant.id}.name`, e.target.value)}
+                              onChange={(e) => aoAlterar(`variante-${variant.id}.name`, e.target.value)}
+                              className={campoClasse("w-full px-2 py-1 text-xs border rounded bg-background", erros[`variante-${variant.id}.name`])}
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            />
+                            <FieldError message={erros[`variante-${variant.id}.name`]} />
                           </div>
                           <div>
                             <label htmlFor={`variante-${variant.id}-preco`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
-                            <input id={`variante-${variant.id}-preco`} name="price" defaultValue={variant.price} inputMode="decimal" placeholder="0,00" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                            <input
+                              id={`variante-${variant.id}-preco`}
+                              name="price"
+                              defaultValue={variant.price}
+                              inputMode="decimal"
+                              placeholder="0,00"
+                              aria-invalid={Boolean(erros[`variante-${variant.id}.price`])}
+                              onBlur={(e) => validarCampo(`variante-${variant.id}.price`, e.target.value)}
+                              onChange={(e) => aoAlterar(`variante-${variant.id}.price`, e.target.value)}
+                              className={campoClasse("w-full px-2 py-1 text-xs border rounded bg-background", erros[`variante-${variant.id}.price`])}
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            />
+                            <FieldError message={erros[`variante-${variant.id}.price`]} />
                           </div>
                           <div>
                             <label htmlFor={`variante-${variant.id}-ordem`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
-                            <input id={`variante-${variant.id}-ordem`} name="position" defaultValue={variant.position} inputMode="numeric" className="w-full px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                            <input
+                              id={`variante-${variant.id}-ordem`}
+                              name="position"
+                              defaultValue={variant.position}
+                              inputMode="numeric"
+                              aria-invalid={Boolean(erros[`variante-${variant.id}.position`])}
+                              onBlur={(e) => validarCampo(`variante-${variant.id}.position`, e.target.value)}
+                              onChange={(e) => aoAlterar(`variante-${variant.id}.position`, e.target.value)}
+                              className={campoClasse("w-full px-2 py-1 text-xs border rounded bg-background", erros[`variante-${variant.id}.position`])}
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            />
+                            <FieldError message={erros[`variante-${variant.id}.position`]} />
                           </div>
                           <label className="flex items-center gap-2 pb-1 text-xs" style={{ color: "var(--foreground)" }}>
                             <input name="is_active" type="checkbox" defaultChecked={variant.is_active} />
@@ -616,15 +875,48 @@ export default function VehicleExtrasCatalogPage() {
                     <form onSubmit={(e) => handleCreateVariant(item.id, e)} className="mt-4 grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_120px_90px_auto]">
                       <div>
                         <label htmlFor={`variante-nome-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Nova variante</label>
-                        <input id={`variante-nome-${item.id}`} required value={newVariant.name} onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })} placeholder='Ex.: 20"' className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                        <input
+                          id={`variante-nome-${item.id}`}
+                          required
+                          value={newVariant.name}
+                          placeholder='Ex.: 20"'
+                          aria-invalid={Boolean(erros[`nova-${item.id}.name`])}
+                          onBlur={(e) => validarCampo(`nova-${item.id}.name`, e.target.value)}
+                          onChange={(e) => { setNewVariant({ ...newVariant, name: e.target.value }); aoAlterar(`nova-${item.id}.name`, e.target.value); }}
+                          className={campoClasse("px-2 py-1 text-xs border rounded bg-background", erros[`nova-${item.id}.name`])}
+                          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                        />
+                        <FieldError message={erros[`nova-${item.id}.name`]} />
                       </div>
                       <div>
                         <label htmlFor={`variante-preco-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Preço (€)</label>
-                        <input id={`variante-preco-${item.id}`} inputMode="decimal" value={newVariant.price} onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })} placeholder="0,00" className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                        <input
+                          id={`variante-preco-${item.id}`}
+                          inputMode="decimal"
+                          value={newVariant.price}
+                          placeholder="0,00"
+                          aria-invalid={Boolean(erros[`nova-${item.id}.price`])}
+                          onBlur={(e) => validarCampo(`nova-${item.id}.price`, e.target.value)}
+                          onChange={(e) => { setNewVariant({ ...newVariant, price: e.target.value }); aoAlterar(`nova-${item.id}.price`, e.target.value); }}
+                          className={campoClasse("px-2 py-1 text-xs border rounded bg-background", erros[`nova-${item.id}.price`])}
+                          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                        />
+                        <FieldError message={erros[`nova-${item.id}.price`]} />
                       </div>
                       <div>
                         <label htmlFor={`variante-ordem-${item.id}`} className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
-                        <input id={`variante-ordem-${item.id}`} inputMode="numeric" value={newVariant.position} onChange={(e) => setNewVariant({ ...newVariant, position: e.target.value })} placeholder={String(nextVariantPosition(item.id))} className="px-2 py-1 text-xs border rounded bg-background" style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+                        <input
+                          id={`variante-ordem-${item.id}`}
+                          inputMode="numeric"
+                          value={newVariant.position}
+                          placeholder={String(nextVariantPosition(item.id))}
+                          aria-invalid={Boolean(erros[`nova-${item.id}.position`])}
+                          onBlur={(e) => validarCampo(`nova-${item.id}.position`, e.target.value)}
+                          onChange={(e) => { setNewVariant({ ...newVariant, position: e.target.value }); aoAlterar(`nova-${item.id}.position`, e.target.value); }}
+                          className={campoClasse("px-2 py-1 text-xs border rounded bg-background", erros[`nova-${item.id}.position`])}
+                          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                        />
+                        <FieldError message={erros[`nova-${item.id}.position`]} />
                       </div>
                       <button disabled={saving} className="px-3 py-1 rounded text-xs" style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}>+ Variante</button>
                     </form>

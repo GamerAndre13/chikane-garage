@@ -5,41 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, setRememberPreference } from "@/lib/supabase/client";
 import { Suspense } from "react";
 import { clearAttempts, getLockRemaining, registerFailedAttempt } from "@/lib/login-attempts";
-
-// Valida o email antes de criar conta / entrar. Devolve mensagem de erro ou null.
-function validateEmail(value: string): string | null {
-  if (!value) return "Introduz o teu email.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-    return "Introduz um email válido (ex.: nome@exemplo.com).";
-  }
-  const [local, domain] = value.split("@");
-  if (!local || !domain) return "Introduz um email válido (ex.: nome@exemplo.com).";
-  if (domain.includes("..") || local.startsWith(".") || local.endsWith(".")) {
-    return "Introduz um email válido (ex.: nome@exemplo.com).";
-  }
-  const tld = domain.split(".").pop() || "";
-  if (tld.length < 2) {
-    return "O domínio do email parece inválido (ex.: nome@exemplo.com).";
-  }
-  const comuns = ["gmail.com", "hotmail.com", "outlook.com", "sapo.pt", "yahoo.com", "icloud.com", "live.com", "hotmail.pt"];
-  const sugestoes: Record<string, string> = {
-    "gmail.con": "gmail.com",
-    "gmail.co": "gmail.com",
-    "gmial.com": "gmail.com",
-    "gmai.com": "gmail.com",
-    "hotmail.con": "hotmail.com",
-    "hotmail.co": "hotmail.com",
-    "outlok.com": "outlook.com",
-    "outlook.con": "outlook.com",
-  };
-  if (sugestoes[domain]) {
-    return `Quiseste dizer ${sugestoes[domain]}? Verifica o email.`;
-  }
-  if (comuns.includes(domain)) return null;
-  const tldValido = /^[a-z]{2,}$/.test(tld);
-  if (!tldValido) return "O domínio do email parece inválido.";
-  return null;
-}
+import { validarEmail, validarNome, validarPassword } from "@/lib/validacao";
+import { FieldError, campoClasse } from "@/components/ui/field-error";
 
 // Converte erros da API de autenticação em mensagens amigáveis em português,
 // sem expor detalhes técnicos do Supabase ao utilizador.
@@ -65,6 +32,29 @@ function ContaPageContent() {
   const [error, setError] = useState<string | null>(null);
   // Bloqueio temporário após várias tentativas falhadas.
   const [locked, setLocked] = useState(false);
+  // Erros por campo (itens 13/14): validados ao sair do campo.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+
+  const calcularErro = (campo: string, valor: string): string | null => {
+    if (campo === "full_name") return validarNome(valor);
+    if (campo === "email") return validarEmail(valor);
+    if (campo === "password") return validarPassword(valor);
+    return null;
+  };
+
+  const validarCampo = (campo: string, valor: string) => {
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+    return msg;
+  };
+
+  const revalidar = (campo: string, valor: string) => {
+    if (!erros[campo]) return;
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+  };
+
+  const inputCls = "mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60";
 
   // Se já estiver logado, vai para o perfil
   useEffect(() => {
@@ -85,25 +75,18 @@ function ContaPageContent() {
     // "Manter sessão iniciada": sem isso os cookies de sessão caem ao fechar o browser
     const remember = formData.get("remember_me") === "on";
 
-    // Validar email antes de tentar criar conta / entrar
-    const emailError = validateEmail(email);
-    if (emailError) {
-      setError(emailError);
+    // Validar os campos visíveis antes de tentar criar conta / entrar: os
+    // erros ficam por baixo de cada input.
+    const campos: Record<string, string | null> = {
+      email: calcularErro("email", email),
+      password: calcularErro("password", password),
+    };
+    if (mode === "register") campos.full_name = calcularErro("full_name", fullName || "");
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
       setLoading(false);
       return;
-    }
-
-    if (mode === "register") {
-      if (!fullName || fullName.trim().length < 2) {
-        setError("Indica o teu nome completo.");
-        setLoading(false);
-        return;
-      }
-      if (!password || password.length < 6) {
-        setError("A password deve ter pelo menos 6 caracteres.");
-        setLoading(false);
-        return;
-      }
     }
 
     try {
@@ -192,16 +175,51 @@ function ContaPageContent() {
         {mode === "register" && (
           <div>
             <label htmlFor="conta-full-name" className="block text-xs uppercase tracking-wide text-muted">Nome completo *</label>
-            <input id="conta-full-name" name="full_name" autoComplete="name" spellCheck={false} required className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" />
+            <input
+              id="conta-full-name"
+              name="full_name"
+              autoComplete="name"
+              spellCheck={false}
+              required
+              aria-invalid={Boolean(erros.full_name)}
+              onBlur={(e) => validarCampo("full_name", e.target.value)}
+              onChange={(e) => revalidar("full_name", e.target.value)}
+              className={campoClasse(inputCls, erros.full_name)}
+            />
+            <FieldError message={erros.full_name} />
           </div>
         )}
         <div>
           <label htmlFor="conta-email" className="block text-xs uppercase tracking-wide text-muted">Email *</label>
-          <input id="conta-email" name="email" type="email" autoComplete="email" spellCheck={false} required className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" />
+          <input
+            id="conta-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            spellCheck={false}
+            required
+            aria-invalid={Boolean(erros.email)}
+            onBlur={(e) => validarCampo("email", e.target.value)}
+            onChange={(e) => revalidar("email", e.target.value)}
+            className={campoClasse(inputCls, erros.email)}
+          />
+          <FieldError message={erros.email} />
         </div>
         <div>
           <label htmlFor="conta-password" className="block text-xs uppercase tracking-wide text-muted">Password *</label>
-          <input id="conta-password" name="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={6} className="mt-1 w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60" />
+          <input
+            id="conta-password"
+            name="password"
+            type="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            required
+            minLength={6}
+            aria-invalid={Boolean(erros.password)}
+            onBlur={(e) => validarCampo("password", e.target.value)}
+            onChange={(e) => revalidar("password", e.target.value)}
+            className={campoClasse(inputCls, erros.password)}
+          />
+          <FieldError message={erros.password} />
         </div>
         {mode === "register" && (
           <div className="flex items-center gap-2">
@@ -244,7 +262,7 @@ function ContaPageContent() {
         {mode === "login" ? "Entrar com Google" : "Criar conta com Google"}
       </button>
 
-      <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="mt-6 text-center text-sm text-muted hover:text-copper transition-colors">
+      <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setErros({}); setError(null); }} className="mt-6 text-center text-sm text-muted hover:text-copper transition-colors">
         {mode === "login" ? "Ainda não tens conta? Regista-te" : "Já tens conta? Entra"}
       </button>
     </div>

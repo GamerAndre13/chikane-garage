@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
-import { validarTelemovelPT } from "@/lib/validacao";
+import { validarEmail, validarMensagem, validarNif, validarNome, validarTelemovel } from "@/lib/validacao";
+import { FieldError, campoEstilo } from "@/components/ui/field-error";
 
 // Página de compra / pedido de proposta das viaturas novas, no formato de
 // /comprar/<slug>: extras numerados à esquerda, resumo sticky à direita e o
@@ -67,18 +68,8 @@ const inputStyle = {
 
 const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted";
 
-// Validação do NIF português (9 dígitos + dígito de controlo mod 11).
-function isValidNif(raw: string): boolean {
-  const nif = raw.replace(/\s+/g, "");
-  if (!/^\d{9}$/.test(nif)) return false;
-  const first = nif[0];
-  if (!"1235689".includes(first)) return false;
-  let sum = 0;
-  for (let i = 0; i < 8; i += 1) sum += Number(nif[i]) * (9 - i);
-  const check = 11 - (sum % 11);
-  const digit = check >= 10 ? 0 : check;
-  return digit === Number(nif[8]);
-}
+// Validação do NIF português (9 dígitos + dígito de controlo mod 11) — a
+// função partilhada está em lib/validacao.ts.
 
 export function VehiclePurchase({
   vehicleId,
@@ -100,6 +91,41 @@ export function VehiclePurchase({
   const [sent, setSent] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", nif: "", message: "" });
+  // Erros por campo (item 13/14): validados ao sair do campo, com mensagem
+  // por baixo do input e rebordo vermelho até o valor ficar válido.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+
+  const calcularErro = (campo: string, valor: string): string | null => {
+    switch (campo) {
+      case "name":
+        return validarNome(valor);
+      case "email":
+        return validarEmail(valor);
+      case "phone":
+        return validarTelemovel(valor);
+      case "nif":
+        return validarNif(valor);
+      case "message":
+        return validarMensagem(valor, 0, 2000, "A nota");
+      default:
+        return null;
+    }
+  };
+
+  const validarCampo = (campo: string, valor: string) => {
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+    return msg;
+  };
+
+  // Actualiza o valor e, se o campo já tinha erro, revalida para o vermelho
+  // desaparecer assim que a informação fica válida.
+  const atualizarCampo = (campo: "name" | "email" | "phone" | "nif" | "message", valor: string) => {
+    setForm((prev) => ({ ...prev, [campo]: valor }));
+    if (!erros[campo]) return;
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+  };
 
   const chosen = useMemo(() => {
     return extras.flatMap((extra) => {
@@ -179,10 +205,19 @@ export function VehiclePurchase({
     event.preventDefault();
     setError(null);
 
-    if (!form.name.trim()) return setError("Indica o teu nome.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setError("Indica um email válido.");
-    if (!validarTelemovelPT(form.phone)) return setError("Indica um telemóvel português válido (9 dígitos, começa por 9).");
-    if (!isValidNif(form.nif)) return setError("Indica um NIF válido (9 dígitos).");
+    const campos: Record<string, string | null> = {
+      name: calcularErro("name", form.name),
+      email: calcularErro("email", form.email),
+      phone: calcularErro("phone", form.phone),
+      nif: calcularErro("nif", form.nif),
+      message: calcularErro("message", form.message),
+    };
+    setErros(campos);
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
+      return;
+    }
+    setError(null);
 
     setSending(true);
     try {
@@ -389,19 +424,66 @@ export function VehiclePurchase({
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div>
                   <label htmlFor="compra-nome" className={labelCls}>Nome completo *</label>
-                  <input id="compra-nome" name="name" autoComplete="name" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} style={inputStyle} />
+                  <input
+                    id="compra-nome"
+                    name="name"
+                    autoComplete="name"
+                    required
+                    value={form.name}
+                    aria-invalid={Boolean(erros.name)}
+                    onBlur={(event) => validarCampo("name", event.target.value)}
+                    onChange={(event) => atualizarCampo("name", event.target.value)}
+                    style={campoEstilo(inputStyle, erros.name)}
+                  />
+                  <FieldError message={erros.name} />
                 </div>
                 <div>
                   <label htmlFor="compra-email" className={labelCls}>Email *</label>
-                  <input id="compra-email" name="email" type="email" autoComplete="email" required value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} style={inputStyle} />
+                  <input
+                    id="compra-email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={form.email}
+                    aria-invalid={Boolean(erros.email)}
+                    onBlur={(event) => validarCampo("email", event.target.value)}
+                    onChange={(event) => atualizarCampo("email", event.target.value)}
+                    style={campoEstilo(inputStyle, erros.email)}
+                  />
+                  <FieldError message={erros.email} />
                 </div>
                 <div>
                   <label htmlFor="compra-telefone" className={labelCls}>Telefone *</label>
-                  <input id="compra-telefone" name="phone" type="tel" autoComplete="tel" required value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} style={inputStyle} />
+                  <input
+                    id="compra-telefone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    required
+                    value={form.phone}
+                    aria-invalid={Boolean(erros.phone)}
+                    onBlur={(event) => validarCampo("phone", event.target.value)}
+                    onChange={(event) => atualizarCampo("phone", event.target.value)}
+                    style={campoEstilo(inputStyle, erros.phone)}
+                  />
+                  <FieldError message={erros.phone} />
                 </div>
                 <div>
                   <label htmlFor="compra-nif" className={labelCls}>NIF *</label>
-                  <input id="compra-nif" name="nif" inputMode="numeric" maxLength={9} required value={form.nif} onChange={(event) => setForm({ ...form, nif: event.target.value.replace(/[^\d]/g, "") })} style={inputStyle} />
+                  <input
+                    id="compra-nif"
+                    name="nif"
+                    inputMode="numeric"
+                    maxLength={9}
+                    required
+                    value={form.nif}
+                    aria-invalid={Boolean(erros.nif)}
+                    onBlur={(event) => validarCampo("nif", event.target.value)}
+                    onChange={(event) => atualizarCampo("nif", event.target.value.replace(/[^\d]/g, ""))}
+                    style={campoEstilo(inputStyle, erros.nif)}
+                  />
+                  <FieldError message={erros.nif} />
                   <p className="mt-1 text-xs text-muted">Necessário para emitir a proposta.</p>
                 </div>
               </div>
@@ -411,7 +493,18 @@ export function VehiclePurchase({
               <h2 className="font-display text-sm uppercase tracking-[0.28em] text-copper">3 · Mensagem</h2>
               <div className="mt-5">
                 <label htmlFor="compra-mensagem" className={labelCls}>Notas (opcional)</label>
-                <textarea id="compra-mensagem" name="message" rows={5} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder="Retoma, prazo de entrega, financiamento..." style={{ ...inputStyle, resize: "vertical" as const }} />
+                <textarea
+                  id="compra-mensagem"
+                  name="message"
+                  rows={5}
+                  value={form.message}
+                  aria-invalid={Boolean(erros.message)}
+                  onBlur={(event) => validarCampo("message", event.target.value)}
+                  onChange={(event) => atualizarCampo("message", event.target.value)}
+                  placeholder="Retoma, prazo de entrega, financiamento..."
+                  style={{ ...campoEstilo(inputStyle, erros.message), resize: "vertical" as const }}
+                />
+                <FieldError message={erros.message} />
               </div>
             </section>
           </div>

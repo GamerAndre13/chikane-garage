@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { validarEmail } from "@/lib/validacao";
+import { FieldError, campoClasse } from "@/components/ui/field-error";
 
 export default function NewsletterForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
+  // Erro do campo validado ao sair dele (item 13/14).
+  const [erroEmail, setErroEmail] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,10 +26,11 @@ export default function NewsletterForm() {
       return;
     }
 
-    // Validação simples de email
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
-      setStatus("error");
-      setMessage("Introduz um email válido.");
+    // Validação do email: a mensagem fica por baixo do campo.
+    const erro = validarEmail(val);
+    setErroEmail(erro);
+    if (erro) {
+      setStatus("idle");
       return;
     }
 
@@ -62,18 +67,30 @@ export default function NewsletterForm() {
           <input name="website" tabIndex={-1} autoComplete="off" />
         </div>
         <label htmlFor="newsletter-email" className="sr-only">Email</label>
-        <input
-          id="newsletter-email"
-          type="email"
-          name="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="O teu email"
-          required
-          autoComplete="email"
-          className="flex-1 border border-border px-4 py-3 text-sm text-foreground outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60"
-          style={{ backgroundColor: "var(--background-alt)" }}
-        />
+        <div className="flex-1">
+          <input
+            id="newsletter-email"
+            type="email"
+            name="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              // Depois de haver erro, revalida enquanto escreve.
+              if (erroEmail) setErroEmail(validarEmail(e.target.value));
+            }}
+            onBlur={(e) => setErroEmail(validarEmail(e.target.value))}
+            placeholder="O teu email"
+            required
+            autoComplete="email"
+            aria-invalid={Boolean(erroEmail)}
+            className={campoClasse(
+              "w-full border border-border px-4 py-3 text-sm text-foreground outline-none focus:border-copper focus-visible:ring-2 focus-visible:ring-copper/60",
+              erroEmail
+            )}
+            style={{ backgroundColor: "var(--background-alt)" }}
+          />
+          <FieldError message={erroEmail} />
+        </div>
         <button
           type="submit"
           disabled={status === "loading"}

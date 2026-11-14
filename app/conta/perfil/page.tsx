@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { validarTelemovelPT } from "@/lib/validacao";
+import { validarNome, validarPassword, validarTelemovel } from "@/lib/validacao";
+import { FieldError, campoClasse } from "@/components/ui/field-error";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { MyRequests } from "@/components/ui/my-requests";
 import { pickFromPool } from "@/lib/avatar-pool";
@@ -51,6 +52,45 @@ export default function PerfilPage() {
   // depois de montar — o servidor não conhece o fuso do visitante e não vale a
   // pena arriscar uma diferença na hidratação.
   const [greeting, setGreeting] = useState("Bem-vindo");
+  // Erros por campo (itens 13/14): aparecem por baixo do input, com o campo
+  // a vermelho enquanto o valor não for válido.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+
+  const inputCls = "w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper";
+
+  // Validação de um campo ao sair dele. Confirmar a password depende da nova,
+  // por isso recebe também os valores atuais do formulário.
+  const calcularErro = (campo: string, valor: string, form?: HTMLFormElement | null): string | null => {
+    switch (campo) {
+      case "full_name":
+        return validarNome(valor);
+      case "phone":
+        return validarTelemovel(valor, false);
+      case "current_password":
+        return valor ? null : "Introduz a tua password atual.";
+      case "new_password":
+        return validarPassword(valor);
+      case "confirm_password": {
+        const nova = (form?.elements.namedItem("new_password") as HTMLInputElement | null)?.value ?? "";
+        if (!valor.trim()) return "Repete a nova password.";
+        return valor === nova ? null : "As passwords não coincidem.";
+      }
+      default:
+        return null;
+    }
+  };
+
+  const validarCampo = (campo: string, valor: string, form?: HTMLFormElement | null) => {
+    const msg = calcularErro(campo, valor, form);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+    return msg;
+  };
+
+  const revalidar = (campo: string, valor: string, form?: HTMLFormElement | null) => {
+    if (!erros[campo]) return;
+    const msg = calcularErro(campo, valor, form);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -121,9 +161,14 @@ export default function PerfilPage() {
     const full_name = formData.get("full_name") as string;
     const phone = ((formData.get("phone") as string) || "").trim();
 
-    // Campo opcional: se preenchido, tem de ser um telemóvel português válido
-    if (phone && !validarTelemovelPT(phone)) {
-      setError("Indica um telemóvel português válido (9 dígitos, começa por 9).");
+    // Campo opcional: se preenchido, tem de ser um telemóvel português válido.
+    const campos: Record<string, string | null> = {
+      full_name: calcularErro("full_name", full_name),
+      phone: calcularErro("phone", phone),
+    };
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
       setSaving(false);
       return;
     }
@@ -225,10 +270,20 @@ export default function PerfilPage() {
     const newPassword = formData.get("new_password") as string;
     const confirmPassword = formData.get("confirm_password") as string;
 
-    if (!currentPassword) { setPwError("Introduz a tua password atual."); setSaving(false); return; }
-    if (newPassword !== confirmPassword) { setPwError("As passwords não coincidem."); setSaving(false); return; }
-    if (newPassword.length < 6) { setPwError("A nova password tem de ter pelo menos 6 caracteres."); setSaving(false); return; }
-    if (newPassword === currentPassword) { setPwError("A nova password tem de ser diferente da atual."); setSaving(false); return; }
+    const campos: Record<string, string | null> = {
+      current_password: calcularErro("current_password", currentPassword),
+      new_password: calcularErro("new_password", newPassword),
+      confirm_password: calcularErro("confirm_password", confirmPassword, e.currentTarget),
+    };
+    if (!campos.new_password && newPassword === currentPassword) {
+      campos.new_password = "A nova password tem de ser diferente da atual.";
+    }
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setPwError("Confirma os campos assinalados a vermelho.");
+      setSaving(false);
+      return;
+    }
 
     try {
       // O Supabase não verifica a password antiga por si: confirmamos primeiro
@@ -246,6 +301,7 @@ export default function PerfilPage() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       setPwSuccess("Password alterada com sucesso!");
+      setErros({});
       (e.target as HTMLFormElement).reset();
     } catch (err) {
       setPwError(err instanceof Error ? err.message : "Erro ao alterar password.");
@@ -307,11 +363,29 @@ export default function PerfilPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Nome *</label>
-                <input name="full_name" required defaultValue={profile.full_name} className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input
+                  name="full_name"
+                  required
+                  defaultValue={profile.full_name}
+                  aria-invalid={Boolean(erros.full_name)}
+                  onBlur={(e) => validarCampo("full_name", e.target.value)}
+                  onChange={(e) => revalidar("full_name", e.target.value)}
+                  className={campoClasse(inputCls, erros.full_name)}
+                />
+                <FieldError message={erros.full_name} />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Telefone</label>
-                <input name="phone" defaultValue={profile.phone} placeholder="+351 9XX XXX XXX" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input
+                  name="phone"
+                  defaultValue={profile.phone}
+                  placeholder="+351 9XX XXX XXX"
+                  aria-invalid={Boolean(erros.phone)}
+                  onBlur={(e) => validarCampo("phone", e.target.value)}
+                  onChange={(e) => revalidar("phone", e.target.value)}
+                  className={campoClasse(inputCls, erros.phone)}
+                />
+                <FieldError message={erros.phone} />
               </div>
               <button type="submit" disabled={saving} className="bg-copper px-8 py-3 font-display text-sm uppercase tracking-widest text-background disabled:opacity-50">
                 {saving ? "A guardar..." : "Guardar Alterações"}
@@ -324,15 +398,55 @@ export default function PerfilPage() {
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Password Atual *</label>
-                <input name="current_password" type="password" required autoComplete="current-password" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input
+                  name="current_password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  aria-invalid={Boolean(erros.current_password)}
+                  onBlur={(e) => validarCampo("current_password", e.target.value)}
+                  onChange={(e) => revalidar("current_password", e.target.value)}
+                  className={campoClasse(inputCls, erros.current_password)}
+                />
+                <FieldError message={erros.current_password} />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Nova Password *</label>
-                <input name="new_password" type="password" required minLength={6} autoComplete="new-password" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input
+                  name="new_password"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(erros.new_password)}
+                  onBlur={(e) => validarCampo("new_password", e.target.value, e.currentTarget.form)}
+                  onChange={(e) => {
+                    revalidar("new_password", e.target.value, e.currentTarget.form);
+                    // A confirmação depende da nova password: se já tinha erro,
+                    // volta a ser verificada com o valor novo.
+                    if (erros.confirm_password) {
+                      const confirmar = (e.currentTarget.form?.elements.namedItem("confirm_password") as HTMLInputElement | null)?.value ?? "";
+                      revalidar("confirm_password", confirmar, e.currentTarget.form);
+                    }
+                  }}
+                  className={campoClasse(inputCls, erros.new_password)}
+                />
+                <FieldError message={erros.new_password} />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-wide text-muted mb-2">Confirmar Password *</label>
-                <input name="confirm_password" type="password" required minLength={6} autoComplete="new-password" className="w-full border border-border bg-background px-4 py-3 text-sm outline-none focus:border-copper" />
+                <input
+                  name="confirm_password"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(erros.confirm_password)}
+                  onBlur={(e) => validarCampo("confirm_password", e.target.value, e.currentTarget.form)}
+                  onChange={(e) => revalidar("confirm_password", e.target.value, e.currentTarget.form)}
+                  className={campoClasse(inputCls, erros.confirm_password)}
+                />
+                <FieldError message={erros.confirm_password} />
               </div>
               <button type="submit" disabled={saving} className="border border-border px-8 py-3 font-display text-sm uppercase tracking-widest text-muted hover:border-copper hover:text-foreground disabled:opacity-50">
                 {saving ? "A alterar..." : "Alterar Password"}

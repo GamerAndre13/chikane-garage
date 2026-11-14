@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { validarTelemovelPT } from "@/lib/validacao";
+import { validarEmail, validarMensagem, validarNome, validarTelemovel } from "@/lib/validacao";
+import { FieldError, campoEstilo } from "@/components/ui/field-error";
 import type { SiteSettings } from "@/lib/site-settings";
 import { instagramUrl, facebookUrl, whatsappUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import { mapsUrl } from "@/lib/maps";
@@ -134,6 +135,54 @@ function ContactoContent() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Erros por campo: aparecem por baixo do input e o campo fica com o rebordo
+  // vermelho enquanto o valor não for válido.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+
+  // Validação de cada campo (item 13). É chamada ao sair do campo e repete-se
+  // enquanto o valor tiver erro, para o vermelho desaparecer assim que ficar
+  // válido (item 14).
+  const calcularErro = (campo: string, valor: string): string | null => {
+    switch (campo) {
+      case "name":
+        return validarNome(valor);
+      case "email":
+        return validarEmail(valor);
+      case "phone":
+        return validarTelemovel(valor);
+      case "preferred_date": {
+        if (!valor) return "Escolhe uma data para o test drive.";
+        if (valor < today || valor > maxDate) return "Escolhe uma data entre hoje e os próximos 30 dias.";
+        const weekday = new Date(`${valor}T12:00:00`).getDay();
+        if (tdConfig && tdConfig.days.length && !tdConfig.days.includes(weekday)) {
+          return `Os test drives só estão disponíveis às ${dayNamesText}.`;
+        }
+        return null;
+      }
+      case "preferred_time":
+        return valor ? null : "Escolhe uma hora para o test drive.";
+      case "notes":
+        return validarMensagem(valor, 0, 2000, "A nota");
+      case "message":
+        return isReserva
+          ? validarMensagem(valor, 5, 2000, "A explicação do motivo")
+          : validarMensagem(valor, 5, 5000);
+      default:
+        return null;
+    }
+  };
+
+  const validarCampo = (campo: string, valor: string) => {
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+    return msg;
+  };
+
+  const revalidar = (campo: string, valor: string) => {
+    if (!erros[campo]) return;
+    const msg = calcularErro(campo, valor);
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+  };
   const [vehicle, setVehicle] = useState<VehicleRef | null>(null);
   const [vehicleLoading, setVehicleLoading] = useState(!!testdriveSlug || !!vehicleSlug || !!reservaSlug);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -301,27 +350,32 @@ function ContactoContent() {
     const email = String(fd.get("email") || "").trim().toLowerCase();
     const phone = String(fd.get("phone") || "").trim();
     const message = String(fd.get("message") || "").trim();
-    if (name.length < 2 || name.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Confirma o nome e introduz um email válido.");
+    const preferredDate = String(fd.get("preferred_date") || "").trim();
+    const preferredTime = String(fd.get("preferred_time") || "").trim();
+    const notes = String(fd.get("notes") || "").trim();
+
+    // Validação de todos os campos visíveis: os erros ficam por baixo de cada
+    // input (e a vermelho no próprio campo), como nos restantes formulários.
+    const campos: Record<string, string | null> = {
+      name: calcularErro("name", name),
+      email: calcularErro("email", email),
+      phone: calcularErro("phone", phone),
+    };
+    if (isTestDrive) {
+      campos.preferred_date = calcularErro("preferred_date", preferredDate);
+      campos.preferred_time = calcularErro("preferred_time", preferredTime);
+      campos.notes = calcularErro("notes", notes);
+    }
+    if (isReserva) campos.message = calcularErro("message", message);
+    if (!isTestDrive && !isReserva) campos.message = calcularErro("message", message);
+
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
       setLoading(false);
       return;
     }
-    // Telemóvel português obrigatório: 9 dígitos a começar por 9 (+351 opcional)
-    if (!validarTelemovelPT(phone)) {
-      setError("Indica um telemóvel português válido (9 dígitos, começa por 9).");
-      setLoading(false);
-      return;
-    }
-    if (!isTestDrive && !isReserva && (message.length < 5 || message.length > 5000)) {
-      setError("A mensagem deve ter entre 5 e 5000 caracteres.");
-      setLoading(false);
-      return;
-    }
-    if (isReserva && (message.length < 5 || message.length > 2000)) {
-      setError("Explica o motivo da reserva (entre 5 e 2000 caracteres).");
-      setLoading(false);
-      return;
-    }
+    setError(null);
 
     // Ligar o pedido ao utilizador logado (ou null se anónimo)
     const { data: { user } } = await supabase.auth.getUser();
@@ -335,51 +389,31 @@ function ContactoContent() {
     };
 
     if (isTestDrive) {
-      // Data e hora são obrigatórias e dentro das regras (hoje → +30 dias,
-      // dias/horários disponíveis + horários já confirmados).
-      const preferred_date = fd.get("preferred_date") as string;
-      const preferred_time = fd.get("preferred_time") as string;
-      const notes = String(fd.get("notes") || "").trim();
-      if (!preferred_date) {
-        setError("Escolhe uma data preferida para o test drive (calendário).");
-        setLoading(false);
-        return;
-      }
-      if (preferred_date < today || preferred_date > maxDate) {
-        setError("A data do test drive deve ser entre hoje e os próximos 30 dias.");
-        setLoading(false);
-        return;
-      }
-      const weekday = new Date(`${preferred_date}T12:00:00`).getDay();
-      if (tdConfig && tdConfig.days.length && !tdConfig.days.includes(weekday)) {
-        setError("Escolhe um dia da semana disponível para test drives.");
-        setLoading(false);
-        return;
-      }
+      // A data e a hora já foram validadas acima (formato/regras). Aqui só se
+      // confirmam as horas marcadas e as que já passaram — o erro fica no
+      // campo da hora, a vermelho.
       const baseSlots = tdConfig && tdConfig.slots.length ? tdConfig.slots : ALLOWED_TIMES;
-      if (!baseSlots.includes(preferred_time)) {
-        setError("Escolhe uma hora disponível para o test drive.");
+      if (!baseSlots.includes(preferredTime)) {
+        setErros((prev) => ({ ...prev, preferred_time: "Escolhe uma hora disponível para o test drive." }));
+        setError("Confirma os campos assinalados a vermelho.");
         setLoading(false);
         return;
       }
       // A hora já passou (só relevante se for hoje).
-      if (preferred_date === today && toMinutes(preferred_time) <= nowMinutesLisbon()) {
-        setError("Essa hora já passou. Escolhe outra disponível.");
+      if (preferredDate === today && toMinutes(preferredTime) <= nowMinutesLisbon()) {
+        setErros((prev) => ({ ...prev, preferred_time: "Essa hora já passou. Escolhe outra disponível." }));
+        setError("Confirma os campos assinalados a vermelho.");
         setLoading(false);
         return;
       }
       // Slot já marcado (ou a decorrer) para essa data, dado o espaço de 1h/2h.
-      const busy = selectedDate === preferred_date && bookedSlots.some((b) => {
-        const start = toMinutes(preferred_time);
+      const busy = selectedDate === preferredDate && bookedSlots.some((b) => {
+        const start = toMinutes(preferredTime);
         return start >= toMinutes(b) && start < toMinutes(b) + (tdConfig?.duration || 60);
       });
       if (busy) {
-        setError("Essa hora já está marcada. Escolhe outra disponível.");
-        setLoading(false);
-        return;
-      }
-      if (notes.length > 2000) {
-        setError("As notas/dúvidas não podem ultrapassar os 2000 caracteres.");
+        setErros((prev) => ({ ...prev, preferred_time: "Essa hora já está marcada. Escolhe outra disponível." }));
+        setError("Confirma os campos assinalados a vermelho.");
         setLoading(false);
         return;
       }
@@ -397,8 +431,8 @@ function ContactoContent() {
           p_email: email,
           p_phone: phone || null,
           p_vehicle_id: vehicle.id,
-          p_preferred_date: preferred_date,
-          p_preferred_time: preferred_time || null,
+          p_preferred_date: preferredDate,
+          p_preferred_time: preferredTime || null,
           p_notes: notes,
           p_user_id: uid,
         });
@@ -408,6 +442,7 @@ function ContactoContent() {
           setSuccess(true);
           setError(null);
           (e.target as HTMLFormElement).reset();
+          setErros({});
         } else if (!rpcError) {
           setError(
             result?.reason === "invalid_date"
@@ -418,8 +453,8 @@ function ContactoContent() {
           const err = await insertResilient("test_drives", {
             ...common,
             vehicle_id: vehicle.id,
-            preferred_date,
-            preferred_time,
+            preferred_date: preferredDate,
+            preferred_time: preferredTime,
             notes,
             status: "pending",
           });
@@ -430,6 +465,7 @@ function ContactoContent() {
             setSuccess(true);
             setError(null);
             (e.target as HTMLFormElement).reset();
+          setErros({});
           }
         }
       } catch (err) {
@@ -461,6 +497,7 @@ function ContactoContent() {
           setSuccess(true);
           setError(null);
           (e.target as HTMLFormElement).reset();
+          setErros({});
         } else if (!rpcError) {
           setError("Não foi possível enviar o pedido de reserva. Confirma os dados e tenta novamente.");
         } else {
@@ -481,6 +518,7 @@ function ContactoContent() {
             setSuccess(true);
             setError(null);
             (e.target as HTMLFormElement).reset();
+          setErros({});
           }
         }
       } catch (err) {
@@ -514,11 +552,13 @@ function ContactoContent() {
             setSuccess(true);
             setError(null);
             (e.target as HTMLFormElement).reset();
+          setErros({});
           }
         } else if (result?.ok) {
           setSuccess(true);
           setError(null);
           (e.target as HTMLFormElement).reset();
+          setErros({});
         } else if (result?.reason === "rate_limited") {
           setError("Já recebemos 2 pedidos de informação com este email nos últimos 30 minutos. Tenta novamente mais tarde.");
         } else {
@@ -721,15 +761,67 @@ function ContactoContent() {
           <div className="hidden" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" tabIndex={-1} autoComplete="off" /></div>
           <div>
             <label htmlFor="contact-name" className={labelCls}>Nome *</label>
-            <input id="contact-name" name="name" autoComplete="name" minLength={2} maxLength={120} required ref={nameRef} value={prefill.name} onChange={(e) => setPrefill((p) => ({ ...p, name: e.target.value }))} style={inputStyle} />
+            <input
+              id="contact-name"
+              name="name"
+              autoComplete="name"
+              minLength={2}
+              maxLength={120}
+              required
+              ref={nameRef}
+              value={prefill.name}
+              aria-invalid={Boolean(erros.name)}
+              onBlur={(e) => validarCampo("name", e.target.value)}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setPrefill((p) => ({ ...p, name: valor }));
+                revalidar("name", valor);
+              }}
+              style={campoEstilo(inputStyle, erros.name)}
+            />
+            <FieldError message={erros.name} />
           </div>
           <div>
             <label htmlFor="contact-email" className={labelCls}>Email *</label>
-            <input id="contact-email" name="email" type="email" autoComplete="email" maxLength={254} required value={prefill.email} onChange={(e) => setPrefill((p) => ({ ...p, email: e.target.value }))} style={inputStyle} />
+            <input
+              id="contact-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              maxLength={254}
+              required
+              value={prefill.email}
+              aria-invalid={Boolean(erros.email)}
+              onBlur={(e) => validarCampo("email", e.target.value)}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setPrefill((p) => ({ ...p, email: valor }));
+                revalidar("email", valor);
+              }}
+              style={campoEstilo(inputStyle, erros.email)}
+            />
+            <FieldError message={erros.email} />
           </div>
           <div>
             <label htmlFor="contact-phone" className={labelCls}>Telefone *</label>
-            <input id="contact-phone" name="phone" type="tel" autoComplete="tel" maxLength={30} required value={prefill.phone} onChange={(e) => setPrefill((p) => ({ ...p, phone: e.target.value }))} style={inputStyle} />
+            <input
+              id="contact-phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel"
+              maxLength={30}
+              required
+              value={prefill.phone}
+              aria-invalid={Boolean(erros.phone)}
+              onBlur={(e) => validarCampo("phone", e.target.value)}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setPrefill((p) => ({ ...p, phone: valor }));
+                revalidar("phone", valor);
+              }}
+              style={campoEstilo(inputStyle, erros.phone)}
+            />
+            <FieldError message={erros.phone} />
           </div>
 
           {isTestDrive && (
@@ -743,9 +835,15 @@ function ContactoContent() {
                   min={today}
                   max={maxDate}
                   required
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={inputStyle}
+                  aria-invalid={Boolean(erros.preferred_date)}
+                  onBlur={(e) => validarCampo("preferred_date", e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    revalidar("preferred_date", e.target.value);
+                  }}
+                  style={campoEstilo(inputStyle, erros.preferred_date)}
                 />
+                <FieldError message={erros.preferred_date} />
                 <p className="mt-1 text-xs text-muted">Entre hoje e {maxDate} (máx. 30 dias).</p>
                 {selectedDate && dayNotAllowed && (
                   <p role="alert" className="mt-1 text-xs text-amber-400">
@@ -764,7 +862,10 @@ function ContactoContent() {
                   required
                   defaultValue=""
                   disabled={dayNotAllowed}
-                  style={{ ...inputStyle, cursor: dayNotAllowed ? "not-allowed" : "pointer" }}
+                  aria-invalid={Boolean(erros.preferred_time)}
+                  onBlur={(e) => validarCampo("preferred_time", e.target.value)}
+                  onChange={(e) => revalidar("preferred_time", e.target.value)}
+                  style={{ ...campoEstilo(inputStyle, erros.preferred_time), cursor: dayNotAllowed ? "not-allowed" : "pointer" }}
                 >
                   <option value="" disabled>Escolhe uma hora…</option>
                   {morningSlots.length > 0 && (
@@ -785,6 +886,7 @@ function ContactoContent() {
                     <option value="" disabled>Sem horas disponíveis para esta data</option>
                   )}
                 </select>
+                <FieldError message={erros.preferred_time} />
                 {busyCount > 0 && (
                   <p className="mt-1 text-xs text-muted">
                     {busyCount} hora(s) já marcada(s) — cada test drive ocupa {tdDuration} min.
@@ -796,7 +898,17 @@ function ContactoContent() {
               </div>
               <div>
                 <label htmlFor="contact-notes" className={labelCls}>Notas / dúvidas (opcional)</label>
-                <textarea id="contact-notes" name="notes" rows={3} maxLength={2000} style={{ ...inputStyle, resize: "vertical" as const }} />
+                <textarea
+                  id="contact-notes"
+                  name="notes"
+                  rows={3}
+                  maxLength={2000}
+                  aria-invalid={Boolean(erros.notes)}
+                  onBlur={(e) => validarCampo("notes", e.target.value)}
+                  onChange={(e) => revalidar("notes", e.target.value)}
+                  style={{ ...campoEstilo(inputStyle, erros.notes), resize: "vertical" as const }}
+                />
+                <FieldError message={erros.notes} />
               </div>
             </>
           )}
@@ -809,7 +921,19 @@ function ContactoContent() {
               </p>
               <div>
                 <label htmlFor="contact-reserva-motivo" className={labelCls}>Motivo da reserva *</label>
-                <textarea id="contact-reserva-motivo" name="message" rows={4} minLength={5} maxLength={2000} required style={{ ...inputStyle, resize: "vertical" as const }} />
+                <textarea
+                  id="contact-reserva-motivo"
+                  name="message"
+                  rows={4}
+                  minLength={5}
+                  maxLength={2000}
+                  required
+                  aria-invalid={Boolean(erros.message)}
+                  onBlur={(e) => validarCampo("message", e.target.value)}
+                  onChange={(e) => revalidar("message", e.target.value)}
+                  style={{ ...campoEstilo(inputStyle, erros.message), resize: "vertical" as const }}
+                />
+                <FieldError message={erros.message} />
               </div>
               <label className="flex cursor-pointer items-start gap-3 text-sm text-muted">
                 <input name="extension" type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--copper)]" />
@@ -821,7 +945,19 @@ function ContactoContent() {
           {!isTestDrive && !isReserva && (
             <div>
               <label htmlFor="contact-message" className={labelCls}>Mensagem *</label>
-              <textarea id="contact-message" name="message" minLength={5} maxLength={5000} required rows={5} style={{ ...inputStyle, resize: "vertical" as const }} />
+              <textarea
+                id="contact-message"
+                name="message"
+                minLength={5}
+                maxLength={5000}
+                required
+                rows={5}
+                aria-invalid={Boolean(erros.message)}
+                onBlur={(e) => validarCampo("message", e.target.value)}
+                onChange={(e) => revalidar("message", e.target.value)}
+                style={{ ...campoEstilo(inputStyle, erros.message), resize: "vertical" as const }}
+              />
+              <FieldError message={erros.message} />
             </div>
           )}
 

@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase/client";
 import { uploadSiteImage } from "@/app/actions/upload";
 import { useToast } from "@/components/ui/toast";
 import type { SiteSettings } from "@/lib/site-settings";
+import { validarEmail, validarNumero, validarUrl } from "@/lib/validacao";
+import { FieldError, campoEstilo } from "@/components/ui/field-error";
 
 type SettingsRow = SiteSettings & { id: string };
 
@@ -101,6 +103,49 @@ export default function DefinicoesPage() {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   // Secções colapsáveis: começam todas fechadas para a página ficar curta.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  // Erros por campo (itens 13/14): validados ao sair do campo, com a mensagem
+  // por baixo e o rebordo vermelho até o valor ficar válido.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+
+  const calcularErro = (key: string, valor: string): string | null => {
+    switch (key) {
+      case "email":
+        return valor.trim() ? validarEmail(valor) : null;
+      case "location_url":
+        return validarUrl(valor);
+      case "proposal_notify_emails": {
+        const lista = valor.split(",").map((item) => item.trim()).filter(Boolean);
+        for (const email of lista) {
+          if (validarEmail(email)) return `Email inválido: ${email}.`;
+        }
+        return null;
+      }
+      case "td_duration_minutes":
+        return validarNumero(valor, { rotulo: "A duração", min: 15, max: 480, inteiro: true });
+      case "about_inspection_points":
+      case "about_vehicles_sold":
+      case "about_years_experience":
+      case "about_clients":
+        return validarNumero(valor, { rotulo: "O valor", min: 0, inteiro: true });
+      default:
+        // Links das fotografias do site (a lista de avatares fica de fora).
+        if (key.startsWith("photo_")) return validarUrl(valor);
+        return null;
+    }
+  };
+
+  const validarCampo = (key: string, valor: string) => {
+    const msg = calcularErro(key, valor);
+    setErros((prev) => ({ ...prev, [key]: msg }));
+    return msg;
+  };
+
+  // Atualiza o valor e revalida apenas se o campo já estava marcado.
+  const atualizarCampo = (key: string, valor: string) => {
+    setForm((prev) => ({ ...prev, [key]: valor }));
+    if (!erros[key]) return;
+    setErros((prev) => ({ ...prev, [key]: calcularErro(key, valor) }));
+  };
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -161,6 +206,30 @@ export default function DefinicoesPage() {
   };
 
   const handleSave = async () => {
+    // Validar todos os campos com regras antes de guardar: os erros ficam por
+    // baixo de cada input e a secção abre para ficarem à vista.
+    const campos: Record<string, string | null> = {};
+    for (const [key, valor] of Object.entries(form)) {
+      campos[key] = calcularErro(key, valor);
+    }
+    const invalidos = Object.entries(campos).filter(([, msg]) => msg);
+    if (invalidos.length) {
+      setErros(campos);
+      setOpenGroups((prev) => {
+        const next = { ...prev };
+        for (const grupo of GROUPS) {
+          if (grupo.fields.some((field) => campos[field.key])) next[grupo.title] = true;
+        }
+        return next;
+      });
+      toast({
+        variant: "error",
+        title: "Confirma os campos assinalados",
+        description: invalidos[0][1] ?? undefined,
+      });
+      return;
+    }
+
     setSaving(true);
 
     const payloadRaw: Record<string, unknown> = { ...form, updated_at: new Date().toISOString() };
@@ -426,29 +495,37 @@ export default function DefinicoesPage() {
                             </div>
                           </div>
                           <input
-                            style={{ ...inputStyle, marginTop: "0.5rem" }}
+                            style={campoEstilo({ ...inputStyle, marginTop: "0.5rem" }, erros[field.key])}
                             placeholder="https://... ou envia um ficheiro"
                             value={form[field.key] ?? ""}
-                            onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                            aria-invalid={Boolean(erros[field.key])}
+                            onBlur={(e) => validarCampo(field.key, e.target.value)}
+                            onChange={(e) => atualizarCampo(field.key, e.target.value)}
                           />
+                          <FieldError message={erros[field.key]} />
                         </div>
                       ) : field.full ? (
                         <textarea
                           rows={6}
-                          style={{ ...inputStyle, resize: "vertical" as const }}
+                          style={{ ...campoEstilo(inputStyle, erros[field.key]), resize: "vertical" as const }}
                           value={form[field.key] ?? ""}
-                          onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          aria-invalid={Boolean(erros[field.key])}
+                          onBlur={(e) => validarCampo(field.key, e.target.value)}
+                          onChange={(e) => atualizarCampo(field.key, e.target.value)}
                         />
                       ) : (
                         <input
-                          style={inputStyle}
+                          style={campoEstilo(inputStyle, erros[field.key])}
                           placeholder={field.hint}
                           value={form[field.key] ?? ""}
-                          onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          aria-invalid={Boolean(erros[field.key])}
+                          onBlur={(e) => validarCampo(field.key, e.target.value)}
+                          onChange={(e) => atualizarCampo(field.key, e.target.value)}
                         />
                       )}
 
                       <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "var(--muted-deep)" }}>{field.hint}</div>
+                      <FieldError message={erros[field.key]} />
 
                       {field.key === "avatar_pool" && (
                         <div className="mt-2">

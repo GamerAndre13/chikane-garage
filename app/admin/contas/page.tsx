@@ -30,6 +30,8 @@ export default function ContasPage() {
   const [items, setItems] = useState<PendingDeletion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  // Pesquisa (item 18): nome ou email do utilizador.
+  const [search, setSearch] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
@@ -112,11 +114,42 @@ export default function ContasPage() {
     );
   }
 
+  const termo = search.trim().toLowerCase();
+  const itemsVisible = items.filter((item) => {
+    if (!termo) return true;
+    return [item.full_name, item.email].some((valor) => (valor || "").toLowerCase().includes(termo));
+  });
+
   return (
     <div>
       <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
         Contas — Pedidos de eliminação
       </h1>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Pesquisar contas"
+          placeholder="Pesquisar por nome ou email…"
+          className="min-h-11 w-full rounded border bg-background px-3 py-2 text-sm sm:w-96"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="min-h-11 rounded border px-3 py-2 text-xs"
+            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+          >
+            Limpar pesquisa
+          </button>
+        )}
+        <span className="ml-auto text-xs" style={{ color: "var(--muted)" }}>
+          {itemsVisible.length} de {items.length}
+        </span>
+      </div>
 
       {error && (
         <div className="mb-4 border-l-4 p-4 text-sm" style={{ borderColor: "#ef4444", backgroundColor: "rgba(239,68,68,0.1)", color: "#f87171" }}>
@@ -135,7 +168,7 @@ export default function ContasPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
+            {itemsVisible.map((item) => (
               <tr key={item.id} className="border-b" style={{ borderColor: "var(--border)" }}>
                 <td data-label="Utilizador" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{item.full_name || "—"}</td>
                 <td data-label="Email" className="px-4 py-3 break-all" style={{ color: "var(--foreground)" }}>{item.email || "—"}</td>
@@ -160,10 +193,10 @@ export default function ContasPage() {
                 </td>
               </tr>
             ))}
-            {items.length === 0 && (
+            {itemsVisible.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
-                  Sem pedidos de eliminação pendentes
+                  {termo ? "Nenhum resultado para esta pesquisa." : "Sem pedidos de eliminação pendentes"}
                 </td>
               </tr>
             )}

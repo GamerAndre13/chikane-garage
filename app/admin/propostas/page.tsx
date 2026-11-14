@@ -35,6 +35,8 @@ export default function PropostasPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
+  // Pesquisa (item 18): nome, email, telefone, NIF ou nº da proposta.
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -53,9 +55,14 @@ export default function PropostasPage() {
   }, []);
 
   const visible = useMemo(() => {
-    if (statusFilter === "all") return proposals;
-    return proposals.filter((p) => p.status === statusFilter);
-  }, [proposals, statusFilter]);
+    const termo = search.trim().toLowerCase();
+    const porEstado = statusFilter === "all" ? proposals : proposals.filter((p) => p.status === statusFilter);
+    if (!termo) return porEstado;
+    return porEstado.filter((p) =>
+      [p.name, p.email, p.phone, p.nif, p.message, p.id.slice(0, 8)]
+        .some((valor) => (valor || "").toLowerCase().includes(termo))
+    );
+  }, [proposals, statusFilter, search]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setUpdating(id);
@@ -99,6 +106,28 @@ export default function PropostasPage() {
             {visible.length} de {proposals.length}
           </div>
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Pesquisar propostas"
+          placeholder="Pesquisar por nome, email, telefone, NIF…"
+          className="min-h-11 w-full rounded border bg-background px-3 py-2 text-sm sm:w-96"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="min-h-11 rounded border px-3 py-2 text-xs"
+            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+          >
+            Limpar pesquisa
+          </button>
+        )}
       </div>
 
       <div className="md:overflow-hidden md:rounded md:border" style={{ borderColor: "var(--border)" }}>

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { uploadSiteImage } from "@/app/actions/upload";
+import { validarNumero, validarSlug, validarUrl } from "@/lib/validacao";
+import { FieldError, campoClasse } from "@/components/ui/field-error";
 
 interface Campaign {
   id: string;
@@ -87,6 +89,12 @@ function fromDateInput(value: string, endOfDay = false): string | null {
   return date.toISOString();
 }
 
+// O fim da campanha não pode ser anterior ao início.
+function validarDataFim(inicio: string, fim: string): string | null {
+  if (inicio && fim && fim < inicio) return "O fim não pode ser anterior ao início.";
+  return null;
+}
+
 const dateLabel = (value: string | null) =>
   value
     ? new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value))
@@ -104,6 +112,11 @@ export default function AdminCampanhasPage() {
   const [cover, setCover] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Erros por campo (itens 13/14): validados ao sair do campo, com a mensagem
+  // por baixo do input e o rebordo vermelho até o valor ficar válido.
+  const [erros, setErros] = useState<Record<string, string | null>>({});
+  // Pesquisa da lista de campanhas (item 18).
+  const [search, setSearch] = useState("");
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -149,8 +162,59 @@ export default function AdminCampanhasPage() {
     [campaigns]
   );
 
+  // Lista filtrada pela pesquisa (título, slug, subtítulo ou viatura).
+  const campaignsVisible = useMemo(() => {
+    const termo = search.trim().toLowerCase();
+    if (!termo) return campaigns;
+    const label = (vehicle: VehicleOption) =>
+      [vehicle.brand, vehicle.model, vehicle.trim, vehicle.registration_year].filter(Boolean).join(" · ");
+    return campaigns.filter((campaign) => {
+      const viatura = campaign.vehicle_id ? vehicles.find((item) => item.id === campaign.vehicle_id) : null;
+      return [campaign.title, campaign.slug, campaign.subtitle, campaign.badge, viatura ? label(viatura) : ""]
+        .some((valor) => (valor || "").toLowerCase().includes(termo));
+    });
+  }, [campaigns, search, vehicles]);
+
   const vehicleLabel = (vehicle: VehicleOption) =>
     [vehicle.brand, vehicle.model, vehicle.trim, vehicle.registration_year].filter(Boolean).join(" · ");
+
+  // Validação de um campo (ao sair dele e enquanto tiver erro). Recebe o valor
+  // atual porque no onChange o estado ainda não foi atualizado.
+  const calcularErro = (campo: string, valor: string, atual: CampaignForm = form): string | null => {
+    switch (campo) {
+      case "title":
+        return valor.trim() ? null : "Indica o título da campanha.";
+      case "slug":
+        return valor.trim() ? validarSlug(slugify(valor)) : null;
+      case "price_from":
+        return validarNumero(valor, { rotulo: "O preço desde", min: 0, obrigatorio: false });
+      case "position":
+        return validarNumero(valor, { rotulo: "A ordem", min: 0, inteiro: true, obrigatorio: false });
+      case "cta_url":
+        return validarUrl(valor);
+      case "starts_at":
+        return validarDataFim(atual.starts_at, atual.ends_at);
+      case "ends_at":
+        return validarDataFim(atual.starts_at, valor);
+      default:
+        return null;
+    }
+  };
+
+  const validarCampo = (campo: string) => {
+    const msg = calcularErro(campo, String(form[campo as keyof CampaignForm] ?? ""));
+    setErros((prev) => ({ ...prev, [campo]: msg }));
+    return msg;
+  };
+
+  // Atualiza o valor e, se o campo já estava marcado, revalida-o para o vermelho
+  // desaparecer assim que a informação fica válida.
+  const atualizarCampo = (campo: keyof CampaignForm, valor: string) => {
+    const seguinte = { ...form, [campo]: valor } as CampaignForm;
+    setForm(seguinte);
+    if (!erros[campo]) return;
+    setErros((prev) => ({ ...prev, [campo]: calcularErro(campo, valor, seguinte) }));
+  };
 
   const startCreate = () => {
     setEditingId(null);
@@ -158,6 +222,7 @@ export default function AdminCampanhasPage() {
     setCover("");
     setImages([]);
     setError(null);
+    setErros({});
   };
 
   const startEdit = async (campaign: Campaign) => {
@@ -178,6 +243,7 @@ export default function AdminCampanhasPage() {
       is_active: campaign.is_active,
     });
     setError(null);
+    setErros({});
     // Fotos guardadas; se a migração 029 ainda não correu, usa a capa antiga.
     const { data: imageRows } = await supabase
       .from("campaign_images")
@@ -259,10 +325,24 @@ export default function AdminCampanhasPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    if (!form.title.trim()) {
-      setError("Indica o título da campanha.");
+
+    // Validar todos os campos visíveis antes de guardar: os erros ficam por
+    // baixo de cada input, a vermelho.
+    const campos: Record<string, string | null> = {
+      title: calcularErro("title", form.title),
+      slug: calcularErro("slug", form.slug),
+      price_from: calcularErro("price_from", form.price_from),
+      position: calcularErro("position", form.position),
+      cta_url: calcularErro("cta_url", form.cta_url),
+      starts_at: calcularErro("starts_at", form.starts_at, form),
+      ends_at: calcularErro("ends_at", form.ends_at, form),
+    };
+    setErros((prev) => ({ ...prev, ...campos }));
+    if (Object.values(campos).some(Boolean)) {
+      setError("Confirma os campos assinalados a vermelho.");
       return;
     }
+
     const slug = slugify(form.slug.trim() || form.title);
     if (!slug) {
       setError("Não foi possível gerar o identificador da campanha.");
@@ -388,11 +468,32 @@ export default function AdminCampanhasPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="md:col-span-2">
               <label htmlFor="campanha-titulo" className={fieldLabel} style={{ color: "var(--muted)" }}>Título *</label>
-              <input id="campanha-titulo" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ex.: Jantes de inverno oferecidas" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-titulo"
+                required
+                value={form.title}
+                aria-invalid={Boolean(erros.title)}
+                onBlur={() => validarCampo("title")}
+                onChange={(e) => atualizarCampo("title", e.target.value)}
+                placeholder="Ex.: Jantes de inverno oferecidas"
+                className={campoClasse(inputClass, erros.title)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.title} />
             </div>
             <div>
               <label htmlFor="campanha-slug" className={fieldLabel} style={{ color: "var(--muted)" }}>Identificador (slug)</label>
-              <input id="campanha-slug" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder={slugify(form.title) || "gerado do título"} className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-slug"
+                value={form.slug}
+                aria-invalid={Boolean(erros.slug)}
+                onBlur={() => validarCampo("slug")}
+                onChange={(e) => atualizarCampo("slug", e.target.value)}
+                placeholder={slugify(form.title) || "gerado do título"}
+                className={campoClasse(inputClass, erros.slug)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.slug} />
             </div>
             <div>
               <label htmlFor="campanha-subtitulo" className={fieldLabel} style={{ color: "var(--muted)" }}>Subtítulo</label>
@@ -404,7 +505,18 @@ export default function AdminCampanhasPage() {
             </div>
             <div>
               <label htmlFor="campanha-preco" className={fieldLabel} style={{ color: "var(--muted)" }}>Preço desde (€)</label>
-              <input id="campanha-preco" inputMode="decimal" value={form.price_from} onChange={(e) => setForm({ ...form, price_from: e.target.value })} placeholder="0,00" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-preco"
+                inputMode="decimal"
+                value={form.price_from}
+                aria-invalid={Boolean(erros.price_from)}
+                onBlur={() => validarCampo("price_from")}
+                onChange={(e) => atualizarCampo("price_from", e.target.value)}
+                placeholder="0,00"
+                className={campoClasse(inputClass, erros.price_from)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.price_from} />
             </div>
           </div>
 
@@ -424,19 +536,60 @@ export default function AdminCampanhasPage() {
             </div>
             <div>
               <label htmlFor="campanha-cta-url" className={fieldLabel} style={{ color: "var(--muted)" }}>Link próprio</label>
-              <input id="campanha-cta-url" value={form.cta_url} onChange={(e) => setForm({ ...form, cta_url: e.target.value })} placeholder="/contacto ou https://…" className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-cta-url"
+                value={form.cta_url}
+                aria-invalid={Boolean(erros.cta_url)}
+                onBlur={() => validarCampo("cta_url")}
+                onChange={(e) => atualizarCampo("cta_url", e.target.value)}
+                placeholder="/contacto ou https://…"
+                className={campoClasse(inputClass, erros.cta_url)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.cta_url} />
             </div>
             <div>
               <label htmlFor="campanha-inicio" className={fieldLabel} style={{ color: "var(--muted)" }}>Início</label>
-              <input id="campanha-inicio" type="date" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-inicio"
+                type="date"
+                value={form.starts_at}
+                aria-invalid={Boolean(erros.starts_at)}
+                onBlur={() => validarCampo("starts_at")}
+                onChange={(e) => atualizarCampo("starts_at", e.target.value)}
+                className={campoClasse(inputClass, erros.starts_at)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.starts_at} />
             </div>
             <div>
               <label htmlFor="campanha-fim" className={fieldLabel} style={{ color: "var(--muted)" }}>Fim</label>
-              <input id="campanha-fim" type="date" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-fim"
+                type="date"
+                value={form.ends_at}
+                aria-invalid={Boolean(erros.ends_at)}
+                onBlur={() => validarCampo("ends_at")}
+                onChange={(e) => atualizarCampo("ends_at", e.target.value)}
+                className={campoClasse(inputClass, erros.ends_at)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.ends_at} />
             </div>
             <div>
               <label htmlFor="campanha-ordem" className={fieldLabel} style={{ color: "var(--muted)" }}>Ordem</label>
-              <input id="campanha-ordem" inputMode="numeric" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder={String(nextPosition)} className={inputClass} style={{ borderColor: "var(--border)", color: "var(--foreground)" }} />
+              <input
+                id="campanha-ordem"
+                inputMode="numeric"
+                value={form.position}
+                aria-invalid={Boolean(erros.position)}
+                onBlur={() => validarCampo("position")}
+                onChange={(e) => atualizarCampo("position", e.target.value)}
+                placeholder={String(nextPosition)}
+                className={campoClasse(inputClass, erros.position)}
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              />
+              <FieldError message={erros.position} />
             </div>
           </div>
 
@@ -577,13 +730,40 @@ export default function AdminCampanhasPage() {
         </form>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Pesquisar campanhas"
+          placeholder="Pesquisar por título, slug ou viatura…"
+          className="min-h-11 w-full rounded border bg-background px-3 py-2 text-sm sm:w-96"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="min-h-11 rounded border px-3 py-2 text-xs"
+            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+          >
+            Limpar pesquisa
+          </button>
+        )}
+        <span className="ml-auto text-xs" style={{ color: "var(--muted)" }}>
+          {campaignsVisible.length} de {campaigns.length} campanhas
+        </span>
+      </div>
+
       <div className="space-y-3">
         {loading ? (
           <div className="rounded border px-4 py-6 text-center text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)", color: "var(--muted)" }}>A carregar...</div>
-        ) : campaigns.length === 0 ? (
-          <div className="rounded border px-4 py-6 text-center text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)", color: "var(--muted)" }}>Ainda sem campanhas criadas</div>
+        ) : campaignsVisible.length === 0 ? (
+          <div className="rounded border px-4 py-6 text-center text-sm" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)", color: "var(--muted)" }}>
+            {search.trim() ? "Nenhum resultado para esta pesquisa." : "Ainda sem campanhas criadas"}
+          </div>
         ) : (
-          campaigns.map((campaign) => {
+          campaignsVisible.map((campaign) => {
             const vehicle = vehicles.find((item) => item.id === campaign.vehicle_id);
             return (
               <div key={campaign.id} className="rounded border p-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>

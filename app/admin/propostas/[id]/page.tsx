@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { validarNumero } from "@/lib/validacao";
+import { FieldError, campoClasse } from "@/components/ui/field-error";
 
 interface ExtraItem {
   catalog_extra_id?: string;
@@ -63,6 +65,8 @@ export default function PropostaDetalhe() {
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [discount, setDiscount] = useState("");
+  // Erro do campo do desconto (itens 13/14), validado ao sair do campo.
+  const [erroDesconto, setErroDesconto] = useState<string | null>(null);
   // Campos que vinham vazios e foram calculados aqui (viatura + extras).
   const [autoFilled, setAutoFilled] = useState(false);
 
@@ -138,8 +142,21 @@ export default function PropostaDetalhe() {
   // Desconto em euros definido pelo backoffice (0 = sem desconto).
   const discountValue = Math.max(0, Number(discount.replace(",", ".")) || 0);
 
+  // Validação do desconto: número >= 0 e nunca superior ao total da proposta.
+  const validarDesconto = (valor: string): string | null => {
+    const msg = validarNumero(valor, { rotulo: "O desconto", min: 0, obrigatorio: false });
+    if (msg) return msg;
+    const numero = Number(valor.replace(",", ".")) || 0;
+    const total = proposal?.total_price != null ? Number(proposal.total_price) : null;
+    if (total != null && numero > total) return "O desconto não pode ser superior ao total da proposta.";
+    return null;
+  };
+
   const handleSave = async () => {
     if (!proposal) return;
+    const erro = validarDesconto(discount);
+    setErroDesconto(erro);
+    if (erro) return;
     setSaving(true);
     const total = proposal.total_price != null ? Number(proposal.total_price) : null;
     const finalPrice = total != null ? Math.max(0, total - discountValue) : null;
@@ -362,11 +379,19 @@ export default function PropostaDetalhe() {
               id="proposta-desconto"
               inputMode="decimal"
               value={discount}
-              onChange={(e) => setDiscount(e.target.value.replace(/[^\d.,]/g, ""))}
+              aria-invalid={Boolean(erroDesconto)}
+              onBlur={(e) => setErroDesconto(validarDesconto(e.target.value))}
+              onChange={(e) => {
+                const valor = e.target.value.replace(/[^\d.,]/g, "");
+                setDiscount(valor);
+                // Depois de marcado, revalida enquanto escreve.
+                if (erroDesconto) setErroDesconto(validarDesconto(valor));
+              }}
               placeholder="0"
-              className="w-full px-3 py-2 text-sm border rounded bg-background"
+              className={campoClasse("w-full px-3 py-2 text-sm border rounded bg-background", erroDesconto)}
               style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
             />
+            <FieldError message={erroDesconto} />
             <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
               Total da proposta:{" "}
               <strong style={{ color: "var(--copper-deep)" }}>

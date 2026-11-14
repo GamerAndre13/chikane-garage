@@ -291,6 +291,19 @@ export default function EditarVeiculo() {
     return next;
   }, [form]);
 
+  // Validação de um só campo, ao sair dele (item 13). Marca apenas esse campo,
+  // sem pintar os restantes que o utilizador ainda não tocou.
+  const validateField = useCallback((field: string) => {
+    const next = validate();
+    setErrors((prev) => {
+      const merged = { ...prev };
+      if (next[field]) merged[field] = next[field];
+      else delete merged[field];
+      return merged;
+    });
+    markTouched(field);
+  }, [validate, markTouched]);
+
   // Nacional → país de origem fixo em Portugal e campo escondido.
   const handleOriginChange = useCallback((value: string) => {
     setMultiple({ origin: value, origin_country: value === "national" ? "Portugal" : countryInputLabel("DE") });
@@ -428,13 +441,13 @@ export default function EditarVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3" style={{ color: "var(--copper-deep)" }}>Identificação</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Marca *" error={errors.brand}>
-            <select id="vehicle-brand" aria-invalid={Boolean(errors.brand)} style={withError(selectStyle, errors.brand)} value={form.brand} onChange={(e) => { handleBrandChange(e.target.value); clearError("brand"); markTouched("brand"); }}>
+            <select id="vehicle-brand" aria-invalid={Boolean(errors.brand)} style={withError(selectStyle, errors.brand)} value={form.brand} onBlur={() => validateField("brand")} onChange={(e) => { handleBrandChange(e.target.value); clearError("brand"); markTouched("brand"); }}>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </Field>
           <Field label="Modelo *" error={errors.model}>
             <>
-              <input id="vehicle-model" required list="vehicle-models" aria-invalid={Boolean(errors.model)} style={withError(inputStyle, errors.model)} placeholder="Escreve ou seleciona o modelo" value={form.model} onChange={(e) => { handleModelChange(e.target.value); clearError("model"); markTouched("model"); }} />
+              <input id="vehicle-model" required list="vehicle-models" aria-invalid={Boolean(errors.model)} style={withError(inputStyle, errors.model)} placeholder="Escreve ou seleciona o modelo" value={form.model} onBlur={() => validateField("model")} onChange={(e) => { handleModelChange(e.target.value); clearError("model"); markTouched("model"); }} />
               <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
             </>
           </Field>
@@ -442,7 +455,7 @@ export default function EditarVeiculo() {
           {form.sale_type === "used" && (
             <>
               <Field label="Ano Registo *" error={errors.registration_year}>
-                <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onChange={handleFieldChange("registration_year")} />
+                <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onBlur={() => validateField("registration_year")} onChange={handleFieldChange("registration_year")} />
               </Field>
               <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
             </>
@@ -452,7 +465,7 @@ export default function EditarVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Especificações Técnicas</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Motor" error={errors.engine}>
-            <input id="vehicle-engine" inputMode="decimal" maxLength={3} placeholder="ex: 2.0" aria-invalid={Boolean(errors.engine)} style={withError(inputStyle, errors.engine)} value={form.engine} onChange={(e) => { setField("engine", maskEngineValue(e.target.value)); clearError("engine"); markTouched("engine"); }} />
+            <input id="vehicle-engine" inputMode="decimal" maxLength={3} placeholder="ex: 2.0" aria-invalid={Boolean(errors.engine)} style={withError(inputStyle, errors.engine)} value={form.engine} onBlur={() => validateField("engine")} onChange={(e) => { setField("engine", maskEngineValue(e.target.value)); clearError("engine"); markTouched("engine"); }} />
           </Field>
           <Field label="Potência (CV)"><input type="number" min="0" style={inputStyle} value={form.power_hp} onChange={handleChange("power_hp")} /></Field>
           <Field label="Binário (Nm)"><input type="number" min="0" style={inputStyle} value={form.torque_nm} onChange={handleChange("torque_nm")} /></Field>
@@ -467,7 +480,7 @@ export default function EditarVeiculo() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           {/* Quilometragem, donos e caderneta só existem em viaturas usadas. */}
           {form.sale_type === "used" && (
-            <Field label="Quilometragem *" error={errors.mileage_km}><input id="vehicle-mileage_km" required type="number" min="0" aria-invalid={Boolean(errors.mileage_km)} style={withError(inputStyle, errors.mileage_km)} value={form.mileage_km} onChange={handleFieldChange("mileage_km")} /></Field>
+            <Field label="Quilometragem *" error={errors.mileage_km}><input id="vehicle-mileage_km" required type="number" min="0" aria-invalid={Boolean(errors.mileage_km)} style={withError(inputStyle, errors.mileage_km)} value={form.mileage_km} onBlur={() => validateField("mileage_km")} onChange={handleFieldChange("mileage_km")} /></Field>
           )}
           <Field label="Cor Exterior">
             <>
@@ -543,7 +556,7 @@ export default function EditarVeiculo() {
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-          <Field label="Preço (€) *" error={errors.price}><input id="vehicle-price" required type="number" min="0" step="100" aria-invalid={Boolean(errors.price)} style={withError(inputStyle, errors.price)} value={form.price} onChange={handleFieldChange("price")} /></Field>
+          <Field label="Preço (€) *" error={errors.price}><input id="vehicle-price" required type="number" min="0" step="100" aria-invalid={Boolean(errors.price)} style={withError(inputStyle, errors.price)} value={form.price} onBlur={() => validateField("price")} onChange={handleFieldChange("price")} /></Field>
           <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
         </div>
 

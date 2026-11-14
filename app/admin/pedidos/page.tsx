@@ -99,6 +99,9 @@ function PedidosContent() {
   });
   const [modal, setModal] = useState<ModalState>(null);
   const [reply, setReply] = useState<ReplyState>(null);
+  // Pesquisa da lista da aba ativa (item 18): filtra por nome, email,
+  // telemóvel, viatura e texto do pedido.
+  const [search, setSearch] = useState("");
 
   // Congela a página de fundo enquanto um popup está aberto (sem scroll);
   // repõe o valor anterior ao fechar o popup.
@@ -460,6 +463,31 @@ function PedidosContent() {
   const newDrivesCount = testDrives.filter((d) => d.status === "pending").length;
   const newReservationsCount = reservations.filter((r) => r.status === "pending").length;
 
+  // Pesquisa (item 18): compara o termo com os campos visíveis de cada linha.
+  const termo = search.trim().toLowerCase();
+  const corresponde = (...valores: (string | null | undefined)[]) =>
+    !termo || valores.some((valor) => (valor || "").toLowerCase().includes(termo));
+
+  const contactsVisible = contacts.filter((c) =>
+    corresponde(c.name, c.email, c.phone, c.message, c.vehicle_id ? formatVehicle(c) : "")
+  );
+  const testDrivesVisible = testDrives.filter((d) =>
+    corresponde(
+      d.name,
+      d.email,
+      d.phone,
+      d.notes,
+      d.admin_notes,
+      d.preferred_date,
+      d.confirmed_date,
+      d.vehicle_id ? formatVehicle(d) : ""
+    )
+  );
+  const reservationsVisible = reservations.filter((r) =>
+    corresponde(r.name, r.email, r.phone, r.message, r.vehicle_id ? formatVehicle(r) : "")
+  );
+  const vazioPesquisa = termo ? "Nenhum resultado para esta pesquisa." : null;
+
   const statusBadge = (status: string) => (
     <span
       className="px-2 py-1 rounded text-xs font-medium"
@@ -489,6 +517,36 @@ function PedidosContent() {
       <h1 className="text-2xl uppercase tracking-wide mb-6" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
         Pedidos
       </h1>
+
+      {/* Pesquisa da lista (item 18) */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Pesquisar nos pedidos"
+          placeholder="Pesquisar por nome, email, telemóvel, viatura…"
+          className="min-h-11 w-full rounded border bg-background px-3 py-2 text-sm sm:w-96"
+          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="min-h-11 rounded border px-3 py-2 text-xs"
+            style={{ borderColor: "var(--border)", color: "var(--silver)" }}
+          >
+            Limpar pesquisa
+          </button>
+        )}
+        <span className="ml-auto text-xs" style={{ color: "var(--muted)" }}>
+          {activeTab === "contactos"
+            ? `${contactsVisible.length} de ${contacts.length} contactos`
+            : activeTab === "testdrives"
+              ? `${testDrivesVisible.length} de ${testDrives.length} test drives`
+              : `${reservationsVisible.length} de ${reservations.length} reservas`}
+        </span>
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -679,7 +737,7 @@ function PedidosContent() {
               </tr>
             </thead>
             <tbody>
-              {contacts.map((c) => (
+              {contactsVisible.map((c) => (
                 <tr key={c.id} className="border-b" style={{ borderColor: "var(--border)" }}>
                   <td data-label="Nome" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{c.name}</td>
                   <td data-label="Email" className="px-4 py-3 break-all" style={{ color: "var(--foreground)" }}>{c.email}</td>
@@ -735,10 +793,10 @@ function PedidosContent() {
                   </td>
                 </tr>
               ))}
-              {contacts.length === 0 && (
+              {contactsVisible.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
-                    Nenhum contacto encontrado
+                    {vazioPesquisa ?? "Nenhum contacto encontrado"}
                   </td>
                 </tr>
               )}
@@ -765,7 +823,7 @@ function PedidosContent() {
               </tr>
             </thead>
             <tbody>
-              {testDrives.map((d) => (
+              {testDrivesVisible.map((d) => (
                 <tr key={d.id} className="border-b" style={{ borderColor: "var(--border)" }}>
                   <td data-label="Nome" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{d.name}</td>
                   <td data-label="Contactos" className="px-4 py-3">
@@ -895,10 +953,10 @@ function PedidosContent() {
                   </td>
                 </tr>
               ))}
-              {testDrives.length === 0 && (
+              {testDrivesVisible.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
-                    Nenhum pedido de test drive encontrado
+                    {vazioPesquisa ?? "Nenhum pedido de test drive encontrado"}
                   </td>
                 </tr>
               )}
@@ -924,7 +982,7 @@ function PedidosContent() {
               </tr>
             </thead>
             <tbody>
-              {reservations.map((r) => (
+              {reservationsVisible.map((r) => (
                 <tr key={r.id} className="border-b" style={{ borderColor: "var(--border)" }}>
                   <td data-label="Nome" className="px-4 py-3" style={{ color: "var(--foreground)" }}>{r.name}</td>
                   <td data-label="Contactos" className="px-4 py-3">
@@ -1016,10 +1074,10 @@ function PedidosContent() {
                   </td>
                 </tr>
               ))}
-              {reservations.length === 0 && (
+              {reservationsVisible.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center" style={{ color: "var(--muted)" }}>
-                    Nenhum pedido de reserva encontrado
+                    {vazioPesquisa ?? "Nenhum pedido de reserva encontrado"}
                   </td>
                 </tr>
               )}
