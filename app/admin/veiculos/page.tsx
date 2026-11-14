@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { useDialogs } from "@/components/ui/dialogs";
+import { useToast } from "@/components/ui/toast";
+import { useAdminRole } from "../role-context";
+import { canManageVehicles } from "@/lib/roles";
 
 interface Vehicle {
   id: string;
   brand: string;
   model: string;
   trim?: string;
+  slug?: string | null;
   registration_year: number;
   price: number;
   status: string;
@@ -35,6 +40,12 @@ export default function VeiculosList() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { confirmar, mostrarErro } = useDialogs();
+  const { toast } = useToast();
+  // O cargo vem do layout do backoffice: editor e gestor de vendas só consultam
+  // viaturas; criar, editar e apagar é exclusivo do admin (item 7).
+  const role = useAdminRole();
+  const podeGerir = canManageVehicles(role);
 
   const fetchVehicles = useCallback(async () => {
     const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
@@ -57,8 +68,19 @@ export default function VeiculosList() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja apagar esta viatura?")) return;
-    await supabase.from("vehicles").delete().eq("id", id);
+    const ok = await confirmar({
+      titulo: "Apagar viatura",
+      mensagem: "Esta ação remove a viatura do catálogo e não pode ser desfeita.",
+      confirmar: "Apagar",
+      perigo: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+    if (error) {
+      mostrarErro({ titulo: "Não foi possível apagar", mensagem: error.message });
+      return;
+    }
+    toast({ variant: "success", title: "Viatura apagada" });
     fetchVehicles();
   };
 
@@ -90,7 +112,7 @@ export default function VeiculosList() {
       status: newStatus,
       sold_at: newStatus === "sold" ? new Date().toISOString() : null,
     }).eq("id", id);
-    if (error) alert("Erro ao atualizar status: " + error.message);
+    if (error) mostrarErro({ titulo: "Não foi possível mudar o estado", mensagem: error.message });
     else fetchVehicles();
     setUpdating(null);
   };
@@ -115,14 +137,14 @@ export default function VeiculosList() {
       .update({ spotlight: false })
       .or("spotlight.eq.true,spotlight.is.null");
     if (clearRes.error) {
-      alert("Erro ao atualizar destaque: " + clearRes.error.message);
+      mostrarErro({ titulo: "Não foi possível atualizar o destaque", mensagem: clearRes.error.message });
       setUpdating(null);
       return;
     }
     if (!current) {
       const setRes = await supabase.from("vehicles").update({ spotlight: true }).eq("id", id);
       if (setRes.error) {
-        alert("Erro ao atualizar destaque: " + setRes.error.message);
+        mostrarErro({ titulo: "Não foi possível atualizar o destaque", mensagem: setRes.error.message });
         setUpdating(null);
         return;
       }
@@ -150,13 +172,15 @@ export default function VeiculosList() {
         <h1 className="text-2xl uppercase tracking-wide" style={{ fontFamily: "var(--font-display)", color: "var(--foreground)" }}>
           Viaturas
         </h1>
-        <Link
-          href="/admin/veiculos/novo"
-          className="inline-flex min-h-11 items-center rounded px-4 py-2 text-sm font-medium transition-colors"
-          style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
-        >
-          + Nova Viatura
-        </Link>
+        {podeGerir && (
+          <Link
+            href="/admin/veiculos/novo"
+            className="inline-flex min-h-11 items-center rounded px-4 py-2 text-sm font-medium transition-colors"
+            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
+          >
+            + Nova Viatura
+          </Link>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3 items-center">
@@ -234,56 +258,90 @@ export default function VeiculosList() {
                     {v.price ? `${v.price.toLocaleString("pt-PT")} €` : "—"}
                   </td>
                   <td data-label="Status" className="px-4 py-3">
-                    <select
-                      value={v.status}
-                      onChange={(e) => handleStatusChange(v.id, e.target.value)}
-                      disabled={updating === v.id}
-                      className="min-h-11 rounded px-2 py-1 text-xs font-medium md:min-h-0"
-                      style={{
-                        backgroundColor: `${statusOpt.color}20`,
-                        color: statusOpt.color,
-                        border: `1px solid ${statusOpt.color}`,
-                        cursor: updating === v.id ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {statusOptions.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                      {legacyStatus && (
-                        <option value={legacyStatus.value}>{legacyStatus.label} (estado antigo)</option>
-                      )}
-                    </select>
+                    {podeGerir ? (
+                      <select
+                        value={v.status}
+                        onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                        disabled={updating === v.id}
+                        className="min-h-11 rounded px-2 py-1 text-xs font-medium md:min-h-0"
+                        style={{
+                          backgroundColor: `${statusOpt.color}20`,
+                          color: statusOpt.color,
+                          border: `1px solid ${statusOpt.color}`,
+                          cursor: updating === v.id ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {statusOptions.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                        {legacyStatus && (
+                          <option value={legacyStatus.value}>{legacyStatus.label} (estado antigo)</option>
+                        )}
+                      </select>
+                    ) : (
+                      <span
+                        className="inline-flex rounded px-2 py-1 text-xs font-medium"
+                        style={{
+                          backgroundColor: `${statusOpt.color}20`,
+                          color: statusOpt.color,
+                          border: `1px solid ${statusOpt.color}`,
+                        }}
+                      >
+                        {statusOpt.label}
+                      </span>
+                    )}
                   </td>
                   <td data-label="Destaque" className="px-4 py-3">
-                    <button
-                      onClick={() => handleSpotlight(v.id, !!v.spotlight)}
-                      disabled={updating === v.id}
-                      title={v.spotlight ? "Remover destaque da semana" : "Definir como destaque da semana"}
-                      className="px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
-                      style={{
-                        backgroundColor: v.spotlight ? "color-mix(in srgb, var(--copper) 12%, transparent)" : "transparent",
-                        color: v.spotlight ? "var(--copper)" : "var(--muted)",
-                        border: `1px solid ${v.spotlight ? "var(--copper)" : "var(--border)"}`,
-                      }}
-                    >
-                      {v.spotlight ? "★ Destaque" : "☆ Destaque"}
-                    </button>
+                    {podeGerir ? (
+                      <button
+                        onClick={() => handleSpotlight(v.id, !!v.spotlight)}
+                        disabled={updating === v.id}
+                        title={v.spotlight ? "Remover destaque da semana" : "Definir como destaque da semana"}
+                        className="px-2 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
+                        style={{
+                          backgroundColor: v.spotlight ? "color-mix(in srgb, var(--copper) 12%, transparent)" : "transparent",
+                          color: v.spotlight ? "var(--copper)" : "var(--muted)",
+                          border: `1px solid ${v.spotlight ? "var(--copper)" : "var(--border)"}`,
+                        }}
+                      >
+                        {v.spotlight ? "★ Destaque" : "☆ Destaque"}
+                      </button>
+                    ) : (
+                      <span className="text-xs" style={{ color: v.spotlight ? "var(--copper)" : "var(--muted)" }}>
+                        {v.spotlight ? "★ Destaque" : "—"}
+                      </span>
+                    )}
                   </td>
                   <td data-label="Ações" className="table-actions px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/veiculos/editar/${v.id}`}
-                      className="mr-1 inline-flex min-h-11 items-center px-2 text-xs transition-colors md:mr-3 md:min-h-0 md:px-0"
-                      style={{ color: "var(--copper-deep)" }}
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(v.id)}
-                      className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
-                      style={{ color: "#ef4444" }}
-                    >
-                      Apagar
-                    </button>
+                    {podeGerir ? (
+                      <>
+                        <Link
+                          href={`/admin/veiculos/editar/${v.id}`}
+                          className="mr-1 inline-flex min-h-11 items-center px-2 text-xs transition-colors md:mr-3 md:min-h-0 md:px-0"
+                          style={{ color: "var(--copper-deep)" }}
+                        >
+                          Editar
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(v.id)}
+                          className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
+                          style={{ color: "#ef4444" }}
+                        >
+                          Apagar
+                        </button>
+                      </>
+                    ) : v.slug ? (
+                      <Link
+                        href={`/catalogo/${v.slug}`}
+                        target="_blank"
+                        className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
+                        style={{ color: "var(--copper-deep)" }}
+                      >
+                        Ver anúncio
+                      </Link>
+                    ) : (
+                      <span className="text-xs" style={{ color: "var(--muted)" }}>Só leitura</span>
+                    )}
                   </td>
                 </tr>
               );

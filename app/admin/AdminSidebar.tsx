@@ -4,35 +4,39 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import TableDensity from "./TableDensity";
+import { canAccessArea, ROLE_LABELS, type AdminArea, type UserRole } from "@/lib/roles";
 
-const navGroups = [
+type NavLink = { href: string; label: string; area: AdminArea };
+
+const navGroups: { title: string; links: NavLink[] }[] = [
   {
     title: "Geral",
     links: [
-      { href: "/admin", label: "Dashboard" },
-      { href: "/admin/analytics", label: "Analytics" },
+      { href: "/admin", label: "Dashboard", area: "dashboard" },
+      { href: "/admin/analytics", label: "Analytics", area: "pedidos" },
     ],
   },
   {
     title: "Catálogo",
     links: [
-      { href: "/admin/veiculos", label: "Viaturas" },
-      { href: "/admin/veiculos/extras", label: "Extras" },
-      { href: "/admin/campanhas", label: "Campanhas" },
+      { href: "/admin/veiculos", label: "Viaturas", area: "veiculos" },
+      { href: "/admin/veiculos/extras", label: "Extras", area: "extras" },
+      { href: "/admin/campanhas", label: "Campanhas", area: "campanhas" },
     ],
   },
   {
     title: "Leads & Propostas",
     links: [
-      { href: "/admin/pedidos", label: "Pedidos & Reservas" },
-      { href: "/admin/propostas", label: "Propostas" },
+      { href: "/admin/pedidos", label: "Pedidos & Reservas", area: "pedidos" },
+      { href: "/admin/propostas", label: "Propostas", area: "propostas" },
     ],
   },
   {
     title: "Gestão",
     links: [
-      { href: "/admin/contas", label: "Contas" },
-      { href: "/admin/definicoes", label: "Definições" },
+      { href: "/admin/contas", label: "Contas", area: "contas" },
+      { href: "/admin/definicoes", label: "Definições", area: "definicoes" },
+      { href: "/admin/utilizadores", label: "Utilizadores", area: "utilizadores" },
     ],
   },
 ];
@@ -40,11 +44,15 @@ const navGroups = [
 // Destaca a aba aberta e permite esconder/mostrar a barra lateral.
 // Em ecrãs pequenos a barra lateral dá lugar a uma barra no topo com um
 // painel de navegação (botões de 44px, sem depender de scroll horizontal).
-export default function AdminSidebar() {
+export default function AdminSidebar({ role }: { role: UserRole }) {
   const pathname = usePathname();
+  // Só aparecem as áreas que o cargo pode abrir (item 7).
+  const visibleGroups = navGroups
+    .map((group) => ({ ...group, links: group.links.filter((link) => canAccessArea(role, link.area)) }))
+    .filter((group) => group.links.length > 0);
   // Só uma entrada ativa: escolhe-se o caminho mais específico que corresponde
   // ao URL (senão "/admin/veiculos/extras" acendia também "Viaturas").
-  const activeHref = navGroups
+  const activeHref = visibleGroups
     .flatMap((group) => group.links.map((link) => link.href))
     .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
     .sort((a, b) => b.length - a.length)[0];
@@ -128,7 +136,7 @@ export default function AdminSidebar() {
           </button>
         </div>
 
-        {navGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.title} className="mb-4">
             <p
               className="mb-2 border-t px-2 pt-3 text-[10px] uppercase tracking-[0.18em]"
@@ -156,10 +164,14 @@ export default function AdminSidebar() {
           </div>
         ))}
 
+        <p className="mb-2 mt-auto px-2 pt-4 text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--muted)" }}>
+          Sessão · {ROLE_LABELS[role]}
+        </p>
+
         <Link
           href="/"
           onClick={() => setMobileOpen(false)}
-          className="mt-auto flex min-h-11 items-center rounded border-t px-3 text-xs"
+          className="flex min-h-11 items-center rounded border-t px-3 text-xs"
           style={{ color: "var(--muted)", borderColor: "var(--border)" }}
         >
           ← Voltar ao site
@@ -216,7 +228,7 @@ export default function AdminSidebar() {
           </button>
         </div>
         <nav className="p-3 flex-1 overflow-y-auto">
-          {navGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title} className="mb-4">
               <p
                 className="mb-2 border-t px-3 pt-3 text-[10px] uppercase tracking-[0.18em]"
@@ -244,6 +256,9 @@ export default function AdminSidebar() {
           ))}
         </nav>
         <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
+          <p className="mb-2 px-3 text-[10px] uppercase tracking-[0.18em]" style={{ color: "var(--muted)" }}>
+            Sessão · {ROLE_LABELS[role]}
+          </p>
           <div className="mb-3">
             <TableDensity />
           </div>

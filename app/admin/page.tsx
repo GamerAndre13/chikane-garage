@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { canAccessArea, canManageVehicles } from "@/lib/roles";
 
 // Datas curtas para as listas de atividade (dd/mm/aaaa).
 const formatDate = (value: string | null) => {
@@ -28,6 +29,16 @@ const statusTone = (status: string) => {
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
+
+  // Cargo de quem abriu o backoffice (o proxy já garantiu que é da equipa).
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const role = profile?.role ?? "user";
+  const podeVendas = canAccessArea(role, "pedidos");
+  const podeConteudo = canAccessArea(role, "campanhas");
+  const podeGerirViaturas = canManageVehicles(role);
 
   const [
     { count: totalVehicles },
@@ -108,25 +119,30 @@ export default async function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/admin/analytics"
-            className="inline-flex min-h-11 items-center rounded border px-3 text-xs uppercase tracking-widest transition-colors hover:text-foreground"
-            style={{ borderColor: "var(--border)", color: "var(--muted)" }}
-          >
-            Analytics
-          </Link>
-          <Link
-            href="/admin/veiculos/novo"
-            className="inline-flex min-h-11 items-center rounded px-4 text-xs uppercase tracking-widest transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
-          >
-            + Nova viatura
-          </Link>
+          {podeVendas && (
+            <Link
+              href="/admin/analytics"
+              className="inline-flex min-h-11 items-center rounded border px-3 text-xs uppercase tracking-widest transition-colors hover:text-foreground"
+              style={{ borderColor: "var(--border)", color: "var(--muted)" }}
+            >
+              Analytics
+            </Link>
+          )}
+          {podeGerirViaturas && (
+            <Link
+              href="/admin/veiculos/novo"
+              className="inline-flex min-h-11 items-center rounded px-4 text-xs uppercase tracking-widest transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)" }}
+            >
+              + Nova viatura
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Por responder: três valores com o mesmo tamanho, espaçamento e forma,
           numa só linha com três colunas. O número é o herói. */}
+      {podeVendas && (
       <section
         className="rounded-md border"
         style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}
@@ -181,6 +197,7 @@ export default async function AdminDashboard() {
           ))}
         </div>
       </section>
+      )}
 
       {/* Catálogo: total em destaque e os três estados com números maiores. */}
       <section
@@ -254,6 +271,7 @@ export default async function AdminDashboard() {
 
       {/* Em curso: propostas e campanhas, no mesmo tom das listas abaixo. */}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {podeVendas && (
         <Link
           href="/admin/propostas"
           className="group flex items-baseline justify-between gap-3 rounded-md border px-4 py-4 transition-colors hover:bg-surface-raised"
@@ -279,7 +297,9 @@ export default async function AdminDashboard() {
             </span>
           </span>
         </Link>
+        )}
 
+        {podeConteudo && (
         <Link
           href="/admin/campanhas"
           className="group flex items-baseline justify-between gap-3 rounded-md border px-4 py-4 transition-colors hover:bg-surface-raised"
@@ -305,9 +325,11 @@ export default async function AdminDashboard() {
             </span>
           </span>
         </Link>
+        )}
       </div>
 
       {/* Atividade recente */}
+      {podeVendas && (
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
         <div className="rounded-md border" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-mid)" }}>
           <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
@@ -405,6 +427,7 @@ export default async function AdminDashboard() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
