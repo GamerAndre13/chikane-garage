@@ -29,8 +29,10 @@ export async function POST(request: NextRequest) {
     const vehicleUrl = vehicleSlug
       ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}`
       : null;
-    // Página onde o cliente aceita a nova data ou pede outro horário (item 11).
-    const responseUrl = token ? `${siteUrl.replace(/\/$/, "")}/test-drive/resposta/${token}` : null;
+    // O cliente aceita a nova data (ou pede outro horário) no popup que abre
+    // na home: a home recebe o token e mostra o pedido (item novo 1). Emails
+    // antigos para /test-drive/resposta/<token> são redirecionados para aqui.
+    const responseUrl = token ? `${siteUrl.replace(/\/$/, "")}/?testdrive=${encodeURIComponent(token)}` : null;
     // Date-only ("2026-10-11") é tratada a partir das 10:00 (hora de Lisboa);
     // datas completas são interpretadas como UTC.
     const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(confirmedDate);
