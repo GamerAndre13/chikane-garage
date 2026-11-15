@@ -3,6 +3,7 @@
 import { uploadToR2, deleteFromR2 } from "@/lib/r2";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { canManageContent } from "@/lib/roles";
 
 // Upload de avatar do utilizador para R2
 export async function uploadAvatar(formData: FormData): Promise<{ url?: string; error?: string }> {
@@ -216,9 +217,9 @@ export async function uploadSiteImage(formData: FormData): Promise<{ url?: strin
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Não autenticado" };
 
-  // Verificar se é admin
+  // Verificar se é admin ou editor (conteúdo do site)
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role !== "admin") return { error: "Sem permissão" };
+  if (!profile || !canManageContent(profile.role)) return { error: "Sem permissão" };
 
   const file = formData.get("file") as File;
   if (!file) return { error: "Ficheiro não fornecido" };

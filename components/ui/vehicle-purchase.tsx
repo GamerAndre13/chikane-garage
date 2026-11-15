@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { validarEmail, validarMensagem, validarNif, validarNome, validarTelemovel } from "@/lib/validacao";
 import { FieldError, campoEstilo } from "@/components/ui/field-error";
+import { scrollParaFeedback } from "@/lib/scroll-feedback";
 
 // Página de compra / pedido de proposta das viaturas novas, no formato de
 // /comprar/<slug>: extras numerados à esquerda, resumo sticky à direita e o
@@ -94,6 +95,34 @@ export function VehiclePurchase({
   // Erros por campo (item 13/14): validados ao sair do campo, com mensagem
   // por baixo do input e rebordo vermelho até o valor ficar válido.
   const [erros, setErros] = useState<Record<string, string | null>>({});
+
+  // Item 3: com sessão iniciada, o nome, email e telemóvel vêm do perfil do
+  // utilizador. Só preenche campos vazios — nunca apaga o que já foi escrito.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
+      if (!user || cancelled) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const p = profile as { full_name?: string | null; email?: string | null; phone?: string | null } | null;
+      const meta = (user.user_metadata ?? {}) as { full_name?: string; phone?: string };
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name || p?.full_name || meta.full_name || "",
+        email: prev.email || p?.email || user.email || "",
+        phone: prev.phone || p?.phone || meta.phone || "",
+      }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const calcularErro = (campo: string, valor: string): string | null => {
     switch (campo) {
@@ -278,6 +307,8 @@ export function VehiclePurchase({
       setSent(true);
     } finally {
       setSending(false);
+      // Sobe até ao aviso (sucesso ou erro) para o resultado ficar visível.
+      scrollParaFeedback();
     }
   };
 
@@ -302,7 +333,7 @@ export function VehiclePurchase({
       </h1>
 
       {sent ? (
-        <div className="pulse-success mt-10 border border-border bg-surface p-8 sm:p-12">
+        <div id="form-feedback" tabIndex={-1} className="pulse-success mt-10 border border-border bg-surface p-8 outline-none sm:p-12">
           <p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">Proposta enviada</p>
           <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-foreground">
             Obrigado{form.name.trim() ? `, ${form.name.trim()}` : ""}!
@@ -535,7 +566,7 @@ export function VehiclePurchase({
               </div>
             </dl>
 
-            {error && <div role="alert" className="mt-4 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
+            {error && <div id="form-feedback" tabIndex={-1} role="alert" className="mt-4 border-l-4 border-red-500 bg-red-500/10 p-4 text-sm text-red-400 outline-none">{error}</div>}
 
             <button
               type="submit"

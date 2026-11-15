@@ -4,6 +4,7 @@
 // o cliente vai pagar pela opção base.
 
 export type ExtraVariantSummary = {
+  id: string;
   extra_id: string;
   name: string;
   price: number | null;

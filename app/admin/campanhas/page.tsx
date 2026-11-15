@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { uploadSiteImage } from "@/app/actions/upload";
 import { validarNumero, validarSlug, validarUrl } from "@/lib/validacao";
 import { FieldError, campoClasse } from "@/components/ui/field-error";
+import { useDialogs } from "@/components/ui/dialogs";
 
 interface Campaign {
   id: string;
@@ -107,6 +108,7 @@ export default function AdminCampanhasPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmar } = useDialogs();
   const [form, setForm] = useState<CampaignForm>(emptyForm);
   // Imagem de capa (topo da página e cartões) + fotografias adicionais.
   const [cover, setCover] = useState("");
@@ -423,7 +425,13 @@ export default function AdminCampanhasPage() {
   };
 
   const handleDelete = async (campaign: Campaign) => {
-    if (!confirm(`Apagar a campanha «${campaign.title}»?`)) return;
+    const ok = await confirmar({
+      titulo: "Apagar campanha",
+      mensagem: `A campanha «${campaign.title}» deixa de aparecer no site.`,
+      confirmar: "Apagar",
+      perigo: true,
+    });
+    if (!ok) return;
     setSaving(true);
     setError(null);
     const { error: deleteError } = await supabase.from("campaigns").delete().eq("id", campaign.id);

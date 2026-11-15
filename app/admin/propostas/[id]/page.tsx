@@ -6,8 +6,12 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { validarNumero } from "@/lib/validacao";
 import { FieldError, campoClasse } from "@/components/ui/field-error";
+import { useDialogs } from "@/components/ui/dialogs";
+import { useToast } from "@/components/ui/toast";
+import { cheapestVariantFor, type ExtraVariantSummary } from "@/lib/extra-variants";
 
 interface ExtraItem {
+  extra_id?: string;
   catalog_extra_id?: string;
   variant_id?: string | null;
   name?: string;
@@ -27,22 +31,36 @@ interface Proposal {
   extras_total: number | null;
   total_price: number | null;
   discount: number | null;
+  legalization_fee: number | null;
   final_price: number | null;
   selected_extras: ExtraItem[] | null;
   message: string | null;
   status: string;
   admin_notes: string | null;
+  final_sent_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Extra do catálogo pronta a juntar à proposta (já com a variante mais barata).
+interface CatalogExtra {
+  extra_id: string;
+  variant_id: string | null;
+  name: string;
+  variant_name: string | null;
+  price: number;
 }
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pendente" },
   { value: "contacted", label: "Contactado" },
   { value: "in_progress", label: "Em negociação" },
+  { value: "proposal_sent", label: "Proposta final enviada" },
   { value: "closed_won", label: "Fechado - Ganho" },
   { value: "closed_lost", label: "Fechado - Perdido" },
 ];
+
+const euroFmt = (value: number) => `${Number(value).toLocaleString("pt-PT")} €`;
 
 interface ProposalVehicle {
   brand: string | null;
@@ -65,8 +83,17 @@ export default function PropostaDetalhe() {
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [discount, setDiscount] = useState("");
+  const [legalization, setLegalization] = useState("");
+  const [extrasList, setExtrasList] = useState<ExtraItem[]>([]);
+  const [catalogExtras, setCatalogExtras] = useState<CatalogExtra[]>([]);
+  const [extraToAdd, setExtraToAdd] = useState("");
+  const [sendingFinal, setSendingFinal] = useState(false);
+  const { mostrarErro, confirmar } = useDialogs();
+  const { toast } = useToast();
   // Erro do campo do desconto (itens 13/14), validado ao sair do campo.
   const [erroDesconto, setErroDesconto] = useState<string | null>(null);
+  // Erro do valor da legalização, validado ao sair do campo.
+  const [erroLegalizacao, setErroLegalizacao] = useState<string | null>(null);
   // Campos que vinham vazios e foram calculados aqui (viatura + extras).
   const [autoFilled, setAutoFilled] = useState(false);
 
@@ -111,11 +138,12 @@ export default function PropostaDetalhe() {
             ? basePrice + extrasTotal
             : null;
       const discountValue = data.discount != null ? Number(data.discount) : 0;
+      const legalizationValue = data.legalization_fee != null ? Number(data.legalization_fee) : 0;
       const finalPrice =
         data.final_price != null
           ? Number(data.final_price)
           : totalPrice != null
-            ? Math.max(0, totalPrice - discountValue)
+            ? Math.max(0, totalPrice - discountValue + legalizationValue)
             : null;
 
       setProposal({
@@ -132,6 +160,8 @@ export default function PropostaDetalhe() {
       setStatus(data.status || "pending");
       setAdminNotes(data.admin_notes || "");
       setDiscount(data.discount ? String(data.discount) : "");
+      setLegalization(data.legalization_fee ? String(data.legalization_fee) : "");
+      setExtrasList(extras);
       setLoading(false);
     })();
     return () => {
@@ -139,27 +169,79 @@ export default function PropostaDetalhe() {
     };
   }, [id]);
 
-  // Desconto em euros definido pelo backoffice (0 = sem desconto).
+  // Catálogo de extras ativos — para acrescentar ou trocar extras na proposta.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [{ data: catalog }, { data: variants }] = await Promise.all([
+        supabase.from("vehicle_extra_catalog").select("id, name, price, position").eq("is_active", true).order("position"),
+        supabase.from("vehicle_extra_variants").select("extra_id, name, price, position, is_active").eq("is_active", true),
+      ]);
+      if (cancelled) return;
+      const lista = (catalog ?? []).map((item) => {
+        const variante = cheapestVariantFor(item.id, (variants ?? []) as ExtraVariantSummary[]);
+        return {
+          extra_id: item.id,
+          variant_id: variante?.id ?? null,
+          name: item.name,
+          variant_name: variante?.name ?? null,
+          price: variante ? Number(variante.price) || 0 : Number(item.price) || 0,
+        } satisfies CatalogExtra;
+      });
+      setCatalogExtras(lista);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Desconto e legalização em euros definidos pelo backoffice (0 = sem valor).
   const discountValue = Math.max(0, Number(discount.replace(",", ".")) || 0);
+  const legalizationValue = Math.max(0, Number(legalization.replace(",", ".")) || 0);
+  // Extras e totais são sempre recalculados a partir da lista editável.
+  const basePrice = proposal?.base_price != null ? Number(proposal.base_price) : null;
+  const extrasTotal = extrasList.reduce((sum, extra) => sum + (Number(extra.price) || 0), 0);
+  const totalPrice = basePrice != null ? basePrice + extrasTotal : null;
+  const finalPrice =
+    totalPrice != null ? Math.max(0, totalPrice - discountValue + legalizationValue) : null;
 
   // Validação do desconto: número >= 0 e nunca superior ao total da proposta.
   const validarDesconto = (valor: string): string | null => {
     const msg = validarNumero(valor, { rotulo: "O desconto", min: 0, obrigatorio: false });
     if (msg) return msg;
     const numero = Number(valor.replace(",", ".")) || 0;
-    const total = proposal?.total_price != null ? Number(proposal.total_price) : null;
-    if (total != null && numero > total) return "O desconto não pode ser superior ao total da proposta.";
+    if (totalPrice != null && numero > totalPrice) return "O desconto não pode ser superior ao total da proposta.";
     return null;
   };
 
-  const handleSave = async () => {
-    if (!proposal) return;
-    const erro = validarDesconto(discount);
-    setErroDesconto(erro);
-    if (erro) return;
+  const validarLegalizacao = (valor: string): string | null =>
+    validarNumero(valor, { rotulo: "A legalização", min: 0, obrigatorio: false });
+
+  // Acrescenta um extra do catálogo (evita duplicados).
+  const adicionarExtra = () => {
+    const escolhido = catalogExtras.find((item) => item.extra_id === extraToAdd);
+    if (!escolhido) return;
+    setExtrasList((prev) =>
+      prev.some((extra) => (extra.extra_id ?? extra.catalog_extra_id) === escolhido.extra_id)
+        ? prev
+        : [...prev, { ...escolhido }]
+    );
+    setExtraToAdd("");
+  };
+
+  const removerExtra = (indice: number) => {
+    setExtrasList((prev) => prev.filter((_, i) => i !== indice));
+  };
+
+  // Grava a proposta com os extras, o desconto, a legalização e o total final.
+  const handleSave = async (): Promise<boolean> => {
+    if (!proposal) return false;
+    const erroD = validarDesconto(discount);
+    const erroL = validarLegalizacao(legalization);
+    setErroDesconto(erroD);
+    setErroLegalizacao(erroL);
+    if (erroD || erroL) return false;
     setSaving(true);
-    const total = proposal.total_price != null ? Number(proposal.total_price) : null;
-    const finalPrice = total != null ? Math.max(0, total - discountValue) : null;
     const { error } = await supabase
       .from("sale_proposals")
       .update({
@@ -167,21 +249,84 @@ export default function PropostaDetalhe() {
         admin_notes: adminNotes,
         // Os valores automáticos também ficam gravados (útil nas propostas
         // antigas que só tinham o total em branco).
-        base_price: proposal.base_price,
-        extras_total: proposal.extras_total,
-        total_price: proposal.total_price,
+        base_price: basePrice,
+        selected_extras: extrasList,
+        extras_total: extrasTotal,
+        total_price: totalPrice,
         discount: discountValue,
+        legalization_fee: legalizationValue,
         final_price: finalPrice,
       })
       .eq("id", proposal.id);
-    if (error) alert("Erro ao guardar: " + error.message);
-    else {
-      setProposal({ ...proposal, status, admin_notes: adminNotes, discount: discountValue, final_price: finalPrice });
-      setAutoFilled(false);
-      alert("Guardado com sucesso");
-      router.refresh();
+    if (error) {
+      mostrarErro({ titulo: "Não foi possível guardar", mensagem: error.message });
+      setSaving(false);
+      return false;
     }
+    setProposal({
+      ...proposal,
+      status,
+      admin_notes: adminNotes,
+      selected_extras: extrasList,
+      extras_total: extrasTotal,
+      total_price: totalPrice,
+      discount: discountValue,
+      legalization_fee: legalizationValue,
+      final_price: finalPrice,
+    });
+    setAutoFilled(false);
+    toast({ variant: "success", title: "Proposta guardada" });
+    router.refresh();
     setSaving(false);
+    return true;
+  };
+
+  // Enviar proposta final: grava primeiro, envia o email e só depois marca o
+  // estado como "enviada" (a rota faz o mesmo do lado do servidor).
+  const handleEnviarFinal = async () => {
+    if (!proposal) return;
+    const ok = await confirmar({
+      titulo: "Enviar proposta final",
+      mensagem: `Enviar a proposta final${finalPrice != null ? ` de ${euroFmt(finalPrice)}` : ""} para ${proposal.email}? O cliente recebe o resumo com o link para a compra.`,
+      confirmar: "Enviar proposta",
+      cancelar: "Cancelar",
+    });
+    if (!ok) return;
+    const guardado = await handleSave();
+    if (!guardado) return;
+    setSendingFinal(true);
+    try {
+      const resposta = await fetch("/api/admin/proposal-final", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposal_id: proposal.id }),
+      });
+      const dados = (await resposta.json().catch(() => ({}))) as { error?: string };
+      if (!resposta.ok) {
+        mostrarErro({
+          titulo: "Proposta não enviada",
+          mensagem: dados.error || "Não foi possível enviar a proposta final.",
+        });
+        return;
+      }
+      const enviadoEm = new Date().toISOString();
+      setStatus("proposal_sent");
+      setProposal((prev) =>
+        prev ? { ...prev, status: "proposal_sent", final_sent_at: enviadoEm, final_price: finalPrice } : prev
+      );
+      toast({
+        variant: "success",
+        title: "Proposta final enviada",
+        description: `Email enviado para ${proposal.email}.`,
+      });
+    } catch {
+      mostrarErro({
+        titulo: "Proposta não enviada",
+        mensagem: "Falha de rede ao enviar a proposta final. Tenta novamente.",
+      });
+    } finally {
+      setSendingFinal(false);
+    }
   };
 
   if (loading) {
@@ -203,8 +348,14 @@ export default function PropostaDetalhe() {
     );
   }
 
-  const extras = Array.isArray(proposal.selected_extras) ? proposal.selected_extras : [];
   const date = new Date(proposal.created_at).toLocaleString("pt-PT");
+  const enviadaEm = proposal.final_sent_at
+    ? new Date(proposal.final_sent_at).toLocaleString("pt-PT")
+    : null;
+  // Extras do catálogo que ainda não estão na proposta (para o seletor).
+  const extrasDisponiveis = catalogExtras.filter(
+    (item) => !extrasList.some((extra) => (extra.extra_id ?? extra.catalog_extra_id) === item.extra_id)
+  );
 
   return (
     <div>
@@ -299,52 +450,104 @@ export default function PropostaDetalhe() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span style={{ color: "var(--muted)" }}>Preço base</span>
-              <span style={{ color: "var(--foreground)" }}>{proposal.base_price != null ? `${Number(proposal.base_price).toLocaleString("pt-PT")} €` : "-"}</span>
+              <span style={{ color: "var(--foreground)" }}>{basePrice != null ? euroFmt(basePrice) : "-"}</span>
             </div>
-            {extras.length > 0 && (
-              <div className="pt-2 border-t" style={{ borderColor: "var(--border)" }}>
-                <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--muted)" }}>
-                  Extras selecionados
-                </p>
+            <div className="pt-2 border-t" style={{ borderColor: "var(--border)" }}>
+              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "var(--muted)" }}>
+                Extras ({extrasList.length})
+              </p>
+              {extrasList.length > 0 ? (
                 <div className="space-y-1">
-                  {extras.map((ex, idx) => (
-                    <div key={idx} className="flex justify-between">
+                  {extrasList.map((ex, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-3">
                       <span style={{ color: "var(--foreground)" }}>
                         {ex.name}
                         {ex.variant_name ? ` - ${ex.variant_name}` : ""}
                       </span>
-                      <span style={{ color: "var(--foreground)" }}>{ex.price != null ? `${Number(ex.price).toLocaleString("pt-PT")} €` : "-"}</span>
+                      <span className="flex items-center gap-2">
+                        <span style={{ color: "var(--foreground)" }}>{euroFmt(Number(ex.price) || 0)}</span>
+                        <button
+                          type="button"
+                          onClick={() => removerExtra(idx)}
+                          aria-label={`Remover ${ex.name || "extra"}`}
+                          title="Remover extra"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border text-sm transition-colors"
+                          style={{ borderColor: "var(--border)", color: "var(--red-light)" }}
+                        >
+                          ×
+                        </button>
+                      </span>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-xs" style={{ color: "var(--muted)" }}>
+                  Sem extras selecionados.
+                </p>
+              )}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={extraToAdd}
+                  onChange={(e) => setExtraToAdd(e.target.value)}
+                  aria-label="Extra a adicionar"
+                  className="min-w-0 flex-1 rounded border bg-background px-3 py-2 text-sm"
+                  style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                >
+                  <option value="">Escolher extra…</option>
+                  {extrasDisponiveis.map((item) => (
+                    <option key={item.extra_id} value={item.extra_id}>
+                      {item.name}
+                      {item.variant_name ? ` - ${item.variant_name}` : ""} · {euroFmt(item.price)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={adicionarExtra}
+                  disabled={!extraToAdd}
+                  className="rounded border px-3 py-2 text-xs font-semibold uppercase tracking-widest transition-colors disabled:opacity-40"
+                  style={{ borderColor: "var(--copper-deep)", color: "var(--copper-deep)" }}
+                >
+                  Adicionar
+                </button>
               </div>
-            )}
+            </div>
             <div className="flex justify-between pt-2 border-t" style={{ borderColor: "var(--border)" }}>
               <span style={{ color: "var(--muted)" }}>Total extras</span>
-              <span style={{ color: "var(--foreground)" }}>{proposal.extras_total != null ? `${Number(proposal.extras_total).toLocaleString("pt-PT")} €` : "0 €"}</span>
+              <span style={{ color: "var(--foreground)" }}>{euroFmt(extrasTotal)}</span>
             </div>
             <div className="flex justify-between pt-2 border-t text-base" style={{ borderColor: "var(--border)" }}>
               <span style={{ color: "var(--muted)" }}>Total estimado</span>
-              <span style={{ color: proposal.discount ? "var(--muted)" : "var(--foreground)", textDecoration: proposal.discount ? "line-through" : "none" }}>
-                {proposal.total_price != null ? `${Number(proposal.total_price).toLocaleString("pt-PT")} €` : "-"}
+              <span
+                style={{
+                  color: discountValue > 0 || legalizationValue > 0 ? "var(--muted)" : "var(--foreground)",
+                  textDecoration: discountValue > 0 || legalizationValue > 0 ? "line-through" : "none",
+                }}
+              >
+                {totalPrice != null ? euroFmt(totalPrice) : "-"}
               </span>
             </div>
-            {Number(proposal.discount) > 0 && (
+            {discountValue > 0 && (
               <div className="flex justify-between">
                 <span style={{ color: "var(--muted)" }}>Desconto</span>
-                <span style={{ color: "#22c55e" }}>− {Number(proposal.discount).toLocaleString("pt-PT")} €</span>
+                <span style={{ color: "#22c55e" }}>− {euroFmt(discountValue)}</span>
+              </div>
+            )}
+            {legalizationValue > 0 && (
+              <div className="flex justify-between">
+                <span style={{ color: "var(--muted)" }}>Legalização</span>
+                <span style={{ color: "var(--foreground)" }}>+ {euroFmt(legalizationValue)}</span>
               </div>
             )}
             <div className="flex justify-between pt-2 border-t text-base" style={{ borderColor: "var(--border)" }}>
               <span style={{ color: "var(--foreground)" }}>Total da proposta</span>
-              <span style={{ color: "var(--copper-deep)" }}>
-                {proposal.final_price != null
-                  ? `${Number(proposal.final_price).toLocaleString("pt-PT")} €`
-                  : proposal.total_price != null
-                    ? `${Number(proposal.total_price).toLocaleString("pt-PT")} €`
-                    : "-"}
-              </span>
+              <span style={{ color: "var(--copper-deep)" }}>{finalPrice != null ? euroFmt(finalPrice) : "-"}</span>
             </div>
+            {enviadaEm && (
+              <p className="pt-1 text-xs" style={{ color: "var(--muted)" }}>
+                Proposta final enviada a {enviadaEm}.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -353,7 +556,7 @@ export default function PropostaDetalhe() {
         <p className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--copper-deep)" }}>
           Gestão da proposta
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className="text-xs uppercase tracking-widest mb-1 block" style={{ color: "var(--muted)" }}>
               Estado
@@ -392,16 +595,33 @@ export default function PropostaDetalhe() {
               style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
             />
             <FieldError message={erroDesconto} />
-            <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
-              Total da proposta:{" "}
-              <strong style={{ color: "var(--copper-deep)" }}>
-                {proposal.total_price != null
-                  ? `${Math.max(0, Number(proposal.total_price) - discountValue).toLocaleString("pt-PT")} €`
-                  : "-"}
-              </strong>
-            </p>
+          </div>
+          <div>
+            <label htmlFor="proposta-legalizacao" className="text-xs uppercase tracking-widest mb-1 block" style={{ color: "var(--muted)" }}>
+              Legalização (€)
+            </label>
+            <input
+              id="proposta-legalizacao"
+              inputMode="decimal"
+              value={legalization}
+              aria-invalid={Boolean(erroLegalizacao)}
+              onBlur={(e) => setErroLegalizacao(validarLegalizacao(e.target.value))}
+              onChange={(e) => {
+                const valor = e.target.value.replace(/[^\d.,]/g, "");
+                setLegalization(valor);
+                if (erroLegalizacao) setErroLegalizacao(validarLegalizacao(valor));
+              }}
+              placeholder="0"
+              className={campoClasse("w-full px-3 py-2 text-sm border rounded bg-background", erroLegalizacao)}
+              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+            />
+            <FieldError message={erroLegalizacao} />
           </div>
         </div>
+        <p className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
+          Total final da proposta:{" "}
+          <strong style={{ color: "var(--copper-deep)" }}>{finalPrice != null ? euroFmt(finalPrice) : "-"}</strong>
+        </p>
         <div className="mt-4">
           <label className="text-xs uppercase tracking-widest mb-1 block" style={{ color: "var(--muted)" }}>
             Notas internas
@@ -415,15 +635,30 @@ export default function PropostaDetalhe() {
             placeholder="Notas para a equipa..."
           />
         </div>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || sendingFinal}
             className="px-4 py-2 rounded text-sm font-medium"
-            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving ? 0.6 : 1 }}
+            style={{ backgroundColor: "var(--copper-deep)", color: "var(--background-alt)", opacity: saving || sendingFinal ? 0.6 : 1 }}
           >
             {saving ? "A guardar..." : "Guardar alterações"}
           </button>
+          <button
+            type="button"
+            onClick={handleEnviarFinal}
+            disabled={saving || sendingFinal || finalPrice == null}
+            title={finalPrice == null ? "Falta o preço base da viatura para calcular o total." : undefined}
+            className="px-4 py-2 rounded border text-sm font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+            style={{ borderColor: "var(--copper-deep)", color: "var(--copper-deep)" }}
+          >
+            {sendingFinal ? "A enviar..." : "Enviar proposta final"}
+          </button>
+          {enviadaEm && (
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              Enviada a {enviadaEm}
+            </span>
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { useDialogs } from "@/components/ui/dialogs";
 
 interface Proposal {
   id: string;
@@ -37,6 +38,7 @@ export default function PropostasPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   // Pesquisa (item 18): nome, email, telefone, NIF ou nº da proposta.
   const [search, setSearch] = useState("");
+  const { mostrarErro } = useDialogs();
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +69,7 @@ export default function PropostasPage() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     setUpdating(id);
     const { error } = await supabase.from("sale_proposals").update({ status: newStatus }).eq("id", id);
-    if (error) alert("Erro ao atualizar estado: " + error.message);
+    if (error) mostrarErro({ titulo: "Não foi possível mudar o estado", mensagem: error.message });
     else {
       setProposals((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
     }

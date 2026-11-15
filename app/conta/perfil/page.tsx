@@ -8,6 +8,7 @@ import { FieldError, campoClasse } from "@/components/ui/field-error";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { MyRequests } from "@/components/ui/my-requests";
 import { pickFromPool } from "@/lib/avatar-pool";
+import { scrollParaFeedback } from "@/lib/scroll-feedback";
 
 // Mensagem clara quando a base de dados ainda não tem a coluna/ativação necessária.
 function friendlyDbError(msg: string): string {
@@ -190,6 +191,7 @@ export default function PerfilPage() {
       setError(err instanceof Error ? err.message : "Erro ao guardar");
     } finally {
       setSaving(false);
+      scrollParaFeedback();
     }
   }
 
@@ -226,6 +228,7 @@ export default function PerfilPage() {
     await loadProfileInternal(user);
     setShowDeleteConfirm(false);
     setSuccess("Pedido de eliminação enviado. A tua conta fica com o estado «em espera para eliminar» até aprovação de um administrador.");
+    scrollParaFeedback();
   }
 
   async function cancelDeletion() {
@@ -255,6 +258,7 @@ export default function PerfilPage() {
 
     await loadProfileInternal(user);
     setSuccess("Pedido de eliminação cancelado.");
+    scrollParaFeedback();
   }
 
   async function handlePasswordChange(e: React.FormEvent<HTMLFormElement>) {
@@ -307,6 +311,7 @@ export default function PerfilPage() {
       setPwError(err instanceof Error ? err.message : "Erro ao alterar password.");
     } finally {
       setSaving(false);
+      scrollParaFeedback("form-feedback-pw");
     }
   }
 
@@ -351,7 +356,7 @@ export default function PerfilPage() {
         </div>
       </div>
 
-      {error && <div className="mb-6 border border-red bg-red/10 px-4 py-3 text-sm text-red-light">{error}</div>}
+      {error && <div id="form-feedback" tabIndex={-1} role="alert" className="mb-6 border border-red bg-red/10 px-4 py-3 text-sm text-red-light outline-none">{error}</div>}
       {success && <div className="mb-6 border border-copper bg-copper/10 px-4 py-3 text-sm text-copper">{success}</div>}
 
       {/* Layout 2 Colunas */}
@@ -452,7 +457,7 @@ export default function PerfilPage() {
                 {saving ? "A alterar..." : "Alterar Password"}
               </button>
               {pwError && (
-                <p role="alert" className="border-l-4 border-red-500 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                <p id="form-feedback-pw" tabIndex={-1} role="alert" className="border-l-4 border-red-500 bg-red-500/10 px-3 py-2 text-sm text-red-400 outline-none">
                   {pwError}
                 </p>
               )}

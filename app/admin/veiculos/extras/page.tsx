@@ -16,6 +16,7 @@ import {
 import { cheapestVariantFor } from "@/lib/extra-variants";
 import { validarNumero } from "@/lib/validacao";
 import { FieldError, campoClasse } from "@/components/ui/field-error";
+import { useDialogs } from "@/components/ui/dialogs";
 
 interface ExtraCatalog {
   id: string;
@@ -147,6 +148,7 @@ export default function VehicleExtrasCatalogPage() {
   const [erros, setErros] = useState<Record<string, string | null>>({});
   // Pesquisa do catálogo (item 18).
   const [search, setSearch] = useState("");
+  const { confirmar } = useDialogs();
 
   const calcularErro = (campo: string, valor: string): string | null => {
     if (campo.endsWith(".name")) {
@@ -360,7 +362,13 @@ export default function VehicleExtrasCatalogPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem a certeza que deseja apagar este extra do catálogo?")) return;
+    const ok = await confirmar({
+      titulo: "Apagar extra",
+      mensagem: "O extra sai do catálogo e das viaturas onde está associado.",
+      confirmar: "Apagar",
+      perigo: true,
+    });
+    if (!ok) return;
     setSaving(true);
     setError(null);
     try {
@@ -451,7 +459,13 @@ export default function VehicleExtrasCatalogPage() {
   };
 
   const handleDeleteVariant = async (id: string) => {
-    if (!confirm("Apagar esta variante?")) return;
+    const ok = await confirmar({
+      titulo: "Apagar variante",
+      mensagem: "Esta variante deixa de estar disponível para escolha.",
+      confirmar: "Apagar",
+      perigo: true,
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await deleteVehicleExtraVariant(id);

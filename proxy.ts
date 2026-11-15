@@ -1,5 +1,32 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isStaffRole, canAccessArea, type AdminArea } from "@/lib/roles";
+
+// Área do backoffice a que cada caminho pertence. Os caminhos mais
+// específicos vêm primeiro.
+function areaDoCaminho(pathname: string): AdminArea {
+  if (pathname === "/admin" || pathname === "/admin/") return "dashboard";
+  if (pathname.startsWith("/admin/utilizadores")) return "utilizadores";
+  if (pathname.startsWith("/admin/contas")) return "contas";
+  if (pathname.startsWith("/admin/definicoes")) return "definicoes";
+  if (pathname.startsWith("/admin/campanhas")) return "campanhas";
+  if (pathname.startsWith("/admin/pedidos")) return "pedidos";
+  if (pathname.startsWith("/admin/propostas")) return "propostas";
+  if (pathname.startsWith("/admin/analytics")) return "pedidos";
+  if (pathname.startsWith("/admin/veiculos/extras")) return "extras";
+  if (pathname.startsWith("/admin/veiculos")) return "veiculos";
+  return "dashboard";
+}
+
+// Criar e editar viaturas é exclusivo do admin (editor e gestor de vendas só
+// consultam o catálogo).
+function caminhoExclusivoAdmin(pathname: string): boolean {
+  return (
+    pathname.startsWith("/admin/veiculos/novo") ||
+    pathname.startsWith("/admin/veiculos/editar") ||
+    pathname.startsWith("/admin/utilizadores")
+  );
+}
 
 export async function proxy(request: NextRequest) {
   const forwardedProtocol = request.headers.get("x-forwarded-proto");
@@ -46,9 +73,19 @@ export async function proxy(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
+    // Apenas a equipa entra no backoffice; cada área tem os seus cargos.
+    const role = profile?.role;
+    if (!isStaffRole(role)) {
       const url = request.nextUrl.clone();
       url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+
+    const area = areaDoCaminho(pathname);
+    if (!canAccessArea(role, area) || (caminhoExclusivoAdmin(pathname) && role !== "admin")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      url.search = "";
       return NextResponse.redirect(url);
     }
   }

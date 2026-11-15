@@ -3,15 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { uploadToR2 } from "@/lib/r2";
+import { canManageExtras } from "@/lib/roles";
 
 // O proxy.ts só protege carregamentos de página — cada ação revalida sessão e
-// papel de admin antes de escrever (mesmo padrão de app/actions/upload.ts).
+// cargo antes de escrever (mesmo padrão de app/actions/upload.ts).
+// Os extras são geridos pelo admin e pelo gestor de vendas (item 7).
 async function adminClient() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Inicia sessão para continuar.");
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (profile?.role !== "admin") throw new Error("Não tens permissão para gerir os extras.");
+  if (!profile || !canManageExtras(profile.role)) throw new Error("Não tens permissão para gerir os extras.");
   return supabase;
 }
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { validarEmail } from "@/lib/validacao";
 import { FieldError, campoClasse } from "@/components/ui/field-error";
+import { scrollParaFeedback } from "@/lib/scroll-feedback";
 
 export default function NewsletterForm() {
   const [email, setEmail] = useState("");
@@ -53,10 +54,11 @@ export default function NewsletterForm() {
       setStatus("error");
       setMessage(data.error || "Erro ao subscrever. Tenta novamente.");
     }
+    scrollParaFeedback();
   }
 
   if (status === "done") {
-    return <p role="status" className="mt-4 text-sm font-medium text-copper">{message}</p>;
+    return <p id="form-feedback" tabIndex={-1} role="status" className="mt-4 text-sm font-medium text-copper outline-none">{message}</p>;
   }
 
   return (
@@ -99,7 +101,7 @@ export default function NewsletterForm() {
           {status === "loading" ? "A subscrever…" : "Subscrever"}
         </button>
       </form>
-      {status === "error" && <p role="alert" className="mt-3 text-sm text-red-400">{message}</p>}
+      {status === "error" && <p id="form-feedback" tabIndex={-1} role="alert" className="mt-3 text-sm text-red-400 outline-none">{message}</p>}
     </div>
   );
 }

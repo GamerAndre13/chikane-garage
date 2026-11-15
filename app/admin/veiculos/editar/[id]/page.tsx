@@ -18,6 +18,7 @@ import {
   resolveCountryCode,
 } from "@/lib/vehicle-options";
 import { cheapestVariantFor, type ExtraVariantSummary } from "@/lib/extra-variants";
+import { useDialogs } from "@/components/ui/dialogs";
 
 const CATALOG = vehicleCatalog as Record<string, { models: Record<string, { engine: string; power_hp: number; torque_nm: number; transmission: string; drivetrain: string }> }>;
 
@@ -139,6 +140,7 @@ export default function EditarVeiculo() {
   const [extraVariants, setExtraVariants] = useState<ExtraVariantSummary[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { mostrarErro } = useDialogs();
 
   // Catálogo de extras partilhado — gerido em /admin/veiculos/extras.
   // As variantes ativas são carregadas para mostrar sempre a mais barata,
@@ -383,13 +385,13 @@ export default function EditarVeiculo() {
     }).eq("id", id);
     if (error) {
       setSaving(false);
-      alert("Erro ao guardar: " + error.message);
+      mostrarErro({ titulo: "Não foi possível guardar", mensagem: "As alterações à viatura não foram guardadas.", detalhe: error.message });
       return;
     }
     const { error: deleteFeaturesError } = await supabase.from("vehicle_features").delete().eq("vehicle_id", id);
     if (deleteFeaturesError) {
       setSaving(false);
-      alert("Os dados da viatura foram guardados, mas o equipamento não foi atualizado: " + deleteFeaturesError.message);
+      mostrarErro({ titulo: "Equipamento não atualizado", mensagem: "Os dados da viatura ficaram guardados.", detalhe: deleteFeaturesError.message });
       return;
     }
     const featureLabels = features.split("\n").map((label) => label.trim()).filter(Boolean);
@@ -397,7 +399,7 @@ export default function EditarVeiculo() {
       const { error: featureError } = await supabase.from("vehicle_features").insert(featureLabels.map((label) => ({ vehicle_id: id, label })));
       if (featureError) {
         setSaving(false);
-        alert("Os dados da viatura foram guardados, mas o equipamento não foi inserido: " + featureError.message);
+        mostrarErro({ titulo: "Equipamento não inserido", mensagem: "Os dados da viatura ficaram guardados.", detalhe: featureError.message });
         return;
       }
     }
@@ -405,7 +407,7 @@ export default function EditarVeiculo() {
     const { error: deleteExtrasError } = await supabase.from("vehicle_extras").delete().eq("vehicle_id", id);
     if (deleteExtrasError) {
       setSaving(false);
-      alert("Os dados da viatura foram guardados, mas não foi possível atualizar os extras: " + deleteExtrasError.message);
+      mostrarErro({ titulo: "Extras não atualizados", mensagem: "Os dados da viatura ficaram guardados.", detalhe: deleteExtrasError.message });
       return;
     }
     if (form.sale_type === "new" && selectedExtras.length) {
@@ -422,14 +424,17 @@ export default function EditarVeiculo() {
       );
       if (extrasError) {
         setSaving(false);
-        alert("Os dados da viatura foram guardados, mas os extras não foram inseridos: " + extrasError.message);
+        mostrarErro({ titulo: "Extras não inseridos", mensagem: "Os dados da viatura ficaram guardados.", detalhe: extrasError.message });
         return;
       }
     }
     const galleryResult = await galleryRef.current?.save();
     setSaving(false);
-    if (galleryResult?.error) alert("Os dados da viatura foram guardados, mas a galeria não: " + galleryResult.error);
-    else router.push("/admin/veiculos");
+    if (galleryResult?.error) {
+      mostrarErro({ titulo: "Galeria não guardada", mensagem: "Os dados da viatura ficaram guardados.", detalhe: galleryResult.error });
+    } else {
+      router.push("/admin/veiculos");
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><p style={{ color: "var(--muted)" }}>A carregar...</p></div>;
