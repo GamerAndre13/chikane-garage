@@ -7,10 +7,11 @@ import { usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { pickFromPool } from "@/lib/avatar-pool";
+import { isStaffRole } from "@/lib/roles";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
@@ -35,8 +36,10 @@ export function Header() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // O link "Backoffice" só aparece a utilizadores com role admin.
-  // (O /admin já é bloqueado pelo proxy — isto é só para não mostrar a entrada.)
+  // O link "Backoffice" aparece a qualquer cargo da equipa (admin, editor ou
+  // gestor de vendas); o cliente comum não o vê.
+  // (O /admin já é bloqueado pelo proxy e cada ecrã filtra pelo cargo — isto é
+  // só para não mostrar a entrada a quem não tem acesso a nada.)
   // Aproveita para carregar a imagem de perfil (avatar próprio ou do pool).
   useEffect(() => {
     const id = user?.id;
@@ -45,7 +48,7 @@ export function Header() {
     (async () => {
       if (!id) {
         if (!cancelled) {
-          setIsAdmin(false);
+          setIsStaff(false);
           setAvatarUrl(null);
         }
         return;
@@ -56,14 +59,14 @@ export function Header() {
           supabase.from("site_settings").select("avatar_pool").limit(1).maybeSingle(),
         ]);
         if (cancelled) return;
-        setIsAdmin(profileRes.data?.role === "admin");
+        setIsStaff(isStaffRole(profileRes.data?.role));
         const avatar =
           profileRes.data?.avatar_url ||
           pickFromPool(id, (settingsRes.data as { avatar_pool?: string | null } | null)?.avatar_pool);
         setAvatarUrl(avatar || null);
       } catch {
         if (!cancelled) {
-          setIsAdmin(false);
+          setIsStaff(false);
           setAvatarUrl(null);
         }
       }
@@ -141,7 +144,7 @@ export function Header() {
         <div className="ml-auto flex items-center gap-3 md:ml-6">
           {user ? (
             <>
-              {isAdmin && (
+              {isStaff && (
                 <Link
                   href="/admin"
                   className="hidden text-xs font-medium uppercase tracking-widest text-copper hover:text-copper-light transition-colors sm:block"
@@ -236,7 +239,7 @@ export function Header() {
               <Link href="/conta/perfil" className={`${navClass("/conta")} w-fit`} onClick={() => setMobileOpen(false)}>
                 Meu Perfil
               </Link>
-              {isAdmin && (
+              {isStaff && (
                 <Link href="/admin" className={`${navClass("/admin")} w-fit`} onClick={() => setMobileOpen(false)}>
                   Backoffice
                 </Link>

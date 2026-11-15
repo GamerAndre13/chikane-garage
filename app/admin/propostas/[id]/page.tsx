@@ -9,6 +9,14 @@ import { FieldError, campoClasse } from "@/components/ui/field-error";
 import { useDialogs } from "@/components/ui/dialogs";
 import { useToast } from "@/components/ui/toast";
 import { cheapestVariantFor, type ExtraVariantSummary } from "@/lib/extra-variants";
+import {
+  calcularTotaisProposta,
+  DISCOUNT_SCOPE_LABELS,
+  DISCOUNT_SCOPE_OPTIONS,
+  limiteDesconto,
+  normalizarAmbito,
+  type DiscountScope,
+} from "@/lib/proposal-pricing";
 
 interface ExtraItem {
   extra_id?: string;
@@ -31,6 +39,7 @@ interface Proposal {
   extras_total: number | null;
   total_price: number | null;
   discount: number | null;
+  discount_scope: string | null;
   legalization_fee: number | null;
   final_price: number | null;
   selected_extras: ExtraItem[] | null;
@@ -42,7 +51,8 @@ interface Proposal {
   updated_at: string;
 }
 
-// Extra do catálogo pronta a juntar à proposta (já com a variante mais barata).
+// Extra do catálogo pronta a juntar à proposta.
+// A variante escolhida (quando o extra tem variantes) é a que define o preço.
 interface CatalogExtra {
   extra_id: string;
   variant_id: string | null;
@@ -83,10 +93,17 @@ export default function PropostaDetalhe() {
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [discount, setDiscount] = useState("");
+  const [discountScope, setDiscountScope] = useState<DiscountScope>("total");
   const [legalization, setLegalization] = useState("");
   const [extrasList, setExtrasList] = useState<ExtraItem[]>([]);
   const [catalogExtras, setCatalogExtras] = useState<CatalogExtra[]>([]);
+  // Variantes ativas de cada extra do catálogo (para escolher ao adicionar e
+  // para trocar a variante de um extra já na proposta).
+  const [variantsByExtra, setVariantsByExtra] = useState<Record<string, ExtraVariantSummary[]>>({});
+  // Preço base de cada extra (usado quando se escolhe "Sem variante").
+  const [basePrices, setBasePrices] = useState<Record<string, number>>({});
   const [extraToAdd, setExtraToAdd] = useState("");
+  const [extraVariantToAdd, setExtraVariantToAdd] = useState("");
   const [sendingFinal, setSendingFinal] = useState(false);
   const { mostrarErro, confirmar } = useDialogs();
   const { toast } = useToast();
@@ -138,13 +155,16 @@ export default function PropostaDetalhe() {
             ? basePrice + extrasTotal
             : null;
       const discountValue = data.discount != null ? Number(data.discount) : 0;
+      const scope = normalizarAmbito(data.discount_scope);
       const legalizationValue = data.legalization_fee != null ? Number(data.legalization_fee) : 0;
-      const finalPrice =
-        data.final_price != null
-          ? Number(data.final_price)
-          : totalPrice != null
-            ? Math.max(0, totalPrice - discountValue + legalizationValue)
-            : null;
+      const totals = calcularTotaisProposta({
+        basePrice,
+        extrasTotal,
+        discount: discountValue,
+        legalization: legalizationValue,
+        scope,
+      });
+      const finalPrice = data.final_price != null ? Number(data.final_price) : totals.finalPrice;
 
       setProposal({
         ...(data as Proposal),
@@ -160,6 +180,7 @@ export default function PropostaDetalhe() {
       setStatus(data.status || "pending");
       setAdminNotes(data.admin_notes || "");
       setDiscount(data.discount ? String(data.discount) : "");
+      setDiscountScope(scope);
       setLegalization(data.legalization_fee ? String(data.legalization_fee) : "");
       setExtrasList(extras);
       setLoading(false);
@@ -170,16 +191,31 @@ export default function PropostaDetalhe() {
   }, [id]);
 
   // Catálogo de extras ativos — para acrescentar ou trocar extras na proposta.
+  // Cada extra guarda a variante mais barata como sugestão; as restantes variantes
+  // ficam disponíveis no seletor.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const [{ data: catalog }, { data: variants }] = await Promise.all([
         supabase.from("vehicle_extra_catalog").select("id, name, price, position").eq("is_active", true).order("position"),
-        supabase.from("vehicle_extra_variants").select("extra_id, name, price, position, is_active").eq("is_active", true),
+        supabase
+          .from("vehicle_extra_variants")
+          .select("id, extra_id, name, price, position, is_active")
+          .eq("is_active", true)
+          .order("position"),
       ]);
       if (cancelled) return;
+      const variantes = (variants ?? []) as ExtraVariantSummary[];
+      const mapa: Record<string, ExtraVariantSummary[]> = {};
+      for (const variante of variantes) {
+        (mapa[variante.extra_id] ||= []).push(variante);
+      }
+      const precos: Record<string, number> = {};
+      for (const item of catalog ?? []) {
+        precos[item.id] = Number(item.price) || 0;
+      }
       const lista = (catalog ?? []).map((item) => {
-        const variante = cheapestVariantFor(item.id, (variants ?? []) as ExtraVariantSummary[]);
+        const variante = cheapestVariantFor(item.id, variantes);
         return {
           extra_id: item.id,
           variant_id: variante?.id ?? null,
@@ -189,6 +225,8 @@ export default function PropostaDetalhe() {
         } satisfies CatalogExtra;
       });
       setCatalogExtras(lista);
+      setVariantsByExtra(mapa);
+      setBasePrices(precos);
     })();
     return () => {
       cancelled = true;
@@ -201,32 +239,72 @@ export default function PropostaDetalhe() {
   // Extras e totais são sempre recalculados a partir da lista editável.
   const basePrice = proposal?.base_price != null ? Number(proposal.base_price) : null;
   const extrasTotal = extrasList.reduce((sum, extra) => sum + (Number(extra.price) || 0), 0);
-  const totalPrice = basePrice != null ? basePrice + extrasTotal : null;
-  const finalPrice =
-    totalPrice != null ? Math.max(0, totalPrice - discountValue + legalizationValue) : null;
+  const totals = calcularTotaisProposta({
+    basePrice,
+    extrasTotal,
+    discount: discountValue,
+    legalization: legalizationValue,
+    scope: discountScope,
+  });
+  const totalPrice = totals.totalPrice;
+  const finalPrice = totals.finalPrice;
+  // Variantes do extra escolhido no seletor de "adicionar extra".
+  const variantesDoExtraEscolhido = extraToAdd ? variantsByExtra[extraToAdd] ?? [] : [];
 
-  // Validação do desconto: número >= 0 e nunca superior ao total da proposta.
-  const validarDesconto = (valor: string): string | null => {
+  // Validação do desconto: número >= 0 e nunca superior ao valor onde incide
+  // (total, extras ou viatura, conforme o âmbito escolhido).
+  const validarDesconto = (valor: string, scope: DiscountScope = discountScope): string | null => {
     const msg = validarNumero(valor, { rotulo: "O desconto", min: 0, obrigatorio: false });
     if (msg) return msg;
     const numero = Number(valor.replace(",", ".")) || 0;
-    if (totalPrice != null && numero > totalPrice) return "O desconto não pode ser superior ao total da proposta.";
+    const limite = limiteDesconto({ basePrice, extrasTotal, scope });
+    if (limite != null && numero > limite) {
+      const onde = scope === "extras" ? "o total dos extras" : scope === "vehicle" ? "o preço da viatura" : "o total da proposta";
+      return `O desconto não pode ser superior a ${onde}.`;
+    }
     return null;
   };
 
   const validarLegalizacao = (valor: string): string | null =>
     validarNumero(valor, { rotulo: "A legalização", min: 0, obrigatorio: false });
 
-  // Acrescenta um extra do catálogo (evita duplicados).
+  // Acrescenta um extra do catálogo (evita duplicados), com a variante
+  // escolhida no seletor (ou sem variante, se assim ficou).
   const adicionarExtra = () => {
     const escolhido = catalogExtras.find((item) => item.extra_id === extraToAdd);
     if (!escolhido) return;
+    const variantes = variantsByExtra[escolhido.extra_id] ?? [];
+    const variante = extraVariantToAdd ? variantes.find((item) => item.id === extraVariantToAdd) ?? null : null;
+    const novo: ExtraItem = {
+      extra_id: escolhido.extra_id,
+      variant_id: variante?.id ?? null,
+      name: escolhido.name,
+      variant_name: variante?.name ?? null,
+      price: variante ? Number(variante.price) || 0 : basePrices[escolhido.extra_id] ?? escolhido.price,
+    };
     setExtrasList((prev) =>
-      prev.some((extra) => (extra.extra_id ?? extra.catalog_extra_id) === escolhido.extra_id)
-        ? prev
-        : [...prev, { ...escolhido }]
+      prev.some((extra) => (extra.extra_id ?? extra.catalog_extra_id) === novo.extra_id) ? prev : [...prev, novo]
     );
     setExtraToAdd("");
+    setExtraVariantToAdd("");
+  };
+
+  // Troca a variante de um extra que já está na proposta (e o respetivo preço).
+  const alterarVarianteDoExtra = (indice: number, variantId: string) => {
+    setExtrasList((prev) =>
+      prev.map((extra, i) => {
+        if (i !== indice) return extra;
+        const extraId = extra.extra_id ?? extra.catalog_extra_id ?? "";
+        const variante = (variantsByExtra[extraId] ?? []).find((item) => item.id === variantId);
+        return {
+          ...extra,
+          variant_id: variante?.id ?? null,
+          variant_name: variante?.name ?? null,
+          // Sem variante escolhida volta o preço base do extra.
+          price: variante ? Number(variante.price) || 0 : basePrices[extraId] ?? extra.price,
+        };
+      })
+    );
   };
 
   const removerExtra = (indice: number) => {
@@ -254,6 +332,7 @@ export default function PropostaDetalhe() {
         extras_total: extrasTotal,
         total_price: totalPrice,
         discount: discountValue,
+        discount_scope: discountScope,
         legalization_fee: legalizationValue,
         final_price: finalPrice,
       })
@@ -271,6 +350,7 @@ export default function PropostaDetalhe() {
       extras_total: extrasTotal,
       total_price: totalPrice,
       discount: discountValue,
+      discount_scope: discountScope,
       legalization_fee: legalizationValue,
       final_price: finalPrice,
     });
@@ -457,28 +537,51 @@ export default function PropostaDetalhe() {
                 Extras ({extrasList.length})
               </p>
               {extrasList.length > 0 ? (
-                <div className="space-y-1">
-                  {extrasList.map((ex, idx) => (
-                    <div key={idx} className="flex items-center justify-between gap-3">
-                      <span style={{ color: "var(--foreground)" }}>
-                        {ex.name}
-                        {ex.variant_name ? ` - ${ex.variant_name}` : ""}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <span style={{ color: "var(--foreground)" }}>{euroFmt(Number(ex.price) || 0)}</span>
-                        <button
-                          type="button"
-                          onClick={() => removerExtra(idx)}
-                          aria-label={`Remover ${ex.name || "extra"}`}
-                          title="Remover extra"
-                          className="inline-flex h-7 w-7 items-center justify-center rounded border text-sm transition-colors"
-                          style={{ borderColor: "var(--border)", color: "var(--red-light)" }}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  {extrasList.map((ex, idx) => {
+                    const extraId = ex.extra_id ?? ex.catalog_extra_id ?? "";
+                    const variantes = variantsByExtra[extraId] ?? [];
+                    return (
+                      <div key={idx} className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1" style={{ color: "var(--foreground)" }}>
+                          {ex.name}
+                          {ex.variant_name && variantes.length === 0 ? ` - ${ex.variant_name}` : ""}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          {variantes.length > 0 && (
+                            <select
+                              value={ex.variant_id ?? ""}
+                              onChange={(e) => alterarVarianteDoExtra(idx, e.target.value)}
+                              aria-label={`Variante de ${ex.name || "extra"}`}
+                              title="Variante do extra"
+                              className="max-w-[190px] min-h-9 rounded border bg-background px-2 py-1 text-xs"
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            >
+                              <option value="">Sem variante</option>
+                              {variantes.map((variante) => (
+                                <option key={variante.id} value={variante.id}>
+                                  {variante.name} · {euroFmt(Number(variante.price) || 0)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          <span className="w-20 text-right" style={{ color: "var(--foreground)" }}>
+                            {euroFmt(Number(ex.price) || 0)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removerExtra(idx)}
+                            aria-label={`Remover ${ex.name || "extra"}`}
+                            title="Remover extra"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded border text-sm transition-colors"
+                            style={{ borderColor: "var(--border)", color: "var(--red-light)" }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs" style={{ color: "var(--muted)" }}>
@@ -488,7 +591,13 @@ export default function PropostaDetalhe() {
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <select
                   value={extraToAdd}
-                  onChange={(e) => setExtraToAdd(e.target.value)}
+                  onChange={(e) => {
+                    const extraId = e.target.value;
+                    setExtraToAdd(extraId);
+                    // Sugere logo a variante mais barata (ou nenhuma).
+                    const variantes = variantsByExtra[extraId] ?? [];
+                    setExtraVariantToAdd(cheapestVariantFor(extraId, variantes)?.id ?? "");
+                  }}
                   aria-label="Extra a adicionar"
                   className="min-w-0 flex-1 rounded border bg-background px-3 py-2 text-sm"
                   style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
@@ -496,11 +605,26 @@ export default function PropostaDetalhe() {
                   <option value="">Escolher extra…</option>
                   {extrasDisponiveis.map((item) => (
                     <option key={item.extra_id} value={item.extra_id}>
-                      {item.name}
-                      {item.variant_name ? ` - ${item.variant_name}` : ""} · {euroFmt(item.price)}
+                      {item.name} · a partir de {euroFmt(item.price)}
                     </option>
                   ))}
                 </select>
+                {variantesDoExtraEscolhido.length > 0 && (
+                  <select
+                    value={extraVariantToAdd}
+                    onChange={(e) => setExtraVariantToAdd(e.target.value)}
+                    aria-label="Variante do extra a adicionar"
+                    className="min-w-0 flex-1 rounded border bg-background px-3 py-2 text-sm"
+                    style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                  >
+                    <option value="">Sem variante</option>
+                    {variantesDoExtraEscolhido.map((variante) => (
+                      <option key={variante.id} value={variante.id}>
+                        {variante.name} · {euroFmt(Number(variante.price) || 0)}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="button"
                   onClick={adicionarExtra}
@@ -529,8 +653,8 @@ export default function PropostaDetalhe() {
             </div>
             {discountValue > 0 && (
               <div className="flex justify-between">
-                <span style={{ color: "var(--muted)" }}>Desconto</span>
-                <span style={{ color: "#22c55e" }}>− {euroFmt(discountValue)}</span>
+                <span style={{ color: "var(--muted)" }}>Desconto · {DISCOUNT_SCOPE_LABELS[discountScope]}</span>
+                <span style={{ color: "#22c55e" }}>− {euroFmt(totals.appliedDiscount)}</span>
               </div>
             )}
             {legalizationValue > 0 && (
@@ -556,7 +680,7 @@ export default function PropostaDetalhe() {
         <p className="text-xs uppercase tracking-widest mb-4" style={{ color: "var(--copper-deep)" }}>
           Gestão da proposta
         </p>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="text-xs uppercase tracking-widest mb-1 block" style={{ color: "var(--muted)" }}>
               Estado
@@ -570,6 +694,29 @@ export default function PropostaDetalhe() {
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="proposta-desconto-ambito" className="text-xs uppercase tracking-widest mb-1 block" style={{ color: "var(--muted)" }}>
+              Desconto incide em
+            </label>
+            <select
+              id="proposta-desconto-ambito"
+              value={discountScope}
+              onChange={(e) => {
+                const novo = normalizarAmbito(e.target.value);
+                setDiscountScope(novo);
+                // Revalida o valor já escrito para o novo âmbito.
+                if (discount) setErroDesconto(validarDesconto(discount, novo));
+              }}
+              className="w-full px-3 py-2 text-sm border rounded bg-background"
+              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+            >
+              {DISCOUNT_SCOPE_OPTIONS.map((scope) => (
+                <option key={scope} value={scope}>
+                  {DISCOUNT_SCOPE_LABELS[scope]}
                 </option>
               ))}
             </select>

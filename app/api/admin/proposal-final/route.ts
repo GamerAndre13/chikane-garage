@@ -3,6 +3,11 @@ import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { vehicleEmailBlock } from "@/lib/email-vehicle-block";
 import { canManageSales } from "@/lib/roles";
+import {
+  calcularTotaisProposta,
+  DISCOUNT_SCOPE_LABELS,
+  normalizarAmbito,
+} from "@/lib/proposal-pricing";
 
 // Envio da proposta final ao cliente (item 5).
 // O backoffice confirma os extras, o desconto e a legalização; esta rota
@@ -118,13 +123,19 @@ export async function POST(request: NextRequest) {
     const basePrice = proposal.base_price != null ? Number(proposal.base_price) : null;
     const extrasTotal = Number(proposal.extras_total || 0);
     const discount = Number(proposal.discount || 0);
+    const discountScope = normalizarAmbito(proposal.discount_scope);
     const legalization = Number(proposal.legalization_fee || 0);
-    const finalPrice =
-      proposal.final_price != null
-        ? Number(proposal.final_price)
-        : proposal.total_price != null
-          ? Math.max(0, Number(proposal.total_price) - discount + legalization)
-          : null;
+    const calculados = calcularTotaisProposta({
+      basePrice,
+      extrasTotal,
+      discount,
+      legalization,
+      scope: discountScope,
+    });
+    // O valor gravado manda (se existir), mas o desconto mostrado é o que
+    // efetivamente coube no âmbito escolhido.
+    const finalPrice = proposal.final_price != null ? Number(proposal.final_price) : calculados.finalPrice;
+    const appliedDiscount = calculados.appliedDiscount;
 
     const html = `
 <!DOCTYPE html>
@@ -140,8 +151,8 @@ export async function POST(request: NextRequest) {
       <tr><td style="padding:6px 0;color:#888;">Preço da viatura</td><td style="padding:6px 0;text-align:right;color:#fff;">${euro(basePrice)}</td></tr>
       <tr><td style="padding:6px 0;color:#888;">Extras</td><td style="padding:6px 0;text-align:right;color:#fff;">${euro(extrasTotal)}</td></tr>
       ${
-        discount > 0
-          ? `<tr><td style="padding:6px 0;color:#888;">Desconto</td><td style="padding:6px 0;text-align:right;color:#22c55e;">− ${euro(discount)}</td></tr>`
+        appliedDiscount > 0
+          ? `<tr><td style="padding:6px 0;color:#888;">Desconto · ${DISCOUNT_SCOPE_LABELS[discountScope]}</td><td style="padding:6px 0;text-align:right;color:#22c55e;">− ${euro(appliedDiscount)}</td></tr>`
           : ""
       }
       ${

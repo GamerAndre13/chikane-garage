@@ -244,10 +244,13 @@ function PedidosContent() {
   };
 
   const confirmTestDrive = async (td: TestDrive) => {
-    // Usa a data/hora escolhida no campo se houver; senão combina
-    // preferred_date + preferred_time (sempre em UTC ISO para a BD).
+    // Usa a data/hora escolhida no campo se houver. Sem valor no campo, a
+    // ordem é: data proposta (reagendamento à espera de resposta), data já
+    // confirmada e, por fim, a preferida do cliente.
     const input = document.getElementById(`confirmed-date-${td.id}`) as HTMLInputElement | null;
-    const escolhida = input?.value || (td.preferred_date ? `${td.preferred_date}T${td.preferred_time || "10:00"}` : "");
+    const proposta = td.status === "rescheduled" ? td.proposed_date || "" : "";
+    const preferida = td.preferred_date ? `${td.preferred_date}T${td.preferred_time || "10:00"}` : "";
+    const escolhida = input?.value || proposta || td.confirmed_date || preferida;
     const data = escolhida ? new Date(escolhida) : null;
     if (!data || Number.isNaN(data.getTime())) {
       mostrarErro({ titulo: "Falta a data", mensagem: "Seleciona uma data e hora para confirmar o test drive." });
@@ -256,7 +259,16 @@ function PedidosContent() {
     const isoDate = data.toISOString();
 
     try {
-      const { error } = await supabase.from("test_drives").update({ status: "confirmed", confirmed_date: isoDate, confirmed_at: isoDate }).eq("id", td.id);
+      const { error } = await supabase
+        .from("test_drives")
+        .update({
+          status: "confirmed",
+          confirmed_date: isoDate,
+          confirmed_at: isoDate,
+          // Se estava à espera de resposta, a proposta deixa de estar pendente.
+          proposed_date: null,
+        })
+        .eq("id", td.id);
       if (error) {
         mostrarErro({ titulo: "Não foi possível confirmar", mensagem: "O test drive não ficou confirmado.", detalhe: error.message });
         return;
@@ -908,7 +920,7 @@ function PedidosContent() {
                         {d.status !== "completed" && (
                           <>
                             <button onClick={() => confirmTestDrive(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#22c55e" }}>
-                              Confirmar
+                              {d.status === "rescheduled" ? "Confirmar proposta" : "Confirmar"}
                             </button>
                             <button onClick={() => rejectTestDrive(d.id)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "#ef4444" }}>
                               Rejeitar
@@ -958,7 +970,9 @@ function PedidosContent() {
                             type="datetime-local"
                             id={`confirmed-date-${d.id}`}
                             defaultValue={
-                              d.confirmed_date
+                              d.status === "rescheduled" && d.proposed_date
+                                ? toLocalInputValue(d.proposed_date)
+                                : d.confirmed_date
                                 ? toLocalInputValue(d.confirmed_date)
                                 : d.preferred_date
                                 ? `${d.preferred_date}T${d.preferred_time || "10:00"}`
@@ -971,7 +985,7 @@ function PedidosContent() {
                             style={{ borderColor: "var(--border)", color: "var(--silver)" }}
                           />
                           <button onClick={() => updateTestDriveConfirmedDate(d)} className="text-xs hover:opacity-80 cursor-pointer" style={{ color: "var(--silver)" }}>
-                            Propor data
+                            {d.status === "rescheduled" ? "Propor outra data" : "Propor data"}
                           </button>
                         </div>
                       )}
