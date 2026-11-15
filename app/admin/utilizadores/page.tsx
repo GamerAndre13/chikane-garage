@@ -75,11 +75,12 @@ export default function UtilizadoresPage() {
     const cargoAtual = (profile.role ?? "user") as UserRole;
     if (novoCargo === cargoAtual) return;
 
-    // Nunca deixar o próprio admin retirar o seu cargo (ficaria sem acesso).
-    if (profile.id === currentUserId && novoCargo !== "admin") {
+    // O próprio cargo nunca é alterado aqui (ficaria sem acesso ao backoffice).
+    // O seletor da própria linha nem aparece, mas o guarda fica por segurança.
+    if (profile.id === currentUserId) {
       mostrarErro({
         titulo: "Não é possível alterar",
-        mensagem: "Não podes retirar o teu próprio cargo de administrador. Pede a outro administrador que o faça.",
+        mensagem: "Não podes alterar o teu próprio cargo. Pede a outro administrador que o faça.",
       });
       return;
     }
@@ -182,26 +183,52 @@ export default function UtilizadoresPage() {
                     {profile.email}
                   </td>
                   <td data-label="Cargo" className="px-4 py-3">
-                    <select
-                      value={cargo}
-                      onChange={(e) => alterarCargo(profile, e.target.value as UserRole)}
-                      disabled={updating === profile.id}
-                      aria-label={`Cargo de ${profile.email}`}
-                      title={ROLE_HINTS[cargo]}
-                      className="min-h-11 rounded px-2 py-1 text-xs font-medium md:min-h-0"
-                      style={{
-                        backgroundColor: "var(--background-alt)",
-                        color: "var(--foreground)",
-                        border: "1px solid var(--border)",
-                        cursor: updating === profile.id ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {ROLE_OPTIONS.map((role) => (
-                        <option key={role} value={role}>
-                          {ROLE_LABELS[role]}
-                        </option>
-                      ))}
-                    </select>
+                    {profile.id === currentUserId ? (
+                      // O próprio cargo fica só leitura: um admin não se pode
+                      // despromover (ficaria sem acesso ao backoffice). Tem de
+                      // ser outro administrador a fazê-lo.
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className="inline-flex w-fit items-center gap-1.5 rounded px-2 py-1 text-xs font-medium"
+                          style={{
+                            backgroundColor: "var(--background-alt)",
+                            color: "var(--foreground)",
+                            border: "1px solid var(--border)",
+                          }}
+                          title="O teu cargo só pode ser alterado por outro administrador."
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                          {ROLE_LABELS[cargo]}
+                        </span>
+                        <span className="text-[10px] leading-tight" style={{ color: "var(--muted)" }}>
+                          Só outro administrador pode alterar
+                        </span>
+                      </div>
+                    ) : (
+                      <select
+                        value={cargo}
+                        onChange={(e) => alterarCargo(profile, e.target.value as UserRole)}
+                        disabled={updating === profile.id}
+                        aria-label={`Cargo de ${profile.email}`}
+                        title={ROLE_HINTS[cargo]}
+                        className="min-h-11 rounded px-2 py-1 text-xs font-medium md:min-h-0"
+                        style={{
+                          backgroundColor: "var(--background-alt)",
+                          color: "var(--foreground)",
+                          border: "1px solid var(--border)",
+                          cursor: updating === profile.id ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {ROLE_OPTIONS.map((role) => (
+                          <option key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td data-label="Registo" className="px-4 py-3 text-xs" style={{ color: "var(--muted)" }}>
                     {registo}
