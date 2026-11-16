@@ -217,7 +217,7 @@ HOME (app/page.tsx) — Server Component (async)
     FALLBACK em código caso a chave não exista.
 - Secções:
   1. HERO: imagem bg Unsplash, overlay preto, tagline/slogan/intro vêm do CMS,
-     dois CTAs (Ver Catálogo / A Nossa História), e 3 estatísticas
+     dois CTAs (Ver Usados / A Nossa História), e 3 estatísticas
      (100% Verificadas · 6 Mo Garantia · 0 € Comissões).
   2. DESTAQUE: grid de 4 viaturas disponíveis (cards com imagem, badge
      SPOTLIGHT, KM, potência, caixa, preço em pt-PT).
@@ -229,18 +229,18 @@ HOME (app/page.tsx) — Server Component (async)
   tema (copper, foreground, muted, border, silver). Usa <img> (não next/image)
   com eslint-disable por serem URLs remotas de origem desconhecida.
 
-CATÁLOGO (app/catalogo/page.tsx) — Server Component
----------------------------------------------------
-- Busca todas as viaturas (order created_at desc), com try/catch que resulta em
+USADOS (app/usados/page.tsx) — Server Component
+------------------------------------------------
+- Busca as viaturas usadas (order created_at desc), com try/catch que resulta em
   lista vazia em caso de falha (graceful).
 - Função statusLabel() → badge colorido: available=verde, reserved=âmbar,
   sold=cinza.
 - Grid de cards (3 colunas) com: imagem, FavoriteButton (overlay), badge de
   estado, KM, potência, caixa, cor, preço. Cada card é um <Link> para
-  /catalogo/[slug].
+  /usados/[slug].
 - Contador "X viaturas em stock". Estado vazio com mensagem amigável.
 
-DETALHE DA VIATURA (app/catalogo/[slug]/page.tsx) — Server
+DETALHE DA VIATURA (app/usados/[slug]/page.tsx) — Server
 ----------------------------------------------------------
 - generateMetadata: busca brand/model/trim/year/price/cover para título/descrição
   e openGraph (SEO por viatura). Tudo num try/catch (seguro).
@@ -265,7 +265,7 @@ LOJA (app/loja/page.tsx) — Server
 SOBRE (app/sobre/page.tsx) — Static/Server (sem BD)
 ---------------------------------------------------
 - Hero + 2 colunas (texto de história/processo) + grid de 4 passos + CTA final.
-- NÃO depende de Supabase (conteúdo estático no código). Links para /catalogo.
+- NÃO depende de Supabase (conteúdo estático no código). Links para /usados.
 
 CONTACTO (app/contacto/page.tsx) — Client + Suspense
 ----------------------------------------------------

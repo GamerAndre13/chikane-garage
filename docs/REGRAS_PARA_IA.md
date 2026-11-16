@@ -26,9 +26,10 @@ A lógica **só** se altera quando **o dono do projeto o pedir explicitamente**
 - Server Actions (`app/actions/`) e rotas de API (`app/api/`).
 - Regras de negócio em `lib/` (preços, visibilidade de viaturas, datas de venda,
   limites anti-spam, validações).
-- SQL: `supabase/setup.sql` (ficheiro único — schema, políticas de segurança
-  (RLS), funções, triggers e permissões) e `supabase/seed.sql` (dados de
-  exemplo). **Nunca** alterar nem correr SQL sem indicação.
+- SQL: `supabase/setup.sql` (schema base — tabelas, políticas RLS, funções,
+  triggers e permissões) e as migrações numeradas `supabase/021_…` a
+  `supabase/039_…` (tudo o que foi acrescentado depois). **Nunca** alterar nem
+  correr SQL sem indicação.
 - `proxy.ts`, `next.config.ts`, `wrangler.toml`, `package.json` (configuração e
   segurança).
 - `revalidatePath(...)`, caches, redirecionamentos, emails, `fetch(...)`.
@@ -70,8 +71,9 @@ Qualquer rastreador novo tem de passar pelo aviso de cookies
   `BOOTSTRAP.txt`) que já lá estão marcados como desatualizados.
 - **Nunca commitar segredos:** o `.env.local` está protegido pelo `.gitignore`.
   Não o alteres nem o removas dessa proteção.
-- **Não existe framework de testes** neste projeto. Não acrescentes um, nem
-  procures um script de testes.
+- **Testes:** o projeto usa **Vitest** (unitários) e **Playwright** (percursos
+  públicos). Não acrescentes outro framework nem scripts paralelos. Para validar
+  uma alteração, corre os comandos da regra nº 4.
 
 ---
 
@@ -80,9 +82,10 @@ Qualquer rastreador novo tem de passar pelo aviso de cookies
 Depois de qualquer alteração:
 
 ```bash
-npx tsc --noEmit              # tipos (tem de estar limpo)
+npm run typecheck             # tipos (tem de estar limpo)
+npm test                      # testes unitários (Vitest)
 npx eslint <ficheiros que mexeste>   # só o que mexeste
-npm run build                 # builds grandes ou antes de publicar
+npx next build --webpack      # build (antes de publicar)
 ```
 
 Notas sobre o lint:

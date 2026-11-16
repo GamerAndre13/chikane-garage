@@ -15,11 +15,13 @@ partiu nada.
 | Estrutura global (fontes, metadados, cabeçalho/rodapé) | `app/layout.tsx` |
 | Estilos globais, cores e utilitários | `app/globals.css` |
 | **Home** (hero, spotlight, catálogo, garagem, processo) | `app/page.tsx` |
-| **Catálogo** (filtros + grelha) | `app/catalogo/page.tsx` |
+| **Usados** (filtros + grelha) | `app/usados/page.tsx` |
 | **Novos** (viaturas novas por encomenda) | `app/novos/page.tsx` |
 | **Campanhas** (ofertas e condições especiais) | `app/campanhas/page.tsx` |
-| **Página da campanha** (fotos, texto longo e chamada à ação) | `app/campanhas/[slug]/page.tsx` |
-| **Ficha da viatura** | `app/catalogo/[slug]/page.tsx` |
+| **Página da campanha** (carrossel, descrição, info e mais campanhas) | `app/campanhas/[slug]/page.tsx` |
+| **Ficha da viatura usada** | `app/usados/[slug]/page.tsx` |
+| **Ficha da viatura nova** (`/novo/carro/<slug>`) | `app/novo/carro/[slug]/page.tsx` |
+| **Redirects dos links antigos** (`/catalogo` → `/usados`) | `app/catalogo/page.tsx` e `app/catalogo/[slug]/page.tsx` |
 | **Comprar / pedir proposta** (extras + dados) | `app/comprar/[slug]/page.tsx` (+ `components/ui/vehicle-purchase.tsx`) |
 | **Sobre** | `app/sobre/page.tsx` |
 | **Contacto** | `app/contacto/page.tsx` |
@@ -171,7 +173,7 @@ parecido com:
 supabase.from("vehicles").select("*")     // consultas à base de dados
 const { data: { user } } = await supabase.auth.getUser()   // sessão
 if (!profile || profile.role !== "admin") redirect("/conta")  // controlo de acesso
-revalidatePath("/catalogo")               // atualização de cache
+revalidatePath("/usados")                // atualização de cache
 createClient()                            // ligação à base de dados
 ```
 
@@ -183,4 +185,4 @@ Voltar ao [README](../README.md) · Ver [pôr o site no ar](COLOCAR_NO_AR.md) ·
 Ver [variáveis de ambiente](VARIAVEIS_AMBIENTE.md) ·
 Ver [regras para IA](REGRAS_PARA_IA.md)
 
-*Última atualização: 2026-10-14.*
+*Última atualização: 2026-11-16.*
