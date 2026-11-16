@@ -321,7 +321,7 @@ export function VehiclePurchase({
   return (
     <div className="mx-auto max-w-[1200px] px-5 pb-24 pt-10 sm:px-8 lg:px-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/catalogo/${vehicleSlug}`} className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">
+        <Link href={saleType === "new" ? `/novo/carro/${vehicleSlug}` : `/usados/${vehicleSlug}`} className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">
           ← Voltar à viatura
         </Link>
         <span className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Chikane Garage · seleção</span>
@@ -349,10 +349,10 @@ export function VehiclePurchase({
             )}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href={`/catalogo/${vehicleSlug}`} className="bg-copper px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
+            <Link href={saleType === "new" ? `/novo/carro/${vehicleSlug}` : `/usados/${vehicleSlug}`} className="bg-copper px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
               Voltar à viatura
             </Link>
-            <Link href="/catalogo" className="border border-border px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper">
+            <Link href={saleType === "new" ? "/novos" : "/usados"} className="border border-border px-6 py-3 font-display text-sm font-semibold uppercase tracking-widest text-silver transition-colors hover:border-copper hover:text-copper">
               Ver catálogo
             </Link>
           </div>

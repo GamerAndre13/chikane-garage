@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
     // Bloco com a fotografia da viatura, clicável para o anúncio.
-    const vehicleUrl = vehicleSlug ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}` : null;
+    const vehicleUrl = vehicleSlug ? `${siteUrl.replace(/\/$/, "")}/usados/${vehicleSlug}` : null;
 
     const reservedUntilText = reservedUntil
       ? new Date(reservedUntil).toLocaleString("pt-PT", {

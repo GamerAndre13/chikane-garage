@@ -6,8 +6,8 @@ import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { CatalogBrowser } from "@/components/ui/catalog-browser";
 
 export const metadata = {
-  title: "Catálogo | Chikane Garage",
-  description: "Descobre a seleção atual de viaturas de performance selecionadas da Chikane Garage.",
+  title: "Usados | Chikane Garage",
+  description: "Descobre a seleção atual de viaturas usadas de performance selecionadas da Chikane Garage.",
 };
 
 type Vehicle = {
@@ -21,7 +21,7 @@ type Vehicle = {
   vehicle_images?: { url?: string | null; position?: number | null; alt_text?: string | null }[] | null;
 };
 
-export default async function CatalogoPage() {
+export default async function UsadosPage() {
   let vehicles: Vehicle[] = [];
   try {
     // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com
@@ -42,7 +42,7 @@ export default async function CatalogoPage() {
   return <div className="mx-auto max-w-[1440px] px-5 pb-20 pt-12 sm:px-8 sm:pt-16 lg:px-12">
     <header className="max-w-3xl">
       <p className="font-display text-[10px] uppercase tracking-[0.28em] text-copper">Inventário <span className="px-1 text-white/30">·</span> Atualizado semanalmente</p>
-      <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-none tracking-tight text-white sm:text-7xl">Catálogo</h1>
+      <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-none tracking-tight text-white sm:text-7xl">Usados</h1>
       <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">Consulta as características registadas para cada viatura e contacta-nos para confirmar disponibilidade e condições de venda.</p>
     </header>
     <Suspense fallback={null}>

@@ -55,7 +55,7 @@ export default async function NovosPage() {
           Estamos a preparar novas configurações por encomenda. Entretanto, consulta o inventário de usados ou fala connosco para pedir um modelo específico.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/catalogo" className="border border-copper bg-copper px-5 py-2.5 font-display text-xs uppercase tracking-[0.2em] text-background transition-opacity hover:opacity-90">Ver catálogo</Link>
+          <Link href="/usados" className="border border-copper bg-copper px-5 py-2.5 font-display text-xs uppercase tracking-[0.2em] text-background transition-opacity hover:opacity-90">Ver usados</Link>
           <Link href="/contacto" className="border border-white/15 px-5 py-2.5 font-display text-xs uppercase tracking-[0.2em] text-silver transition-colors hover:border-copper hover:text-copper">Pedir modelo</Link>
         </div>
       </div>

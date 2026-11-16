@@ -516,7 +516,7 @@ export default function PropostaDetalhe() {
                 </p>
               )}
               {vehicle.slug && (
-                <Link href={`/catalogo/${vehicle.slug}`} target="_blank" className="text-xs" style={{ color: "var(--copper-deep)" }}>
+                <Link href={`/usados/${vehicle.slug}`} target="_blank" className="text-xs" style={{ color: "var(--copper-deep)" }}>
                   Ver ficha pública
                 </Link>
               )}

@@ -9,7 +9,7 @@ import { VehiclePurchase, type PurchaseExtra } from "@/components/ui/vehicle-pur
 // Página de compra / pedido de proposta de uma viatura, no formato de
 // /comprar/<slug>: extras numerados + resumo sticky com o total e o
 // formulário de dados (estilo do "Pedir informações").
-// A ficha da viatura continua em /catalogo/<slug>.
+// A ficha da viatura continua em /novo/carro/<slug> (novas) ou /usados/<slug>.
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

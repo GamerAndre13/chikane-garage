@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
+import { vehicleHref } from "@/lib/vehicle-links";
 
 type FavoriteVehicle = {
   id: string;
@@ -18,6 +19,7 @@ type FavoriteVehicle = {
     cover_image_url: string | null;
     slug: string;
     status: string | null;
+    sale_type?: string | null;
     sold_at?: string | null;
     updated_at?: string | null;
     created_at?: string | null;
@@ -52,7 +54,7 @@ export function FavoritesList() {
 
       const { data } = await supabase
         .from("favorites")
-        .select("id, vehicle_id, created_at, vehicles(brand, model, trim, price, cover_image_url, slug, status, sold_at, updated_at, created_at)")
+        .select("id, vehicle_id, created_at, vehicles(brand, model, trim, price, cover_image_url, slug, status, sale_type, sold_at, updated_at, created_at)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -80,7 +82,7 @@ export function FavoritesList() {
     return (
       <p className="text-sm text-muted">
         Ainda não tens viaturas guardadas.{" "}
-        <Link href="/catalogo" className="text-copper hover:text-copper-light transition-colors">
+        <Link href="/usados" className="text-copper hover:text-copper-light transition-colors">
           Ver catálogo
         </Link>
       </p>
@@ -102,7 +104,7 @@ export function FavoritesList() {
             )}
             <div className="flex-1 min-w-0">
               {fav.vehicles ? (
-                <Link href={`/catalogo/${fav.vehicles.slug}`} className="block">
+                <Link href={vehicleHref(fav.vehicles)} className="block">
                   <p className="text-sm font-medium text-foreground truncate">
                     {fav.vehicles.brand} {fav.vehicles.model} {fav.vehicles.trim}
                   </p>

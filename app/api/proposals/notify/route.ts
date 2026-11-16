@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     const vehicleName = escapeHtml(String(payload.vehicle_name || "Viatura nova"));
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-    const vehicleUrl = siteUrl && payload.vehicle_slug ? `${siteUrl}/catalogo/${payload.vehicle_slug}` : null;
+    const vehicleUrl = siteUrl && payload.vehicle_slug ? `${siteUrl}/usados/${payload.vehicle_slug}` : null;
     // Link direto para a proposta no backoffice (email ao gestor).
     const proposalUrl = siteUrl && payload.proposal_id ? `${siteUrl}/admin/propostas/${payload.proposal_id}` : null;
     const extras = Array.isArray(payload.selected_extras) ? payload.selected_extras : [];

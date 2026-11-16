@@ -47,7 +47,7 @@ async function sendTestEmail(email: string) {
         <p style="margin: 10px 0 0; font-size: 16px; color: #fff; font-weight: bold;">${
           v.price ? `${v.price.toLocaleString("pt-PT")} €` : "Sob consulta"
         }</p>
-        <a href="${siteUrl}/catalogo/${v.slug}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #f47724; color: #000; text-decoration: none; font-size: 12px; font-weight: bold; border-radius: 4px;">Ver detalhes</a>
+        <a href="${siteUrl}/usados/${v.slug}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #f47724; color: #000; text-decoration: none; font-size: 12px; font-weight: bold; border-radius: 4px;">Ver detalhes</a>
       </div>
     `
         )

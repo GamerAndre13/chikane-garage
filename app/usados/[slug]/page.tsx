@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
@@ -8,6 +8,8 @@ import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { isVehicleNovidade } from "@/lib/vehicle-badges";
 import { VehicleSpecifications } from "@/components/ui/vehicle-specifications";
 import { VehicleCardGallery } from "@/components/ui/vehicle-card-gallery";
+import { usedVehicleSpecs } from "@/lib/vehicle-specs";
+import { vehicleHref } from "@/lib/vehicle-links";
 import { expireReservations } from "@/lib/expire-reservations";
 import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 
@@ -117,16 +119,6 @@ function statusBadge(status?: string | null): { label: string; color: string } |
   }
 }
 
-function serviceBookLabel(sb?: string | null): string {
-  switch (sb) {
-    case "full_dealer": return "Caderneta completa (Concessionário)";
-    case "full": return "Caderneta completa";
-    case "partial": return "Parcial";
-    case "none": return "Sem caderneta";
-    default: return "—";
-  }
-}
-
 // Para viaturas vendidas: data da venda e há quantos dias foi. O "now" é um
 // parâmetro com omissão (como em isVehiclePubliclyVisible) para não chamar
 // funções impuras dentro do componente.
@@ -199,6 +191,9 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   } catch { vehicle = null; }
 
   if (!vehicle || !isVehiclePubliclyVisible(vehicle)) notFound();
+  // As viaturas novas têm ficha própria em /novo/carro/<slug>. Se alguém
+  // chegar aqui por um link antigo, segue para a ficha certa.
+  if (vehicle.sale_type === "new") redirect(`/novo/carro/${vehicle.slug}`);
 
   const gallery = ((vehicle.vehicle_images || []) as VehicleImage[])
     .filter((img) => img.url)
@@ -212,32 +207,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   const features = (vehicle.vehicle_features || []) as VehicleFeature[];
   const badge = statusBadge(vehicle.status);
   const soldInfo = soldInfoFor(vehicle);
-
-  const primarySpecs: { label: string; value: string }[] = [
-    { label: "Quilometragem", value: vehicle.mileage_km != null ? `${vehicle.mileage_km.toLocaleString("pt-PT")} km` : "—" },
-    { label: "Ano", value: vehicle.registration_year ? String(vehicle.registration_year) : "—" },
-    { label: "Potência", value: vehicle.power_hp != null ? `${vehicle.power_hp} cv` : "—" },
-    { label: "Combustível", value: vehicle.fuel_type || "—" },
-    { label: "Caixa", value: vehicle.transmission ? (vehicle.transmission === "automatic" ? "Automática" : "Manual") : "—" },
-    { label: "Origem", value: vehicle.origin ? (vehicle.origin === "imported" ? "Importação" : "Nacional") : "—" },
-    { label: "Donos Anteriores", value: vehicle.previous_owners != null ? String(vehicle.previous_owners) : "—" },
-    { label: "Cor", value: vehicle.exterior_color || "—" },
-  ];
-
-  const additionalSpecs: { label: string; value: string }[] = [];
-  if (vehicle.engine) additionalSpecs.push({ label: "Motor", value: vehicle.engine });
-  if (vehicle.torque_nm != null) additionalSpecs.push({ label: "Binário", value: `${vehicle.torque_nm} Nm` });
-  if (vehicle.drivetrain) additionalSpecs.push({ label: "Tração", value: vehicle.drivetrain.toUpperCase() });
-  if (vehicle.body_style) additionalSpecs.push({ label: "Estilo", value: vehicle.body_style });
-  if (vehicle.registration_month) additionalSpecs.push({ label: "Mês Registo", value: String(vehicle.registration_month) });
-  if (vehicle.interior_color) additionalSpecs.push({ label: "Cor Interior", value: vehicle.interior_color });
-  if (vehicle.service_book) additionalSpecs.push({ label: "Caderneta", value: serviceBookLabel(vehicle.service_book) });
-  if (vehicle.origin_country) additionalSpecs.push({ label: "País Origem", value: vehicle.origin_country });
-  if (vehicle.coc_confirmed) additionalSpecs.push({ label: "COC", value: "Confirmado ✓" });
-  if (vehicle.isv_paid) additionalSpecs.push({ label: "ISV", value: "Pago ✓" });
-  if (vehicle.combined_consumption != null) additionalSpecs.push({ label: "Consumo", value: `${vehicle.combined_consumption} l/100km` });
-  if (vehicle.co2_emissions != null) additionalSpecs.push({ label: "CO₂", value: `${vehicle.co2_emissions} g/km` });
-  if (vehicle.warranty_months) additionalSpecs.push({ label: "Garantia", value: `${vehicle.warranty_months} meses` });
+  const { primary: primarySpecs, additional: additionalSpecs } = usedVehicleSpecs(vehicle);
 
   // Extras configuráveis (só viaturas novas) vivem agora na página
   // /comprar/<slug>, juntamente com o pedido de proposta.
@@ -261,7 +231,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
-      <Link href="/catalogo" className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">← Voltar ao catálogo</Link>
+      <Link href="/usados" className="font-display text-[11px] uppercase tracking-[0.2em] text-silver transition-colors hover:text-copper">← Voltar aos usados</Link>
 
       <div className="mt-8 grid items-start gap-10 lg:grid-cols-[1.35fr_1fr] xl:gap-12">
         <div className="min-w-0">
@@ -278,7 +248,6 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
         <div className="min-w-0">
           <p className="font-display text-[11px] font-semibold uppercase tracking-[0.26em] text-copper">{vehicle.reference_code ? `Chikane selection · ${vehicle.reference_code}` : "Detalhes da viatura"}</p>
-          {vehicle.sale_type === "new" && <span className="mt-4 inline-block border border-copper px-3 py-1 font-display text-[10px] uppercase tracking-[0.2em] text-copper">Novo · Por encomenda</span>}
           <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-[0.98] tracking-tight text-foreground sm:text-6xl">{vehicle.brand} {vehicle.model}</h1>
           {vehicle.trim && <p className="mt-2 font-display text-sm uppercase tracking-[0.2em] text-silver">{vehicle.trim}</p>}
           <p className="mt-7 font-display text-4xl font-medium text-copper sm:text-5xl">{vehicle.price != null ? `${vehicle.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p>
@@ -290,14 +259,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             </p>
           )}
 
-          {vehicle.status !== "sold" && vehicle.sale_type === "new" && (
-            <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Link href={`/comprar/${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Configurar</Link>
-              <Link href={`/contacto?vehicle=${vehicle.slug}`} className="flex items-center justify-center border border-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-copper transition-colors hover:bg-copper hover:text-black">Pedir informações</Link>
-            </div>
-          )}
-
-          {vehicle.status !== "sold" && vehicle.sale_type !== "new" && (
+          {vehicle.status !== "sold" && (
             <div className={`mt-7 grid grid-cols-1 gap-3 ${vehicle.status === "available" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               {vehicle.status === "available" && (
                 <Link href={`/contacto?reserva=${vehicle.slug}`} className="flex items-center justify-center bg-copper px-6 py-4 text-center font-display text-xs font-semibold uppercase tracking-[0.24em] text-black transition-colors hover:bg-copper-light">Reservar viatura</Link>
@@ -319,7 +281,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
-      <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={`/catalogo/${car.slug}`} title={`${car.brand ?? ""} ${car.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={car.id}/></div>{isVehicleNovidade(car) ? <span className="absolute left-3 top-3 z-20 border border-copper bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-copper">Novidade</span> : car.status === "reserved" ? <span className="absolute left-3 top-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span> : null}</VehicleCardGallery><Link href={`/catalogo/${car.slug}`} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
+      <section className="mt-16 border-t border-border pt-10"><p className="font-display text-[10px] uppercase tracking-[0.24em] text-copper">A próxima escolha</p><h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-tight text-white">Recomendações</h2>{similarVehicles.length ? <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">{similarVehicles.map((car) => { const carPhotos = [...(car.cover_image_url ? [{ url: car.cover_image_url }] : []), ...((car.vehicle_images || []).filter((image) => image.url).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((image) => ({ url: image.url!, alt: image.alt_text || "" })))].filter((photo, index, allPhotos) => allPhotos.findIndex((item) => item.url === photo.url) === index).slice(0, 2); return <article key={car.id} className="card-lift group flex h-full flex-col overflow-hidden border border-white/10 bg-surface hover:border-copper/70 hover:shadow-[0_0_24px_rgba(244,119,36,0.13)]"><VehicleCardGallery photos={carPhotos} href={vehicleHref(car)} title={`${car.brand ?? ""} ${car.model ?? ""}`}><div className="absolute right-3 top-3 z-20"><FavoriteButton vehicleId={car.id}/></div>{isVehicleNovidade(car) ? <span className="absolute left-3 top-3 z-20 border border-copper bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-copper">Novidade</span> : car.status === "reserved" ? <span className="absolute left-3 top-3 z-20 border border-amber-400/70 bg-black/80 px-2.5 py-1 font-display text-[9px] uppercase tracking-[0.14em] text-amber-300">Reservada</span> : null}</VehicleCardGallery><Link href={vehicleHref(car)} className="flex flex-1 flex-col p-4"><p className="font-display text-[9px] uppercase tracking-[0.16em] text-white/45">{car.brand} · {car.registration_year}</p><h3 className="mt-2 min-h-12 font-display text-lg font-semibold uppercase text-white">{car.model}</h3>{car.trim && <p className="mt-1 min-h-4 truncate font-display text-[9px] uppercase tracking-wider text-copper">{car.trim}</p>}<p className="mt-auto pt-3 font-display text-lg text-white">{car.price != null ? `${car.price.toLocaleString("pt-PT")} €` : "Sob consulta"}</p></Link></article>; })}</div> : <p className="mt-5 border border-white/10 bg-surface px-5 py-8 text-sm text-white/55">Estamos a preparar novas recomendações. Volta em breve para ver as próximas viaturas.</p>}</section>
     </div>
   );
 }
