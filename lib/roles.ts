@@ -3,8 +3,10 @@
 //   admin  — tudo (viaturas, extras, campanhas, pedidos, propostas, contas,
 //            definições) e gestão de quem tem acesso ao backoffice;
 //   editor — campanhas e definições do site; viaturas e extras só leitura;
-//   sales  — pedidos/reservas, propostas e extras; viaturas só leitura.
-// As mesmas regras estão nas políticas RLS (supabase/035_roles_backoffice.sql).
+//   sales  — pedidos/reservas, propostas, extras e viaturas (criar e editar;
+//            apagar continua exclusivo do admin).
+// As mesmas regras estão nas políticas RLS (supabase/035_roles_backoffice.sql
+// e supabase/038_viaturas_vendedor.sql).
 
 export type UserRole = "user" | "editor" | "sales" | "admin";
 
@@ -41,9 +43,9 @@ export function canAccessArea(role: string | null | undefined, area: AdminArea):
   return AREA_ROLES[area].includes((role ?? "user") as UserRole);
 }
 
-/** Editor e gestor de vendas só consultam viaturas; criar/editar é do admin. */
+/** Admin e gestor de vendas criam/editam viaturas; apagar é só do admin. */
 export function canManageVehicles(role: string | null | undefined): boolean {
-  return role === "admin";
+  return role === "admin" || role === "sales";
 }
 
 /** Extras: admin e gestor de vendas. */

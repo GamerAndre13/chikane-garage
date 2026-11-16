@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isStaffRole, canAccessArea, type AdminArea } from "@/lib/roles";
+import { isStaffRole, canAccessArea, canManageVehicles, type AdminArea } from "@/lib/roles";
 
 // Área do backoffice a que cada caminho pertence. Os caminhos mais
 // específicos vêm primeiro.
@@ -18,14 +18,16 @@ function areaDoCaminho(pathname: string): AdminArea {
   return "dashboard";
 }
 
-// Criar e editar viaturas é exclusivo do admin (editor e gestor de vendas só
-// consultam o catálogo).
+// Criar e editar viaturas é do admin e do gestor de vendas (o editor só
+// consulta). Apagar viaturas continua exclusivo do admin — a própria página
+// esconde o botão e a política RLS de DELETE só aceita admin.
+function caminhoGestaoVeiculos(pathname: string): boolean {
+  return pathname.startsWith("/admin/veiculos/novo") || pathname.startsWith("/admin/veiculos/editar");
+}
+
+// Gestão de utilizadores (incluindo cargos) é exclusiva do admin.
 function caminhoExclusivoAdmin(pathname: string): boolean {
-  return (
-    pathname.startsWith("/admin/veiculos/novo") ||
-    pathname.startsWith("/admin/veiculos/editar") ||
-    pathname.startsWith("/admin/utilizadores")
-  );
+  return pathname.startsWith("/admin/utilizadores");
 }
 
 export async function proxy(request: NextRequest) {
@@ -82,7 +84,11 @@ export async function proxy(request: NextRequest) {
     }
 
     const area = areaDoCaminho(pathname);
-    if (!canAccessArea(role, area) || (caminhoExclusivoAdmin(pathname) && role !== "admin")) {
+    if (
+      !canAccessArea(role, area) ||
+      (caminhoExclusivoAdmin(pathname) && role !== "admin") ||
+      (caminhoGestaoVeiculos(pathname) && !canManageVehicles(role))
+    ) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin";
       url.search = "";

@@ -7,6 +7,7 @@ import { useDialogs } from "@/components/ui/dialogs";
 import { useToast } from "@/components/ui/toast";
 import { useAdminRole } from "../role-context";
 import { canManageVehicles } from "@/lib/roles";
+import { vehicleHref } from "@/lib/vehicle-links";
 
 interface Vehicle {
   id: string;
@@ -42,10 +43,11 @@ export default function VeiculosList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const { confirmar, mostrarErro } = useDialogs();
   const { toast } = useToast();
-  // O cargo vem do layout do backoffice: editor e gestor de vendas só consultam
-  // viaturas; criar, editar e apagar é exclusivo do admin (item 7).
+  // O cargo vem do layout do backoffice: editor só consulta viaturas; admin e
+  // gestor de vendas criam e editam. Apagar continua exclusivo do admin.
   const role = useAdminRole();
   const podeGerir = canManageVehicles(role);
+  const podeApagar = role === "admin";
 
   const fetchVehicles = useCallback(async () => {
     const { data } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
@@ -322,17 +324,19 @@ export default function VeiculosList() {
                         >
                           Editar
                         </Link>
-                        <button
-                          onClick={() => handleDelete(v.id)}
-                          className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
-                          style={{ color: "#ef4444" }}
-                        >
-                          Apagar
-                        </button>
+                        {podeApagar && (
+                          <button
+                            onClick={() => handleDelete(v.id)}
+                            className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
+                            style={{ color: "#ef4444" }}
+                          >
+                            Apagar
+                          </button>
+                        )}
                       </>
                     ) : v.slug ? (
                       <Link
-                        href={`/catalogo/${v.slug}`}
+                        href={vehicleHref({ slug: v.slug, sale_type: v.sale_type })}
                         target="_blank"
                         className="inline-flex min-h-11 items-center px-2 text-xs transition-colors md:min-h-0 md:px-0"
                         style={{ color: "var(--copper-deep)" }}
