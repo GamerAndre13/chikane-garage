@@ -13,10 +13,10 @@ import {
   COUNTRY_OPTIONS,
   countryInputLabel,
   countryLabel,
-  isEngineValid,
   maskEngineValue,
   resolveCountryCode,
 } from "@/lib/vehicle-options";
+import { validateVehicleForm } from "@/lib/vehicle-form-validation";
 import { cheapestVariantFor, type ExtraVariantSummary } from "@/lib/extra-variants";
 import { useDialogs } from "@/components/ui/dialogs";
 
@@ -270,28 +270,9 @@ export default function EditarVeiculo() {
   }, [clearError, handleChange, markTouched]);
 
   // Validação no submit (form em noValidate) para marcar a vermelho os
-  // campos obrigatórios que ficaram vazios.
-  const validate = useCallback((): Record<string, string> => {
-    const next: Record<string, string> = {};
-    if (!form.brand.trim()) next.brand = "Escolhe a marca.";
-    if (!form.model.trim()) next.model = "Indica o modelo.";
-    // Viaturas novas ficam sempre com o ano atual (campo escondido).
-    if (form.sale_type !== "new") {
-      if (!form.registration_year.trim()) next.registration_year = "Indica o ano de registo.";
-      else {
-        const year = Number(form.registration_year);
-        if (!Number.isFinite(year) || year < 1900 || year > 2100) next.registration_year = "Ano entre 1900 e 2100.";
-      }
-    }
-    if (form.sale_type === "used") {
-      if (!form.mileage_km.trim()) next.mileage_km = "Indica a quilometragem.";
-      else if (Number(form.mileage_km) < 0) next.mileage_km = "Indica uma quilometragem válida.";
-    }
-    if (!isEngineValid(form.engine)) next.engine = "Usa o formato X.X (ex.: 2.0).";
-    if (!form.price.trim()) next.price = "Indica o preço.";
-    else if (Number(form.price) < 0) next.price = "Indica um preço válido.";
-    return next;
-  }, [form]);
+  // campos obrigatórios que ficaram vazios. Só a descrição e o CO₂ são
+  // opcionais (regra partilhada em lib/vehicle-form-validation.ts).
+  const validate = useCallback((): Record<string, string> => validateVehicleForm(form), [form]);
 
   // Validação de um só campo, ao sair dele (item 13). Marca apenas esse campo,
   // sem pintar os restantes que o utilizador ainda não tocou.
@@ -456,13 +437,15 @@ export default function EditarVeiculo() {
               <datalist id="vehicle-models">{modelNames.map((m) => <option key={m} value={m} />)}</datalist>
             </>
           </Field>
-          <Field label="Versão / Trim"><input style={inputStyle} value={form.trim} onChange={handleChange("trim")} /></Field>
+          <Field label="Versão / Trim *" error={errors.trim}><input id="vehicle-trim" aria-invalid={Boolean(errors.trim)} style={withError(inputStyle, errors.trim)} value={form.trim} onBlur={() => validateField("trim")} onChange={handleFieldChange("trim")} /></Field>
           {form.sale_type === "used" && (
             <>
               <Field label="Ano Registo *" error={errors.registration_year}>
                 <input id="vehicle-registration_year" required type="number" min="1900" max="2100" aria-invalid={Boolean(errors.registration_year)} style={withError(inputStyle, errors.registration_year)} value={form.registration_year} onBlur={() => validateField("registration_year")} onChange={handleFieldChange("registration_year")} />
               </Field>
-              <Field label="Mês Registo"><input type="number" min="1" max="12" style={inputStyle} value={form.registration_month} onChange={handleChange("registration_month")} /></Field>
+              <Field label="Mês Registo *" error={errors.registration_month}>
+                <input id="vehicle-registration_month" type="number" min="1" max="12" aria-invalid={Boolean(errors.registration_month)} style={withError(inputStyle, errors.registration_month)} value={form.registration_month} onBlur={() => validateField("registration_month")} onChange={handleFieldChange("registration_month")} />
+              </Field>
             </>
           )}
         </div>
@@ -472,13 +455,13 @@ export default function EditarVeiculo() {
           <Field label="Motor" error={errors.engine}>
             <input id="vehicle-engine" inputMode="decimal" maxLength={3} placeholder="ex: 2.0" aria-invalid={Boolean(errors.engine)} style={withError(inputStyle, errors.engine)} value={form.engine} onBlur={() => validateField("engine")} onChange={(e) => { setField("engine", maskEngineValue(e.target.value)); clearError("engine"); markTouched("engine"); }} />
           </Field>
-          <Field label="Potência (CV)"><input type="number" min="0" style={inputStyle} value={form.power_hp} onChange={handleChange("power_hp")} /></Field>
-          <Field label="Binário (Nm)"><input type="number" min="0" style={inputStyle} value={form.torque_nm} onChange={handleChange("torque_nm")} /></Field>
-          <Field label="Caixa"><select style={selectStyle} value={form.transmission} onChange={handleChange("transmission")}><option value="automatic">Automática</option><option value="manual">Manual</option></select></Field>
-          <Field label="Tração"><select style={selectStyle} value={form.drivetrain} onChange={handleChange("drivetrain")}><option value="rwd">RWD</option><option value="awd">AWD/xDrive</option><option value="fwd">FWD</option></select></Field>
-          <Field label="Combustível"><select style={selectStyle} value={form.fuel_type} onChange={handleChange("fuel_type")}>{FUEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-          <Field label="Consumo (l/100km)"><input type="number" step="0.1" min="0" style={inputStyle} value={form.combined_consumption} onChange={handleChange("combined_consumption")} /></Field>
-          <Field label="CO₂ (g/km)"><input type="number" min="0" style={inputStyle} value={form.co2_emissions} onChange={handleChange("co2_emissions")} /></Field>
+          <Field label="Potência (CV) *" error={errors.power_hp}><input id="vehicle-power_hp" type="number" min="0" aria-invalid={Boolean(errors.power_hp)} style={withError(inputStyle, errors.power_hp)} value={form.power_hp} onBlur={() => validateField("power_hp")} onChange={handleFieldChange("power_hp")} /></Field>
+          <Field label="Binário (Nm) *" error={errors.torque_nm}><input id="vehicle-torque_nm" type="number" min="0" aria-invalid={Boolean(errors.torque_nm)} style={withError(inputStyle, errors.torque_nm)} value={form.torque_nm} onBlur={() => validateField("torque_nm")} onChange={handleFieldChange("torque_nm")} /></Field>
+          <Field label="Caixa *" error={errors.transmission}><select id="vehicle-transmission" aria-invalid={Boolean(errors.transmission)} style={withError(selectStyle, errors.transmission)} value={form.transmission} onBlur={() => validateField("transmission")} onChange={handleFieldChange("transmission")}><option value="automatic">Automática</option><option value="manual">Manual</option></select></Field>
+          <Field label="Tração *" error={errors.drivetrain}><select id="vehicle-drivetrain" aria-invalid={Boolean(errors.drivetrain)} style={withError(selectStyle, errors.drivetrain)} value={form.drivetrain} onBlur={() => validateField("drivetrain")} onChange={handleFieldChange("drivetrain")}><option value="rwd">RWD</option><option value="awd">AWD/xDrive</option><option value="fwd">FWD</option></select></Field>
+          <Field label="Combustível *" error={errors.fuel_type}><select id="vehicle-fuel_type" aria-invalid={Boolean(errors.fuel_type)} style={withError(selectStyle, errors.fuel_type)} value={form.fuel_type} onBlur={() => validateField("fuel_type")} onChange={handleFieldChange("fuel_type")}>{FUEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+          <Field label="Consumo (l/100km) *" error={errors.combined_consumption}><input id="vehicle-combined_consumption" type="number" step="0.1" min="0" aria-invalid={Boolean(errors.combined_consumption)} style={withError(inputStyle, errors.combined_consumption)} value={form.combined_consumption} onBlur={() => validateField("combined_consumption")} onChange={handleFieldChange("combined_consumption")} /></Field>
+          <Field label="CO₂ (g/km)" error={errors.co2_emissions}><input id="vehicle-co2_emissions" type="number" min="0" aria-invalid={Boolean(errors.co2_emissions)} style={withError(inputStyle, errors.co2_emissions)} value={form.co2_emissions} onBlur={() => validateField("co2_emissions")} onChange={handleFieldChange("co2_emissions")} /></Field>
         </div>
 
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Veículo</p>
@@ -487,31 +470,41 @@ export default function EditarVeiculo() {
           {form.sale_type === "used" && (
             <Field label="Quilometragem *" error={errors.mileage_km}><input id="vehicle-mileage_km" required type="number" min="0" aria-invalid={Boolean(errors.mileage_km)} style={withError(inputStyle, errors.mileage_km)} value={form.mileage_km} onBlur={() => validateField("mileage_km")} onChange={handleFieldChange("mileage_km")} /></Field>
           )}
-          <Field label="Cor Exterior">
+          <Field label="Cor Exterior *" error={errors.exterior_color}>
             <>
               <input
+                id="vehicle-exterior_color"
                 list="vehicle-exterior-colors"
                 placeholder="Escreve ou escolhe"
-                style={inputStyle}
+                aria-invalid={Boolean(errors.exterior_color)}
+                style={withError(inputStyle, errors.exterior_color)}
                 value={form.exterior_color}
-                onChange={handleChange("exterior_color")}
-                onBlur={(e) => setField("exterior_color", capitalizeWords(e.target.value))}
+                onChange={handleFieldChange("exterior_color")}
+                onBlur={(e) => {
+                  setField("exterior_color", capitalizeWords(e.target.value));
+                  validateField("exterior_color");
+                }}
               />
               <datalist id="vehicle-exterior-colors">
                 {exteriorColors.map((color) => <option key={color} value={color} />)}
               </datalist>
             </>
           </Field>
-          <Field label="Estilo de Carro"><select style={selectStyle} value={form.body_style} onChange={handleChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
-          <Field label="Cor Interior">
+          <Field label="Estilo de Carro *" error={errors.body_style}><select id="vehicle-body_style" aria-invalid={Boolean(errors.body_style)} style={withError(selectStyle, errors.body_style)} value={form.body_style} onBlur={() => validateField("body_style")} onChange={handleFieldChange("body_style")}><option value="">Selecionar estilo</option><option value="sedan">Sedan</option><option value="coupe">Coupé</option><option value="touring">Carrinha / Touring</option><option value="hatchback">Hatchback</option><option value="suv">SUV</option><option value="cabrio">Cabrio</option><option value="compact">Compacto</option><option value="monovolume">Monovolume</option><option value="outro">Outro</option></select></Field>
+          <Field label="Cor Interior *" error={errors.interior_color}>
             <>
               <input
+                id="vehicle-interior_color"
                 list="vehicle-interior-colors"
                 placeholder="Escreve ou escolhe"
-                style={inputStyle}
+                aria-invalid={Boolean(errors.interior_color)}
+                style={withError(inputStyle, errors.interior_color)}
                 value={form.interior_color}
-                onChange={handleChange("interior_color")}
-                onBlur={(e) => setField("interior_color", capitalizeWords(e.target.value))}
+                onChange={handleFieldChange("interior_color")}
+                onBlur={(e) => {
+                  setField("interior_color", capitalizeWords(e.target.value));
+                  validateField("interior_color");
+                }}
               />
               <datalist id="vehicle-interior-colors">
                 {interiorColors.map((color) => <option key={color} value={color} />)}
@@ -520,8 +513,8 @@ export default function EditarVeiculo() {
           </Field>
           {form.sale_type === "used" && (
             <>
-              <Field label="Donos Anteriores"><input type="number" min="0" style={inputStyle} value={form.previous_owners} onChange={handleChange("previous_owners")} /></Field>
-              <Field label="Caderneta"><select style={selectStyle} value={form.service_book} onChange={handleChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+              <Field label="Donos Anteriores *" error={errors.previous_owners}><input id="vehicle-previous_owners" type="number" min="0" aria-invalid={Boolean(errors.previous_owners)} style={withError(inputStyle, errors.previous_owners)} value={form.previous_owners} onBlur={() => validateField("previous_owners")} onChange={handleFieldChange("previous_owners")} /></Field>
+              <Field label="Caderneta *" error={errors.service_book}><select id="vehicle-service_book" aria-invalid={Boolean(errors.service_book)} style={withError(selectStyle, errors.service_book)} value={form.service_book} onBlur={() => validateField("service_book")} onChange={handleFieldChange("service_book")}>{SERVICE_BOOK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
             </>
           )}
         </div>
@@ -531,17 +524,19 @@ export default function EditarVeiculo() {
           <>
             <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Origem & Legalização</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
-              <Field label="Origem"><select style={selectStyle} value={form.origin} onChange={(e) => handleOriginChange(e.target.value)}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
+              <Field label="Origem *" error={errors.origin}><select id="vehicle-origin" aria-invalid={Boolean(errors.origin)} style={withError(selectStyle, errors.origin)} value={form.origin} onBlur={() => validateField("origin")} onChange={(e) => handleOriginChange(e.target.value)}>{ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
               {/* Nacional → país de origem fixo em Portugal (campo escondido). */}
               {form.origin === "imported" ? (
-                <Field label="País Origem">
+                <Field label="País Origem *" error={errors.origin_country}>
                   <>
                     <input
+                      id="vehicle-origin_country"
                       list="vehicle-origin-countries"
                       placeholder="Alemanha - DE"
-                      style={inputStyle}
+                      aria-invalid={Boolean(errors.origin_country)}
+                      style={withError(inputStyle, errors.origin_country)}
                       value={form.origin_country}
-                      onChange={handleChange("origin_country")}
+                      onChange={handleFieldChange("origin_country")}
                       onBlur={(e) => setField("origin_country", countryInputLabel(e.target.value))}
                     />
                     <datalist id="vehicle-origin-countries">
@@ -562,7 +557,7 @@ export default function EditarVeiculo() {
         <p className="text-xs uppercase tracking-widest mb-3 mt-5" style={{ color: "var(--copper-deep)" }}>Preço</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <Field label="Preço (€) *" error={errors.price}><input id="vehicle-price" required type="number" min="0" step="100" aria-invalid={Boolean(errors.price)} style={withError(inputStyle, errors.price)} value={form.price} onBlur={() => validateField("price")} onChange={handleFieldChange("price")} /></Field>
-          <Field label="Garantia (meses)"><input type="number" min="0" style={inputStyle} value={form.warranty_months} onChange={handleChange("warranty_months")} /></Field>
+          <Field label="Garantia (meses) *" error={errors.warranty_months}><input id="vehicle-warranty_months" type="number" min="0" aria-invalid={Boolean(errors.warranty_months)} style={withError(inputStyle, errors.warranty_months)} value={form.warranty_months} onBlur={() => validateField("warranty_months")} onChange={handleFieldChange("warranty_months")} /></Field>
         </div>
 
         {/* Galeria de imagens (R2) */}
