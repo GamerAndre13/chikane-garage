@@ -83,7 +83,7 @@ export default async function SobrePage() {
             Consulta o catálogo e fala connosco para esclarecer dúvidas sobre cada unidade.
           </p>
           <Link
-            href="/catalogo"
+            href="/usados"
             className="mt-8 inline-flex min-h-12 items-center bg-copper px-6 py-4 font-display text-xs font-semibold uppercase tracking-widest text-black transition-colors hover:bg-copper-light"
           >
             Explorar catálogo

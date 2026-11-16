@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
     // Link direto para o anúncio da viatura (se o slug vier do back office).
     const vehicleUrl = vehicleSlug
-      ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}`
+      ? `${siteUrl.replace(/\/$/, "")}/usados/${vehicleSlug}`
       : null;
     // O cliente aceita a nova data (ou pede outro horário) no popup que abre
     // na home: a home recebe o token e mostra o pedido (item novo 1). Emails

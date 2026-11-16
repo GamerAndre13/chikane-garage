@@ -21,6 +21,8 @@ Se recebeste este pacote e o objetivo é **pôr o site no ar**, lê por esta ord
 | 2 | [`docs/VARIAVEIS_AMBIENTE.md`](docs/VARIAVEIS_AMBIENTE.md) | Todas as variáveis/chaves: para que servem, onde se obtêm e onde têm de ficar. |
 | 3 | [`docs/GUIA_LAYOUTS.md`](docs/GUIA_LAYOUTS.md) | Onde está cada ecrã e onde se mexe (só) no layout. |
 | 4 | [`docs/REGRAS_PARA_IA.md`](docs/REGRAS_PARA_IA.md) | **Regras obrigatórias** para qualquer IA/programador que mexa no código. |
+| 5 | [`docs/RELATORIO_QA.md`](docs/RELATORIO_QA.md) | Revisão funcional, riscos e checklist de testes. |
+| 6 | [`docs/PERSONALIZACAO.md`](docs/PERSONALIZACAO.md) | Onde personalizar o site e como acrescentar coisas. |
 
 > ⚠️ **Regra nº 1 deste projeto:** é proibido alterar a lógica da aplicação.
 > Só se mexem em **layouts, estilo e textos visuais**. A lógica só se altera se o
@@ -32,12 +34,16 @@ Se recebeste este pacote e o objetivo é **pôr o site no ar**, lê por esta ord
 ## O que já está feito
 
 - Home com hero, catálogo em destaque (spotlight), garagem, processo e newsletter.
-- Catálogo com filtros e ficha de viatura por URL amigável (`/catalogo/[slug]`).
+- Usados com filtros (`/usados`) e ficha própria de cada viatura (`/usados/[slug]`).
+- Novos por encomenda (`/novos`) com ficha própria em `/novo/carro/[slug]` e
+  configurador de extras em `/comprar/[slug]`.
+- Campanhas (`/campanhas`) com página própria e carrossel de fotografias.
 - Contas: registo, login, confirmação por email, recuperação de password, perfil
   com avatar e favoritos.
 - Pedidos: informações, reservas e marcação de test-drive (com calendário).
-- Backoffice (`/admin`): viaturas (fotos em R2), pedidos, contas, conteúdo do site
-  e estatísticas.
+- Backoffice (`/admin`): viaturas (fotos em R2), extras, campanhas, pedidos,
+  propostas, contas, utilizadores e conteúdo do site — com três cargos
+  (`admin`, `editor`, `sales`); o cargo `admin` só se atribui na base de dados.
 - SEO: `robots.txt`, `sitemap.xml`, imagens de partilha.
 - Segurança: RLS no Supabase, `/admin` protegido, cabeçalhos de segurança.
 
@@ -78,7 +84,12 @@ concluir que falhou antes disso.
 ```
 app/            Páginas e rotas (App Router)
   admin/        Backoffice (protegido)
-  catalogo/     Catálogo e ficha de viatura
+  usados/       Listagem e ficha das viaturas usadas
+  novos/        Listagem das viaturas novas
+  novo/carro/   Ficha própria das viaturas novas
+  comprar/      Configurador de extras e pedido de proposta
+  campanhas/    Listagem e página de campanha
+  catalogo/     Redirects dos links antigos para /usados
   api/          Rotas de servidor (newsletter, decisões de admin)
   actions/      Server Actions (upload, autenticação)
 components/
@@ -113,4 +124,4 @@ As notas pessoais do dono e os ficheiros de trabalho pontuais **não fazem parte
 deste pacote**: a entrega leva apenas o código do site e a documentação dos
 guias.
 
-Última atualização: **2026-10-14**.
+Última atualização: **2026-11-16**.

@@ -7,8 +7,9 @@ para testes, Lighthouse ou carga.
 
 ## O que fica preparado
 
-- **Qualidade**: TypeScript, 6 testes unitários, lint focado nos ficheiros de QA
-  e build Next.js com Webpack. Corre em cada pull request e push para `main`.
+- **Qualidade**: TypeScript, testes unitários (Vitest), lint focado nos
+  ficheiros de QA e build Next.js com Webpack. Corre em cada pull request e push
+  para `main`.
 - **Segurança**: auditoria das dependências, CodeQL e revisão de dependências.
   Corre em pull requests, push para `main`, semanalmente e manualmente.
 - **Staging**: verifica a API/RLS do Supabase de staging e percorre páginas
@@ -29,8 +30,10 @@ automáticos estão em UTC.
 2. Não copies a base de dados de produção nem dados de clientes. Este staging
    serve para testar schema, políticas e páginas públicas.
 3. No projeto novo, abre **SQL Editor**, cria uma query e copia o conteúdo de
-   `supabase/setup.sql`. Executa-o apenas neste projeto novo. Esse ficheiro é a
-   origem do schema, políticas RLS e conteúdo inicial do CMS.
+   `supabase/setup.sql`. Executa-o apenas neste projeto novo. Depois executa,
+   **por ordem numérica**, as migrações `supabase/021_…` a `supabase/039_…`.
+   O `setup.sql` tem o schema base; as migrações acrescentam extras, campanhas,
+   propostas, cargos e as regras mais recentes. Tudo é idempotente.
 4. `supabase/seed.sql` é opcional: acrescenta carros de demonstração. Os testes
    incluídos não precisam desses carros; podes executar o seed se quiseres
    validar o catálogo com exemplos.
@@ -194,9 +197,9 @@ explica os requisitos de acesso.
 ### Qualidade
 
 Corre automaticamente em pull requests e push para `main`. Verifica tipos,
-testes unitários de visibilidade de veículos, lint dos ficheiros de QA e build
-com valores Supabase fictícios. Não precisa das chaves reais. O relatório JUnit
-fica no artefacto `relatorio-testes-unitarios`.
+testes unitários (Vitest), lint dos ficheiros de QA e build com valores Supabase
+fictícios. Não precisa das chaves reais. O relatório JUnit fica no artefacto
+`relatorio-testes-unitarios`.
 
 ### Segurança
 
@@ -208,7 +211,7 @@ Dependency Review são verificações separadas.
 ### Staging / Playwright / RLS
 
 Corre em pull request, diariamente (04:17 UTC) e a pedido. O Playwright visita a
-homepage, o catálogo e a página de contacto, sem submeter o formulário. A
+homepage, a lista de usados e a página de contacto, sem submeter o formulário. A
 verificação RLS usa apenas a chave pública e lê as tabelas indicadas no passo 1.
 Os traces, capturas e vídeo de falhas ficam no artefacto
 `relatorio-playwright-staging`.

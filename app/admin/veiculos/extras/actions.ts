@@ -21,7 +21,7 @@ function revalidateExtras() {
   revalidatePath("/admin/veiculos/extras");
   revalidatePath("/admin/veiculos");
   revalidatePath("/admin/veiculos/novo");
-  revalidatePath("/catalogo");
+  revalidatePath("/usados");
   revalidatePath("/novos");
 }
 

@@ -9,6 +9,8 @@ import { ROLE_LABELS, type UserRole } from "@/lib/roles";
 // Lista de todos os utilizadores do site e atribuição de cargos (item 7).
 // Só o admin abre esta página (proxy + menu) e só ele pode alterar o cargo
 // (política profiles_update_admin em supabase/035_roles_backoffice.sql).
+// O cargo de administrador nunca é atribuído por aqui: só na base de dados
+// (SQL Editor), como pedido pelo dono e garantido em supabase/039.
 
 type Profile = {
   id: string;
@@ -19,14 +21,20 @@ type Profile = {
   created_at: string | null;
 };
 
+// Cargos usados nos filtros e na legenda (inclui admin, para se poder
+// localizar quem já é administrador).
 const ROLE_OPTIONS: UserRole[] = ["user", "editor", "sales", "admin"];
+
+// Cargos que esta página pode atribuir. O admin fica de fora de propósito:
+// promover alguém a administrador só é possível na base de dados.
+const ASSIGNABLE_ROLES: UserRole[] = ["user", "editor", "sales"];
 
 // Descrição curta do que cada cargo pode fazer (ajuda a escolher no seletor).
 const ROLE_HINTS: Record<UserRole, string> = {
   user: "Cliente — sem acesso ao backoffice.",
   editor: "Editor — campanhas e conteúdo do site.",
-  sales: "Gestor de vendas — pedidos, propostas e extras.",
-  admin: "Administrador — acesso total e gestão de cargos.",
+  sales: "Gestor de vendas — pedidos, propostas, extras e viaturas.",
+  admin: "Administrador — acesso total. Só é atribuído na base de dados.",
 };
 
 export default function UtilizadoresPage() {
@@ -75,6 +83,17 @@ export default function UtilizadoresPage() {
     const cargoAtual = (profile.role ?? "user") as UserRole;
     if (novoCargo === cargoAtual) return;
 
+    // Promover a administrador não é permitido na aplicação: é uma decisão
+    // que só se toma na base de dados (SQL Editor do Supabase).
+    if (novoCargo === "admin") {
+      mostrarErro({
+        titulo: "Cargo não disponível",
+        mensagem:
+          "O cargo de administrador só pode ser atribuído diretamente na base de dados. Usa o SQL Editor do Supabase.",
+      });
+      return;
+    }
+
     // O próprio cargo nunca é alterado aqui (ficaria sem acesso ao backoffice).
     // O seletor da própria linha nem aparece, mas o guarda fica por segurança.
     if (profile.id === currentUserId) {
@@ -121,7 +140,8 @@ export default function UtilizadoresPage() {
           Utilizadores
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-          Todos os clientes registados no site. Atribui cargos para dar acesso ao backoffice.
+          Todos os clientes registados no site. Atribui cargos para dar acesso ao backoffice. O cargo
+          de administrador não se atribui aqui — só diretamente na base de dados.
         </p>
       </div>
 
@@ -222,7 +242,14 @@ export default function UtilizadoresPage() {
                           cursor: updating === profile.id ? "not-allowed" : "pointer",
                         }}
                       >
-                        {ROLE_OPTIONS.map((role) => (
+                        {cargo === "admin" && (
+                          // Só aparece para quem já é admin (é o valor actual
+                          // do seletor) e fica bloqueada: não é atribuível aqui.
+                          <option value="admin" disabled>
+                            {ROLE_LABELS.admin} — só na base de dados
+                          </option>
+                        )}
+                        {ASSIGNABLE_ROLES.map((role) => (
                           <option key={role} value={role}>
                             {ROLE_LABELS[role]}
                           </option>

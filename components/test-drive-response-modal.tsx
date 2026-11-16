@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
 // ── Resposta do cliente à nova data do test drive ─────────────────────────
@@ -44,8 +44,13 @@ const formatarData = (value: string | null) => {
 };
 
 export function TestDriveResponseModal() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const token = searchParams.get("testdrive");
+  // O mesmo parâmetro `testdrive` é usado noutras páginas para indicar a
+  // viatura do formulário de contacto (ex.: /contacto?testdrive=<slug>).
+  // Só na home é que ele é o token do email de remarcação; sem esta guarda,
+  // abrir o agendamento mostrava "link já não é válido".
+  const token = pathname === "/" ? searchParams.get("testdrive") : null;
   const [estado, setEstado] = useState<Estado | null>(null);
   const [fechado, setFechado] = useState(false);
   const cartaoRef = useRef<HTMLDivElement | null>(null);

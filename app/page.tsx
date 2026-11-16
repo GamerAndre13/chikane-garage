@@ -8,6 +8,7 @@ import { archiveSoldVehicles } from "@/lib/archive-sold-vehicles";
 import { Reveal } from "@/components/ui/reveal";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { saleTypeLabel, primaryLeftBadge } from "@/lib/vehicle-badges";
+import { vehicleHref } from "@/lib/vehicle-links";
 import { instagramUrl, facebookUrl, youtubeUrl, tiktokUrl } from "@/lib/social-links";
 import type { SiteSettings } from "@/lib/site-settings";
 
@@ -215,8 +216,8 @@ export default async function HomePage() {
             {t("hero.intro")}
           </p>
           <div className="mt-auto flex flex-col items-start gap-3 pt-9 sm:mt-9 sm:flex-row sm:pt-0">
-            <Link href="/catalogo" className="inline-flex items-center justify-center bg-copper px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
-              Ver Catálogo
+            <Link href="/usados" className="inline-flex items-center justify-center bg-copper px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:bg-copper-light">
+              Ver Usados
             </Link>
             <Link href="/sobre" className="inline-flex items-center justify-center border border-white/30 px-10 py-4 font-display text-sm font-semibold uppercase tracking-widest text-white transition-colors hover:border-white hover:bg-white/10">
               A Nossa História
@@ -237,14 +238,14 @@ export default async function HomePage() {
                   Em destaque<br />esta semana
                 </h2>
               </div>
-              <Link href="/catalogo" className="nav-link hidden transition-colors hover:text-copper sm:block">
+              <Link href="/usados" className="nav-link hidden transition-colors hover:text-copper sm:block">
                 Ver tudo
               </Link>
             </Reveal>
 
             {/* Destaque da semana (spotlight) */}
             <Reveal className="mt-16 grid gap-0 lg:grid-cols-[1.5fr_1fr]">
-              <Link href={`/catalogo/${spotlight.slug}`} className="group relative block aspect-[16/10] overflow-hidden">
+              <Link href={vehicleHref(spotlight)} className="group relative block aspect-[16/10] overflow-hidden">
                 {spotlight.cover_image_url ? (
                   <Image
                     src={spotlight.cover_image_url}
@@ -299,7 +300,7 @@ export default async function HomePage() {
                 </dl>
                 <p className="mt-3 font-display text-xl text-copper sm:mt-8 sm:text-3xl">{priceLabel(spotlight.price)}</p>
                 <Link
-                  href={`/catalogo/${spotlight.slug}`}
+                  href={vehicleHref(spotlight)}
                   className="mt-3 inline-flex border border-copper px-5 py-2 font-display text-[0.62rem] tracking-[0.24em] text-copper transition-all duration-300 hover:bg-copper hover:text-black sm:mt-8 sm:px-8 sm:py-3.5 sm:text-[0.68rem] sm:tracking-[0.28em]"
                 >
                   VER VIATURA
@@ -321,7 +322,7 @@ export default async function HomePage() {
                   return (
                     <Reveal key={v.id} delay={Math.min(i * 90, 360)}>
                       <Link
-                        href={`/catalogo/${v.slug}`}
+                        href={vehicleHref(v)}
                         className="group relative block border border-border bg-surface transition-all duration-500 hover:border-copper/70 hover:shadow-[0_0_40px_-16px_var(--glow)]"
                       >
                         <div className="relative aspect-[16/10] overflow-hidden">

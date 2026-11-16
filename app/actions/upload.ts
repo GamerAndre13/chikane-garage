@@ -3,7 +3,7 @@
 import { uploadToR2, deleteFromR2 } from "@/lib/r2";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { canManageContent } from "@/lib/roles";
+import { canManageContent, canManageVehicles } from "@/lib/roles";
 
 // Upload de avatar do utilizador para R2
 export async function uploadAvatar(formData: FormData): Promise<{ url?: string; error?: string }> {
@@ -72,9 +72,9 @@ export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: 
 
   if (!user) return { error: "Não autenticado" };
 
-  // Verificar se é admin
+  // Verificar se é admin ou gestor de vendas (quem cria/edita viaturas).
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role !== "admin") return { error: "Sem permissão" };
+  if (!profile || !canManageVehicles(profile.role)) return { error: "Sem permissão" };
 
   const vehicleId = formData.get("vehicleId") as string;
   if (!vehicleId) return { error: "ID da viatura não fornecido" };
@@ -139,7 +139,7 @@ export async function uploadVehicleImages(formData: FormData): Promise<{ urls?: 
 
   revalidatePath(`/admin/veiculos/editar/${vehicleId}`);
   revalidatePath("/admin/veiculos");
-  revalidatePath("/catalogo");
+  revalidatePath("/usados");
 
   return { urls };
 }
@@ -152,7 +152,7 @@ export async function setCoverImage(vehicleId: string, imageUrl: string): Promis
   if (!user) return { error: "Não autenticado" };
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role !== "admin") return { error: "Sem permissão" };
+  if (!profile || !canManageVehicles(profile.role)) return { error: "Sem permissão" };
 
   const { error } = await supabase
     .from("vehicles")
@@ -162,7 +162,7 @@ export async function setCoverImage(vehicleId: string, imageUrl: string): Promis
   if (error) return { error: error.message };
 
   revalidatePath(`/admin/veiculos/editar/${vehicleId}`);
-  revalidatePath("/catalogo");
+  revalidatePath("/usados");
   return {};
 }
 
@@ -174,7 +174,7 @@ export async function reorderVehicleImages(vehicleId: string, imageIds: string[]
   if (!user) return { error: "Não autenticado" };
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role !== "admin") return { error: "Sem permissão" };
+  if (!profile || !canManageVehicles(profile.role)) return { error: "Sem permissão" };
 
   // Atualizar positions em batch
   for (let i = 0; i < imageIds.length; i++) {
@@ -193,7 +193,7 @@ export async function deleteVehicleImage(imageId: string, vehicleId: string): Pr
   if (!user) return { error: "Não autenticado" };
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role !== "admin") return { error: "Sem permissão" };
+  if (!profile || !canManageVehicles(profile.role)) return { error: "Sem permissão" };
 
   // Buscar URL para apagar do R2
   const { data: image } = await supabase.from("vehicle_images").select("url").eq("id", imageId).single();

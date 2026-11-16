@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
     // Link direto para o anúncio da viatura (se o slug vier do back office).
     const vehicleUrl = vehicleSlug
-      ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}`
+      ? `${siteUrl.replace(/\/$/, "")}/usados/${vehicleSlug}`
       : null;
     // Date-only ("2026-10-11") é tratada a partir das 10:00 (hora de Lisboa);
     // datas completas são interpretadas como UTC.

@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
-    const vehicleUrl = vehicleSlug ? `${siteUrl.replace(/\/$/, "")}/catalogo/${vehicleSlug}` : null;
+    const vehicleUrl = vehicleSlug ? `${siteUrl.replace(/\/$/, "")}/usados/${vehicleSlug}` : null;
 
     // Respostas do cliente devem chegar à caixa da garagem, não ao no-reply.
     const { data: settings } = await supabase.from("site_settings").select("email").limit(1).maybeSingle();

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { vehicleHref } from "@/lib/vehicle-links";
 
-type VehicleRef = { brand: string; model: string; slug: string };
+type VehicleRef = { brand: string; model: string; slug: string; sale_type?: string | null };
 
 type RequestRow = {
   id: string;
@@ -71,7 +72,7 @@ const fmtDate = (s: string | null | undefined) =>
 function VehicleLink({ v }: { v?: VehicleRef | null }) {
   if (!v?.slug) return <span className="text-muted">Viatura</span>;
   return (
-    <Link href={`/catalogo/${v.slug}`} className="text-foreground transition-colors hover:text-copper">
+    <Link href={vehicleHref(v)} className="text-foreground transition-colors hover:text-copper">
       {v.brand} {v.model}
     </Link>
   );
@@ -106,19 +107,19 @@ export function MyRequests() {
         const [r, d, res] = await Promise.all([
           supabase
             .from("contact_requests")
-            .select("id, message, status, created_at, vehicle_id, vehicles(brand, model, slug)")
+            .select("id, message, status, created_at, vehicle_id, vehicles(brand, model, slug, sale_type)")
             .or(filter)
             .order("created_at", { ascending: false })
             .limit(10),
           supabase
             .from("test_drives")
-            .select("id, preferred_date, preferred_time, status, created_at, vehicle_id, vehicles(brand, model, slug)")
+            .select("id, preferred_date, preferred_time, status, created_at, vehicle_id, vehicles(brand, model, slug, sale_type)")
             .or(filter)
             .order("created_at", { ascending: false })
             .limit(10),
           supabase
             .from("reservations")
-            .select("id, status, extension_requested, created_at, vehicle_id, vehicles(brand, model, slug)")
+            .select("id, status, extension_requested, created_at, vehicle_id, vehicles(brand, model, slug, sale_type)")
             .or(filter)
             .order("created_at", { ascending: false })
             .limit(10),
@@ -140,7 +141,7 @@ export function MyRequests() {
       <div className="space-y-3 text-sm text-muted">
         <p>Ainda não enviaste pedidos de informação, reservas nem marcaste test drives.</p>
         <p>
-          <Link href="/catalogo" className="text-copper hover:text-copper-light transition-colors">
+          <Link href="/usados" className="text-copper hover:text-copper-light transition-colors">
             Ver catálogo
           </Link>{" "}
           e fala connosco sobre uma viatura.

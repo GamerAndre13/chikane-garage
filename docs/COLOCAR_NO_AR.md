@@ -84,18 +84,24 @@ pacote, copia **todo** o conteúdo, cola no SQL Editor e carrega em **Run**.
 
 | Ordem | Ficheiro | O que faz |
 |---|---|---|
-| 1 | `supabase/setup.sql` | **Tudo**: tabelas, colunas, RLS, políticas, índices, triggers, funções (RPC), permissões, textos iniciais e configuração do site. |
-| 2 | `supabase/seed.sql` | *(Opcional)* Dados de exemplo — viaturas de demonstração com fotografias. **Salta esta linha num site real**: inseres as tuas viaturas pelo backoffice. |
+| 1 | `supabase/setup.sql` | Schema base: tabelas, colunas, RLS, políticas, índices, triggers, funções (RPC), permissões, textos iniciais e configuração do site (equivalente às antigas migrations `002`–`020`). |
+| 2 | `supabase/021_…` a `supabase/039_…` | Migrações seguintes, **por ordem numérica**. Acrescentam extras, campanhas, propostas, cargos, estados e regras novas. |
+| 3 | `supabase/seed.sql` | *(Opcional)* Dados de exemplo — viaturas de demonstração com fotografias. **Salta esta linha num site real**: inseres as tuas viaturas pelo backoffice. |
 
-> **Um único ficheiro.** Toda a estrutura vive no `supabase/setup.sql`. As
-> migrations antigas (`002` a `020`, `favorites.sql`, `newsletter.sql`,
-> `migration_vehicle_sold_expiry.sql`, `migracao_perfil_e_fotos.sql`) já foram
-> consolidadas nele e deixaram de existir.
+> **Não basta o `setup.sql`.** O `setup.sql` cobre o schema base (até à `020`).
+> Tudo o que foi acrescentado depois — extras/configurador (`022`–`025`),
+> campanhas e fotos (`027`–`030`), resposta ao test drive (`031`), estados e
+> origem (`032`–`033`), propostas (`034`, `036`), cargos (`035`, `037`), gestor
+> de vendas (`038`) e admin só na base de dados (`039`) — vive nos ficheiros
+> numerados em `supabase/`.
 >
-> É **idempotente**: podes correr `setup.sql` as vezes que quiseres. Num projeto
-> novo cria tudo; num projeto que já está em produção apenas garante que está
-> tudo na versão final — não apaga nem altera dados (exceto pequenos acertos
-> pontuais sobre registos desatualizados, indicados no próprio ficheiro).
+> Corre-os **pela ordem** e um de cada vez. São **idempotentes**: podem ser
+> repetidos sem apagar dados.
+>
+> O `setup.sql` também é idempotente: pode ser corrido as vezes que quiseres.
+> Num projeto que já está em produção apenas garante que a base está na versão
+> final — não apaga nem altera dados (exceto pequenos acertos pontuais sobre
+> registos desatualizados, indicados no próprio ficheiro).
 >
 > Se já tinhas o site a funcionar e nunca correste a migration `020`, correr
 > agora o `setup.sql` resolve isso: é ele que acrescenta o estado "arquivada"
@@ -139,7 +145,9 @@ WHERE email = 'o-teu-email@exemplo.com';
 3. Sai e volta a entrar no site. O `/admin` fica acessível.
 
 > Todos os novos registos entram como `user`. Para dar acesso a mais alguém,
-> repete este `UPDATE` com o email dessa pessoa.
+> usa **`/admin/utilizadores`** e escolhe **Editor** ou **Gestor de vendas**.
+> O cargo **Administrador** não se atribui pela aplicação: só com este `UPDATE`
+> no SQL Editor (garantido pela migração `039`).
 
 ---
 
@@ -255,7 +263,7 @@ Abre <http://localhost:3000>. Deves ver a home completa.
 ### 4.4 Verificar o essencial antes de publicar
 
 - [ ] A home abre sem erros.
-- [ ] `/catalogo` mostra viaturas.
+- [ ] `/usados` mostra viaturas; `/novos` mostra as viaturas por encomenda.
 - [ ] Consigo criar conta em `/conta` e recebo o email de confirmação.
 - [ ] Depois de me tornar admin (passo 1.6), o `/admin` abre.
 - [ ] No admin, criar uma viatura e carregar uma fotografia funciona (testa o R2).
@@ -421,8 +429,9 @@ Faz esta lista **no site publicado**:
 
 - [ ] A home abre e aparece o desenho completo.
 - [ ] `http://o-teu-dominio` (sem `s`) redireciona para `https://`.
-- [ ] `/catalogo` lista viaturas; abrir uma ficha funciona.
-- [ ] Os filtros do catálogo funcionam.
+- [ ] `/usados` lista viaturas; abrir uma ficha funciona.
+- [ ] `/novos` lista viaturas novas e a ficha em `/novo/carro/<slug>` abre.
+- [ ] Os filtros de `/usados` funcionam.
 - [ ] Criar conta funciona e chega o email de confirmação.
 - [ ] Recuperar password funciona.
 - [ ] `/admin` abre (com um utilizador `admin`) e fecha para quem não é admin.
@@ -433,7 +442,7 @@ Faz esta lista **no site publicado**:
 - [ ] Newsletter: subscrever e receber o email (confirma o Resend).
 - [ ] `/robots.txt` e `/sitemap.xml` respondem.
 - [ ] Aceitar cookies → o Analytics regista a visita (se configurado).
-- [ ] Abrir o site no telemóvel — menu, catálogo e botões utilizáveis.
+- [ ] Abrir o site no telemóvel — menu, usados e botões utilizáveis.
 
 ---
 
@@ -471,8 +480,9 @@ silêncio.
 
 **Erro "policy already exists" ao correr SQL.**
 Estás a correr um ficheiro antigo (as migrations `002`–`020` já não existem).
-Corre apenas o `supabase/setup.sql` — ele apaga e recria cada política, por isso
-não dá este erro.
+Corre primeiro o `supabase/setup.sql` e depois as migrações `021`–`039` por
+ordem. Tanto o `setup.sql` como as migrações apagam e recriam cada política, por
+isso não dão este erro.
 
 **O `npm run lint` dá milhares de erros.**
 É esperado depois de um build: a pasta `.open-next/` (gerada) não está excluída.

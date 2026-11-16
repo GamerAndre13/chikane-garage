@@ -121,7 +121,7 @@ export function Header() {
           <Link href="/" className={navClass("/")}>
             Home
           </Link>
-          <Link href="/catalogo" className={navClass("/catalogo")}>
+          <Link href="/usados" className={navClass("/usados")}>
             Usados
           </Link>
           <Link href="/novos" className={navClass("/novos")}>
@@ -214,7 +214,7 @@ export function Header() {
             <Link href="/" className={`${navClass("/")} w-fit`} onClick={() => setMobileOpen(false)}>
               Início
             </Link>
-            <Link href="/catalogo" className={`${navClass("/catalogo")} w-fit`} onClick={() => setMobileOpen(false)}>
+            <Link href="/usados" className={`${navClass("/usados")} w-fit`} onClick={() => setMobileOpen(false)}>
               Usados
             </Link>
             <Link href="/novos" className={`${navClass("/novos")} w-fit`} onClick={() => setMobileOpen(false)}>
