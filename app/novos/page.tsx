@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isVehiclePubliclyVisible } from "@/lib/vehicle-visibility";
 import { expireReservations } from "@/lib/expire-reservations";
@@ -47,22 +46,10 @@ export default async function NovosPage() {
       <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">Viaturas novas configuradas ao teu gosto. Na ficha de cada modelo podes escolher os extras e gerar uma proposta com todos os valores detalhados.</p>
     </header>
 
-    {vehicles.length === 0 ? (
-      <div className="mt-12 border border-white/10 bg-surface px-6 py-16 text-center">
-        <p className="font-display text-xs uppercase tracking-[0.28em] text-copper">A chegar</p>
-        <h2 className="mt-4 font-display text-2xl font-bold uppercase tracking-tight text-white sm:text-3xl">Sem viaturas novas de momento</h2>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/70">
-          Estamos a preparar novas configurações por encomenda. Entretanto, consulta o inventário de usados ou fala connosco para pedir um modelo específico.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/usados" className="border border-copper bg-copper px-5 py-2.5 font-display text-xs uppercase tracking-[0.2em] text-background transition-opacity hover:opacity-90">Ver usados</Link>
-          <Link href="/contacto" className="border border-white/15 px-5 py-2.5 font-display text-xs uppercase tracking-[0.2em] text-silver transition-colors hover:border-copper hover:text-copper">Pedir modelo</Link>
-        </div>
-      </div>
-    ) : (
-      <Suspense fallback={null}>
-        <CatalogBrowser vehicles={vehicles} />
-      </Suspense>
-    )}
+    {/* Tal como em /usados, os filtros estão sempre presentes — mesmo quando
+        ainda não há viaturas novas publicadas. */}
+    <Suspense fallback={null}>
+      <CatalogBrowser vehicles={vehicles} />
+    </Suspense>
   </div>;
 }
