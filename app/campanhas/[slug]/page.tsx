@@ -143,10 +143,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
         </div>
       </div>
 
-      <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 sm:py-14 lg:px-12">
-        <div className="grid items-start gap-10 lg:grid-cols-[1.35fr_1fr] xl:gap-14">
-          {/* Fotografias em carrossel, como nas fichas das viaturas */}
-          <div className="min-w-0">
+      {/* O banner continua no topo, em toda a largura disponível. */}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+          <div className="mx-auto max-w-5xl">
             {photos.length > 0 ? (
               <VehicleDetailGallery photos={photos} title={campaign.title} />
             ) : (
@@ -156,9 +156,16 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
               </div>
             )}
           </div>
+        </div>
+      </section>
 
-          {/* Informação da campanha */}
-          <div className="min-w-0">
+      {/* Os textos podem ocupar 2/3 ou quase todo o ecrã: bloco próprio com
+          altura mínima e leitura com scroll no PC, sem empurrar o resto. */}
+      <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12">
+        <div className="grid min-h-[66dvh] border border-border bg-surface lg:max-h-[calc(100dvh-7rem)] lg:min-h-[calc(100dvh-7rem)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
+          <div className="min-h-0 min-w-0 p-6 sm:p-10 lg:overflow-y-auto lg:overscroll-contain lg:p-14">
+            {/* Informação da campanha */}
+
             {campaign.badge && (
               <span className="inline-block bg-copper px-3 py-1 font-display text-[0.62rem] uppercase tracking-[0.26em] text-black">
                 {campaign.badge}
@@ -171,13 +178,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
               <p className="mt-3 font-display text-xs uppercase tracking-[0.22em] text-copper sm:text-sm">{campaign.subtitle}</p>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-white/70">
-              {dateWindow && <span>{dateWindow}</span>}
-              {campaign.price_from != null && (
-                <span className="font-display text-lg text-copper">Desde {campaign.price_from.toLocaleString("pt-PT")} €</span>
-              )}
-            </div>
-
             {campaign.description ? (
               <div className="mt-6 whitespace-pre-line border-t border-border pt-6 text-[15px] leading-8 text-silver">
                 {campaign.description}
@@ -187,6 +187,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
                 Condições especiais em viaturas selecionadas. Fala connosco para confirmar disponibilidade, prazos e tudo o que está incluído.
               </p>
             )}
+          </div>
+
+          <aside className="flex min-h-0 min-w-0 flex-col border-t border-border bg-surface-raised p-6 sm:p-8 lg:border-l lg:border-t-0 lg:overflow-y-auto lg:overscroll-contain lg:p-10">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-white/70">
+              {dateWindow && <span>{dateWindow}</span>}
+              {campaign.price_from != null && (
+                <span className="font-display text-lg text-copper">Desde {campaign.price_from.toLocaleString("pt-PT")} €</span>
+              )}
+            </div>
 
             <dl className="mt-7 space-y-3 border-t border-border pt-5 text-sm">
               {dateWindow && (
@@ -219,10 +228,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
             >
               {campaign.cta_label || "Ver campanha"}
             </Link>
-            <p className="mt-4 text-[11px] leading-relaxed text-muted">
+            <p className="mt-auto pt-6 text-[11px] leading-relaxed text-muted">
               Condições sujeitas a disponibilidade e confirmação. Fala connosco para os detalhes finais.
             </p>
-          </div>
+          </aside>
         </div>
       </section>
 

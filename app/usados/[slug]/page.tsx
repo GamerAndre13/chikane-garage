@@ -269,7 +269,9 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
             </div>
           )}
 
-          <VehicleSpecifications primary={primarySpecs} additional={additionalSpecs} />
+          {/* Por omissão aparecem só os 8 primeiros campos; os restantes
+              (incluindo os detalhes) ficam por trás de "Mostrar mais informação". */}
+          <VehicleSpecifications primary={primarySpecs.slice(0, 8)} additional={[...primarySpecs.slice(8), ...additionalSpecs]} />
 
           {vehicle.description && <section className="mt-8 border-t border-border pt-6"><h2 className="font-display text-xs uppercase tracking-[0.24em] text-copper">Descrição</h2><p className="mt-3 text-sm leading-7 text-silver">{vehicle.description}</p></section>}
 
