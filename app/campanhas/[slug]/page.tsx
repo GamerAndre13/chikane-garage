@@ -173,10 +173,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
         </div>
       </section>
 
-      {/* Info à esquerda, imagens à direita. A informação específica da
-          campanha fica por baixo das imagens. */}
+      {/* Texto à esquerda com 3/5 da largura, imagens à direita com 2/5.
+          A informação específica da campanha fica por baixo das imagens. */}
       <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12">
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-8">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:gap-8">
           {/* Texto da campanha */}
           <div className="min-w-0 border border-border bg-surface p-6 sm:p-8 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
             <h1 className="font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white text-balance sm:text-5xl">
