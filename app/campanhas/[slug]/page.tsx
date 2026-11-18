@@ -8,9 +8,10 @@ import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
 import { vehicleHref } from "@/lib/vehicle-links";
 
 // Página própria de cada campanha: /campanhas/<slug>.
-// Estrutura: voltar atrás, banner no topo e, por baixo, três áreas distintas —
-// fotografias, texto da campanha e informações. No fim, três campanhas
-// relacionadas (mesma marca, ou as mais recentes) para continuar a explorar.
+// Estrutura: voltar atrás, banner no topo e, por baixo, texto à esquerda e
+// imagens à direita, com a informação específica da campanha por baixo das
+// imagens. No fim, três campanhas relacionadas (mesma marca, ou as mais
+// recentes) para continuar a explorar.
 
 type VehicleRelation = {
   slug?: string | null;
@@ -172,24 +173,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
         </div>
       </section>
 
-      {/* Três áreas distintas: fotografias, texto e informações da campanha. */}
+      {/* Info à esquerda, imagens à direita. A informação específica da
+          campanha fica por baixo das imagens. */}
       <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12">
-        <div className="grid items-start gap-6 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(260px,300px)] xl:gap-8">
-          {/* Fotografias */}
-          <div className="min-w-0 border border-border bg-surface p-4 sm:col-span-2 sm:p-5 xl:col-span-1">
-            <p className="mb-4 font-display text-[10px] uppercase tracking-[0.24em] text-copper">Fotografias</p>
-            {photos.length > 0 ? (
-              <VehicleDetailGallery photos={photos} title={campaign.title} />
-            ) : (
-              <div className="relative flex aspect-[3/2] w-full items-center justify-center overflow-hidden border border-border bg-surface-mid">
-                <div className="grid-lines absolute inset-0 opacity-30" aria-hidden="true" />
-                <p className="relative px-6 text-center font-display text-2xl font-bold uppercase tracking-wide text-muted">{campaign.title}</p>
-              </div>
-            )}
-          </div>
-
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:gap-8">
           {/* Texto da campanha */}
-          <div className="min-w-0 border border-border bg-surface p-6 sm:p-8 xl:max-h-[calc(100dvh-7rem)] xl:overflow-y-auto xl:overscroll-contain">
+          <div className="min-w-0 border border-border bg-surface p-6 sm:p-8 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
             <h1 className="font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white text-balance sm:text-5xl">
               {campaign.title}
             </h1>
@@ -207,50 +196,65 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
             )}
           </div>
 
-          {/* Informações da campanha */}
-          <aside className="flex min-w-0 flex-col border border-border bg-surface-raised p-6 sm:p-8">
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-white/70">
-              {dateWindow && <span>{dateWindow}</span>}
-              {campaign.price_from != null && (
-                <span className="font-display text-lg text-copper">Desde {campaign.price_from.toLocaleString("pt-PT")} €</span>
+          {/* Imagens e informação específica da campanha */}
+          <div className="flex min-w-0 flex-col gap-6">
+            <div className="border border-border bg-surface p-4 sm:p-5">
+              <p className="mb-4 font-display text-[10px] uppercase tracking-[0.24em] text-copper">Fotografias</p>
+              {photos.length > 0 ? (
+                <VehicleDetailGallery photos={photos} title={campaign.title} />
+              ) : (
+                <div className="relative flex aspect-[3/2] w-full items-center justify-center overflow-hidden border border-border bg-surface-mid">
+                  <div className="grid-lines absolute inset-0 opacity-30" aria-hidden="true" />
+                  <p className="relative px-6 text-center font-display text-2xl font-bold uppercase tracking-wide text-muted">{campaign.title}</p>
+                </div>
               )}
             </div>
 
-            <dl className="mt-7 space-y-3 border-t border-border pt-5 text-sm">
-              {dateWindow && (
-                <div>
-                  <dt className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Período</dt>
-                  <dd className="mt-1 text-silver">{dateWindow}</dd>
-                </div>
-              )}
-              {campaign.price_from != null && (
-                <div>
-                  <dt className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Desde</dt>
-                  <dd className="mt-1 font-display text-2xl text-copper">{campaign.price_from.toLocaleString("pt-PT")} €</dd>
-                </div>
-              )}
-              {vehicleName && (
-                <div>
-                  <dt className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Viatura</dt>
-                  <dd className="mt-1 text-silver">
-                    {vehicleName}
-                    {vehicle?.trim ? ` ${vehicle.trim}` : ""}
-                    {vehicle?.registration_year ? ` · ${vehicle.registration_year}` : ""}
-                  </dd>
-                </div>
-              )}
-            </dl>
+            <aside className="flex min-w-0 flex-col border border-border bg-surface-raised p-6 sm:p-8">
+              <p className="mb-5 font-display text-[10px] uppercase tracking-[0.24em] text-copper">Informações da campanha</p>
+              <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-white/70">
+                {dateWindow && <span>{dateWindow}</span>}
+                {campaign.price_from != null && (
+                  <span className="font-display text-lg text-copper">Desde {campaign.price_from.toLocaleString("pt-PT")} €</span>
+                )}
+              </div>
 
-            <Link
-              href={ctaHref}
-              className="mt-7 inline-flex min-h-12 w-full items-center justify-center bg-copper px-6 py-3.5 text-center font-display text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:bg-copper-light"
-            >
-              {campaign.cta_label || "Ver campanha"}
-            </Link>
-            <p className="mt-auto pt-6 text-[11px] leading-relaxed text-muted">
-              Condições sujeitas a disponibilidade e confirmação. Fala connosco para os detalhes finais.
-            </p>
-          </aside>
+              <dl className="mt-7 space-y-3 border-t border-border pt-5 text-sm">
+                {dateWindow && (
+                  <div>
+                    <dt className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Período</dt>
+                    <dd className="mt-1 text-silver">{dateWindow}</dd>
+                  </div>
+                )}
+                {campaign.price_from != null && (
+                  <div>
+                    <dt className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Desde</dt>
+                    <dd className="mt-1 font-display text-2xl text-copper">{campaign.price_from.toLocaleString("pt-PT")} €</dd>
+                  </div>
+                )}
+                {vehicleName && (
+                  <div>
+                    <dt className="font-display text-[10px] uppercase tracking-[0.2em] text-muted">Viatura</dt>
+                    <dd className="mt-1 text-silver">
+                      {vehicleName}
+                      {vehicle?.trim ? ` ${vehicle.trim}` : ""}
+                      {vehicle?.registration_year ? ` · ${vehicle.registration_year}` : ""}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              <Link
+                href={ctaHref}
+                className="mt-7 inline-flex min-h-12 w-full items-center justify-center bg-copper px-6 py-3.5 text-center font-display text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:bg-copper-light"
+              >
+                {campaign.cta_label || "Ver campanha"}
+              </Link>
+              <p className="mt-auto pt-6 text-[11px] leading-relaxed text-muted">
+                Condições sujeitas a disponibilidade e confirmação. Fala connosco para os detalhes finais.
+              </p>
+            </aside>
+          </div>
         </div>
       </section>
 
