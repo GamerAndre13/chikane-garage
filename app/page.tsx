@@ -284,11 +284,13 @@ export default async function HomePage() {
                 <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted sm:mt-6 sm:line-clamp-none">
                   {spotlight.description || "Viatura selecionada e inspecionada ao detalhe pela Chikane Garage."}
                 </p>
-                <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-2 sm:mt-8 sm:gap-4 sm:pt-6">
-                  <div>
-                    <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">KM</dt>
-                    <dd className="mt-1 font-display text-silver">{mileageLabel(spotlight.mileage_km)}</dd>
-                  </div>
+                <dl className={`mt-3 grid gap-3 border-t border-border pt-2 sm:mt-8 sm:gap-4 sm:pt-6 ${spotlight.sale_type === "new" ? "grid-cols-2" : "grid-cols-3"}`}>
+                  {spotlight.sale_type !== "new" && (
+                    <div>
+                      <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">KM</dt>
+                      <dd className="mt-1 font-display text-silver">{mileageLabel(spotlight.mileage_km)}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="font-display text-[0.6rem] tracking-[0.22em] text-muted">POTÊNCIA</dt>
                     <dd className="mt-1 font-display text-silver">{spotlight.power_hp ?? "—"} cv</dd>
@@ -376,15 +378,17 @@ export default async function HomePage() {
                             {v.model}
                             {v.trim && <span className="text-muted"> {v.trim}</span>}
                           </h3>
-                          <dl className="mt-5 grid grid-cols-4 gap-3 border-t border-border pt-4 text-[0.7rem] tracking-widest text-muted">
+                          <dl className={`mt-5 grid gap-3 border-t border-border pt-4 text-[0.7rem] tracking-widest text-muted ${v.sale_type === "new" ? "grid-cols-3" : "grid-cols-4"}`}>
                             <div>
                               <dt className="sr-only">Ano</dt>
                               <dd className="font-display text-silver">{v.registration_year ?? "—"}</dd>
                             </div>
-                            <div>
-                              <dt className="sr-only">Quilometragem</dt>
-                              <dd className="font-display text-silver">{mileageLabel(v.mileage_km)}</dd>
-                            </div>
+                            {v.sale_type !== "new" && (
+                              <div>
+                                <dt className="sr-only">Quilometragem</dt>
+                                <dd className="font-display text-silver">{mileageLabel(v.mileage_km)}</dd>
+                              </div>
+                            )}
                             <div>
                               <dt className="sr-only">Potência</dt>
                               <dd className="font-display text-silver">{v.power_hp ?? "—"} cv</dd>

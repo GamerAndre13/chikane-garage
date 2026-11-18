@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -7,9 +8,9 @@ import { VehicleDetailGallery } from "@/components/ui/vehicle-detail-gallery";
 import { vehicleHref } from "@/lib/vehicle-links";
 
 // Página própria de cada campanha: /campanhas/<slug>.
-// Estrutura: voltar atrás no topo, fotografias em carrossel à esquerda e a
-// informação da campanha à direita. No fim, três campanhas relacionadas
-// (mesma marca, ou as mais recentes) para o cliente continuar a explorar.
+// Estrutura: voltar atrás, banner no topo e, por baixo, três áreas distintas —
+// fotografias, texto da campanha e informações. No fim, três campanhas
+// relacionadas (mesma marca, ou as mais recentes) para continuar a explorar.
 
 type VehicleRelation = {
   slug?: string | null;
@@ -143,10 +144,40 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
         </div>
       </div>
 
-      {/* O banner continua no topo, em toda a largura disponível. */}
+      {/* Banner: uma imagem grande no topo, antes de qualquer informação. */}
       <section className="border-b border-border">
-        <div className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-          <div className="mx-auto max-w-5xl">
+        <div className="relative h-[38dvh] min-h-[260px] w-full overflow-hidden bg-surface-mid sm:h-[46dvh] lg:h-[52dvh]">
+          {photos[0] ? (
+            <>
+              <Image
+                src={photos[0].url}
+                alt={`${campaign.title} — campanha`}
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover"
+              />
+              <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/10 to-transparent" />
+            </>
+          ) : (
+            <div className="grid-lines absolute inset-0 opacity-30" aria-hidden="true" />
+          )}
+          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1440px] px-5 pb-6 sm:px-8 lg:px-12 lg:pb-10">
+            {campaign.badge && (
+              <span className="inline-block bg-copper px-3 py-1 font-display text-[0.62rem] uppercase tracking-[0.26em] text-black">
+                {campaign.badge}
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Três áreas distintas: fotografias, texto e informações da campanha. */}
+      <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12">
+        <div className="grid items-start gap-6 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(260px,300px)] xl:gap-8">
+          {/* Fotografias */}
+          <div className="min-w-0 border border-border bg-surface p-4 sm:col-span-2 sm:p-5 xl:col-span-1">
+            <p className="mb-4 font-display text-[10px] uppercase tracking-[0.24em] text-copper">Fotografias</p>
             {photos.length > 0 ? (
               <VehicleDetailGallery photos={photos} title={campaign.title} />
             ) : (
@@ -156,28 +187,15 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
               </div>
             )}
           </div>
-        </div>
-      </section>
 
-      {/* Os textos podem ocupar 2/3 ou quase todo o ecrã: bloco próprio com
-          altura mínima e leitura com scroll no PC, sem empurrar o resto. */}
-      <section className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 lg:px-12">
-        <div className="grid min-h-[66dvh] border border-border bg-surface lg:max-h-[calc(100dvh-7rem)] lg:min-h-[calc(100dvh-7rem)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
-          <div className="min-h-0 min-w-0 p-6 sm:p-10 lg:overflow-y-auto lg:overscroll-contain lg:p-14">
-            {/* Informação da campanha */}
-
-            {campaign.badge && (
-              <span className="inline-block bg-copper px-3 py-1 font-display text-[0.62rem] uppercase tracking-[0.26em] text-black">
-                {campaign.badge}
-              </span>
-            )}
-            <h1 className="mt-4 font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white text-balance sm:text-5xl">
+          {/* Texto da campanha */}
+          <div className="min-w-0 border border-border bg-surface p-6 sm:p-8 xl:max-h-[calc(100dvh-7rem)] xl:overflow-y-auto xl:overscroll-contain">
+            <h1 className="font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-white text-balance sm:text-5xl">
               {campaign.title}
             </h1>
             {campaign.subtitle && (
               <p className="mt-3 font-display text-xs uppercase tracking-[0.22em] text-copper sm:text-sm">{campaign.subtitle}</p>
             )}
-
             {campaign.description ? (
               <div className="mt-6 whitespace-pre-line border-t border-border pt-6 text-[15px] leading-8 text-silver">
                 {campaign.description}
@@ -189,7 +207,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
             )}
           </div>
 
-          <aside className="flex min-h-0 min-w-0 flex-col border-t border-border bg-surface-raised p-6 sm:p-8 lg:border-l lg:border-t-0 lg:overflow-y-auto lg:overscroll-contain lg:p-10">
+          {/* Informações da campanha */}
+          <aside className="flex min-w-0 flex-col border border-border bg-surface-raised p-6 sm:p-8">
             <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-white/70">
               {dateWindow && <span>{dateWindow}</span>}
               {campaign.price_from != null && (
