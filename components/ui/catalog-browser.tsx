@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/ui/favorite-button";
@@ -94,21 +94,74 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, ye
   return <fieldset className="border-0 p-0"><legend className="mb-1.5 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
 }
 
-// Filtro de seleção múltipla. Cada opção é uma checkbox — assim o user pode
-// combinar várias marcas, modelos, combustíveis, cores e estilos sem depender
-// de Ctrl+clique num select nativo (que não funciona no telemóvel).
+// Filtro de seleção múltipla dentro de um dropdown: o painel fica fechado por
+// omissão e abre ao clicar. As opções continuam a ser checkboxes — assim o
+// user combina várias marcas/modelos sem depender de Ctrl+clique no telemóvel.
 function MultiSelectField({ label, values, selected, onChange, disabled, placeholder, format }: { label: string; values: string[]; selected: string[]; onChange: (values: string[]) => void; disabled?: boolean; placeholder: string; format?: (value: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLFieldSetElement>(null);
+  const listId = useId();
+
+  // Fecha ao clicar fora ou com Escape, como um dropdown normal.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   const toggle = (value: string) =>
     onChange(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
 
+  const resumo = selected.length === 0
+    ? placeholder
+    : selected.length === 1
+      ? (format ? format(selected[0]) : selected[0])
+      : `${selected.length} selecionadas`;
+
   return (
-    <fieldset className="min-w-0">
+    <fieldset ref={containerRef} className="min-w-0">
       <legend className="mb-1.5 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">
         {label}{selected.length > 0 ? ` (${selected.length})` : ""}
       </legend>
-      <div className={`max-h-40 overflow-y-auto border border-white/10 bg-black p-1.5 ${disabled ? "opacity-40" : ""}`}>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-controls={listId}
+          disabled={disabled}
+          className={`${control} min-h-11 cursor-pointer pr-9 text-left hover:border-white/25`}
+        >
+          {resumo}
+        </button>
+        <svg
+          aria-hidden="true"
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+      <div id={listId} hidden={!open} className="mt-1.5 max-h-40 overflow-y-auto border border-white/10 bg-black p-1.5">
         {values.length === 0 ? (
-          <p className="px-2 py-1.5 text-xs text-white/40">{placeholder}</p>
+          <p className="px-2 py-1.5 text-xs text-white/40">Sem opções disponíveis</p>
         ) : (
           values.map((value) => (
             <label key={value} className="flex min-h-9 cursor-pointer items-center gap-2.5 px-2 py-1.5 text-[13px] text-white transition-colors hover:bg-white/5">
@@ -269,11 +322,11 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
       <aside id="catalogo-filtros" className={`z-20 h-fit border border-white/10 bg-surface-oxide p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)] sm:p-5 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-[4.75rem] lg:block lg:max-h-[calc(100dvh-5.25rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain`}><div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-3">
-          <MultiSelectField label="Marca" values={brandOptions} selected={brands} onChange={handleBrandsChange} placeholder="Sem marcas disponíveis" />
-          <MultiSelectField label="Modelo" values={modelOptions} selected={models} onChange={setModels} disabled={modelOptions.length === 0} placeholder="Escolhe primeiro uma marca" />
-          <MultiSelectField label="Combustível" values={fuelOptions} selected={fuels} onChange={setFuels} placeholder="Sem combustíveis disponíveis" format={optionLabel} />
-          <MultiSelectField label="Cor exterior" values={colorOptions} selected={colors} onChange={setColors} placeholder="Sem cores disponíveis" format={optionLabel} />
-          <MultiSelectField label="Estilo" values={bodyStyleOptions} selected={bodyStyles} onChange={setBodyStyles} placeholder="Sem estilos disponíveis" format={optionLabel} />
+          <MultiSelectField label="Marca" values={brandOptions} selected={brands} onChange={handleBrandsChange} placeholder="Todas as marcas" />
+          <MultiSelectField label="Modelo" values={modelOptions} selected={models} onChange={setModels} disabled={modelOptions.length === 0} placeholder="Todos os modelos" />
+          <MultiSelectField label="Combustível" values={fuelOptions} selected={fuels} onChange={setFuels} placeholder="Todos os combustíveis" format={optionLabel} />
+          <MultiSelectField label="Cor exterior" values={colorOptions} selected={colors} onChange={setColors} placeholder="Todas as cores" format={optionLabel} />
+          <MultiSelectField label="Estilo" values={bodyStyleOptions} selected={bodyStyles} onChange={setBodyStyles} placeholder="Todos os estilos" format={optionLabel} />
           <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
           <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
           <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} year />
