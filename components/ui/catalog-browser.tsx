@@ -94,55 +94,57 @@ function RangeFilter({ label, values, min, max, onMin, onMax, unit, step = 1, ye
   return <fieldset className="border-0 p-0"><legend className="mb-1.5 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</legend><div className="grid grid-cols-2 gap-2"><label className="relative"><span className="sr-only">{label} desde</span><input {...common} type={year ? "text" : "number"} placeholder="de" aria-label={`${label} de`} value={min === all ? "" : min} onChange={(e) => handleChange("min", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label><label className="relative"><span className="sr-only">{label} até</span><input {...common} type={year ? "text" : "number"} placeholder="até" aria-label={`${label} até`} value={max === all ? "" : max} onChange={(e) => handleChange("max", e.target.value)} />{unit && <span aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/60">{unit}</span>}</label></div></fieldset>;
 }
 
-// Select de filtro. Seta sempre visível (o campo tem de parecer clicável),
-// alvo de 44px no telemóvel e teclado/pesquisa por letras a cargo do select
-// nativo — que também abre para cima quando não há espaço em baixo.
-function SelectField({ label, value, onChange, disabled, placeholder, options }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder: string; options: { value: string; label: string }[] }) {
+// Filtro de seleção múltipla. Cada opção é uma checkbox — assim o user pode
+// combinar várias marcas, modelos, combustíveis, cores e estilos sem depender
+// de Ctrl+clique num select nativo (que não funciona no telemóvel).
+function MultiSelectField({ label, values, selected, onChange, disabled, placeholder, format }: { label: string; values: string[]; selected: string[]; onChange: (values: string[]) => void; disabled?: boolean; placeholder: string; format?: (value: string) => string }) {
+  const toggle = (value: string) =>
+    onChange(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
+
   return (
-    <label className="block">
-      <span className="mb-1.5 block font-display text-[10px] uppercase tracking-[0.16em] text-white/65">{label}</span>
-      <span className="relative block">
-        <select
-          className={`${control} min-h-11 cursor-pointer pr-9 hover:border-white/25`}
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value={all}>{placeholder}</option>
-          {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <svg
-          aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60"
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </span>
-    </label>
+    <fieldset className="min-w-0">
+      <legend className="mb-1.5 font-display text-[10px] uppercase tracking-[0.16em] text-white/65">
+        {label}{selected.length > 0 ? ` (${selected.length})` : ""}
+      </legend>
+      <div className={`max-h-40 overflow-y-auto border border-white/10 bg-black p-1.5 ${disabled ? "opacity-40" : ""}`}>
+        {values.length === 0 ? (
+          <p className="px-2 py-1.5 text-xs text-white/40">{placeholder}</p>
+        ) : (
+          values.map((value) => (
+            <label key={value} className="flex min-h-9 cursor-pointer items-center gap-2.5 px-2 py-1.5 text-[13px] text-white transition-colors hover:bg-white/5">
+              <input
+                type="checkbox"
+                checked={selected.includes(value)}
+                disabled={disabled}
+                onChange={() => toggle(value)}
+                className="h-4 w-4 shrink-0 accent-copper"
+              />
+              <span className="min-w-0 truncate">{format ? format(value) : value}</span>
+            </label>
+          ))
+        )}
+      </div>
+    </fieldset>
   );
 }
 
 export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
   const searchParams = useSearchParams();
   const param = (key: string): string => searchParams.get(key) ?? all;
+  // Opções múltiplas vivem no URL como parâmetros repetidos (?marca=BMW&marca=Audi).
+  // Aceita também valores antigos de um só filtro (?marca=BMW) e lista por vírgula.
+  const paramValues = (key: string): string[] =>
+    [...new Set(searchParams.getAll(key).flatMap((value) => value.split(",")).map((value) => value.trim()).filter(Boolean))];
 
   // Os filtros vivem no URL (?marca=…&preco_a=…): ao abrir por um link com
   // parâmetros o estado inicial vem daí (permite partilhar filtros).
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [brand, setBrand] = useState(() => param("marca"));
-  const [model, setModel] = useState(() => param("modelo"));
-  const [fuel, setFuel] = useState(() => param("combustivel"));
-  const [color, setColor] = useState(() => param("cor"));
-  const [bodyStyle, setBodyStyle] = useState(() => param("estilo"));
+  const [brands, setBrands] = useState<string[]>(() => paramValues("marca"));
+  const [models, setModels] = useState<string[]>(() => paramValues("modelo"));
+  const [fuels, setFuels] = useState<string[]>(() => paramValues("combustivel"));
+  const [colors, setColors] = useState<string[]>(() => paramValues("cor"));
+  const [bodyStyles, setBodyStyles] = useState<string[]>(() => paramValues("estilo"));
   const [minPower, setMinPower] = useState(() => param("cv_a"));
   const [maxPower, setMaxPower] = useState(() => param("cv_b"));
   const [minYear, setMinYear] = useState(() => param("ano_a"));
@@ -160,12 +162,16 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     const setParam = (key: string, value: string) => {
       if (value !== all && value !== "") params.set(key, value);
     };
+    const setParams = (key: string, values: string[]) => {
+      params.delete(key);
+      values.forEach((value) => params.append(key, value));
+    };
     setParam("q", query);
-    setParam("marca", brand);
-    setParam("modelo", model);
-    setParam("combustivel", fuel);
-    setParam("cor", color);
-    setParam("estilo", bodyStyle);
+    setParams("marca", brands);
+    setParams("modelo", models);
+    setParams("combustivel", fuels);
+    setParams("cor", colors);
+    setParams("estilo", bodyStyles);
     setParam("cv_a", minPower);
     setParam("cv_b", maxPower);
     setParam("ano_a", minYear);
@@ -176,17 +182,29 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
     setParam("km_b", maxMileage);
     const qs = params.toString();
     window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
+  }, [query, brands, models, fuels, colors, bodyStyles, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
 
-  const brands = useMemo(() => unique(vehicles.map((v) => v.brand)) as string[], [vehicles]);
-  const models = useMemo(() => unique(vehicles.filter((v) => brand === all || v.brand === brand).map((v) => v.model)) as string[], [vehicles, brand]);
-  const fuels = useMemo(() => unique(vehicles.map((v) => v.fuel_type)) as string[], [vehicles]);
-  const colors = useMemo(() => unique(vehicles.map((v) => v.exterior_color)) as string[], [vehicles]);
-  const bodyStyles = useMemo(() => unique(vehicles.map((v) => v.body_style)) as string[], [vehicles]);
+  const brandOptions = useMemo(() => unique(vehicles.map((v) => v.brand)) as string[], [vehicles]);
+  const modelOptions = useMemo(() => unique(vehicles.filter((v) => brands.length === 0 || (v.brand && brands.includes(v.brand))).map((v) => v.model)) as string[], [vehicles, brands]);
+  const fuelOptions = useMemo(() => unique(vehicles.map((v) => v.fuel_type)) as string[], [vehicles]);
+  const colorOptions = useMemo(() => unique(vehicles.map((v) => v.exterior_color)) as string[], [vehicles]);
+  const bodyStyleOptions = useMemo(() => unique(vehicles.map((v) => v.body_style)) as string[], [vehicles]);
   const years = useMemo(() => unique(vehicles.map((v) => v.registration_year)) as number[], [vehicles]);
   const prices = useMemo(() => unique(vehicles.map((v) => v.price)) as number[], [vehicles]);
   const mileages = useMemo(() => unique(vehicles.map((v) => v.mileage_km)) as number[], [vehicles]);
   const powers = useMemo(() => unique(vehicles.map((v) => v.power_hp)) as number[], [vehicles]);
+
+  // Ao mudar as marcas, os modelos que já não pertencem a nenhuma das marcas
+  // escolhidas saem da seleção — senão ficava um filtro impossível de satisfazer.
+  const handleBrandsChange = (next: string[]) => {
+    setBrands(next);
+    if (next.length === 0) {
+      setModels([]);
+      return;
+    }
+    const validModels = unique(vehicles.filter((v) => v.brand && next.includes(v.brand)).map((v) => v.model)) as string[];
+    setModels((current) => current.filter((model) => validModels.includes(model)));
+  };
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("pt-PT");
@@ -205,6 +223,9 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
       return [];
     };
     const numericMatch = (value: number | null | undefined, lower: string, upper: string) => lower === all && upper === all || value != null && (lower === all || value >= Number(lower)) && (upper === all || value <= Number(upper));
+    // Sem opções escolhidas = "todas". Com opções, basta uma coincidência.
+    const choiceMatch = (value: string | null | undefined, selected: string[]) =>
+      selected.length === 0 || (value != null && selected.includes(value));
     return vehicles.filter((v) => {
       const partes = [
         v.brand, v.model, v.trim, v.registration_year, v.mileage_km, v.power_hp,
@@ -220,14 +241,17 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
         const tok = fold(token);
         return flat.includes(tok) || compact.includes(tok.replace(/\s+/g, ""));
       });
-      return matchesQuery && (brand === all || v.brand === brand) && (model === all || v.model === model) && (fuel === all || v.fuel_type === fuel) && (color === all || v.exterior_color === color) && (bodyStyle === all || v.body_style === bodyStyle) && numericMatch(v.registration_year, minYear, maxYear) && numericMatch(v.price, minPrice, maxPrice) && numericMatch(v.mileage_km, minMileage, maxMileage) && numericMatch(v.power_hp, minPower, maxPower);
+      return matchesQuery && choiceMatch(v.brand, brands) && choiceMatch(v.model, models) && choiceMatch(v.fuel_type, fuels) && choiceMatch(v.exterior_color, colors) && choiceMatch(v.body_style, bodyStyles) && numericMatch(v.registration_year, minYear, maxYear) && numericMatch(v.price, minPrice, maxPrice) && numericMatch(v.mileage_km, minMileage, maxMileage) && numericMatch(v.power_hp, minPower, maxPower);
     });
-  }, [vehicles, query, brand, model, fuel, color, bodyStyle, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage, minPower, maxPower]);
+  }, [vehicles, query, brands, models, fuels, colors, bodyStyles, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage, minPower, maxPower]);
 
-  const clear = () => { setQuery(""); setBrand(all); setModel(all); setFuel(all); setColor(all); setBodyStyle(all); setMinPower(all); setMaxPower(all); setMinYear(all); setMaxYear(all); setMinPrice(all); setMaxPrice(all); setMinMileage(all); setMaxMileage(all); };
+  const clear = () => { setQuery(""); setBrands([]); setModels([]); setFuels([]); setColors([]); setBodyStyles([]); setMinPower(all); setMaxPower(all); setMinYear(all); setMaxYear(all); setMinPrice(all); setMaxPrice(all); setMinMileage(all); setMaxMileage(all); };
   const optionLabel = (value: string) => value.replaceAll("_", " ").replace(/^./, (first) => first.toLocaleUpperCase("pt-PT"));
 
-  const activeFilterCount = useMemo(() => [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage].filter((value) => value !== all && value !== "").length, [query, brand, model, fuel, color, bodyStyle, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
+  const activeFilterCount = useMemo(() =>
+    [query, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage].filter((value) => value !== all && value !== "").length +
+    [brands, models, fuels, colors, bodyStyles].filter((values) => values.length > 0).length,
+  [query, brands, models, fuels, colors, bodyStyles, minPower, maxPower, minYear, maxYear, minPrice, maxPrice, minMileage, maxMileage]);
 
   return <>
     <div className="mt-9 flex flex-col gap-3 border border-white/10 bg-surface-oxide p-3 sm:flex-row sm:p-4">
@@ -245,11 +269,11 @@ export function CatalogBrowser({ vehicles }: { vehicles: Vehicle[] }) {
       <aside id="catalogo-filtros" className={`z-20 h-fit border border-white/10 bg-surface-oxide p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)] sm:p-5 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-[4.75rem] lg:block lg:max-h-[calc(100dvh-5.25rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain`}><div className="mb-3 flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="font-display text-sm font-semibold uppercase tracking-[0.2em] text-white">Filtros</h2><button type="button" onClick={clear} className="font-display text-[10px] uppercase tracking-[0.16em] text-copper transition-colors hover:text-white">Limpar</button></div>
         <div className="space-y-3">
-          <SelectField label="Marca" value={brand} onChange={(value) => { setBrand(value); setModel(all); }} placeholder="Todas as marcas" options={brands.map((value) => ({ value, label: value }))} />
-          <SelectField label="Modelo" value={model} onChange={setModel} placeholder="Todos os modelos" disabled={!models.length} options={models.map((value) => ({ value, label: value }))} />
-          <SelectField label="Combustível" value={fuel} onChange={setFuel} placeholder="Todos" options={fuels.map((value) => ({ value, label: optionLabel(value) }))} />
-          <SelectField label="Cor exterior" value={color} onChange={setColor} placeholder="Todas as cores" options={colors.map((value) => ({ value, label: optionLabel(value) }))} />
-          <SelectField label="Estilo" value={bodyStyle} onChange={setBodyStyle} placeholder="Todos os estilos" options={bodyStyles.map((value) => ({ value, label: optionLabel(value) }))} />
+          <MultiSelectField label="Marca" values={brandOptions} selected={brands} onChange={handleBrandsChange} placeholder="Sem marcas disponíveis" />
+          <MultiSelectField label="Modelo" values={modelOptions} selected={models} onChange={setModels} disabled={modelOptions.length === 0} placeholder="Escolhe primeiro uma marca" />
+          <MultiSelectField label="Combustível" values={fuelOptions} selected={fuels} onChange={setFuels} placeholder="Sem combustíveis disponíveis" format={optionLabel} />
+          <MultiSelectField label="Cor exterior" values={colorOptions} selected={colors} onChange={setColors} placeholder="Sem cores disponíveis" format={optionLabel} />
+          <MultiSelectField label="Estilo" values={bodyStyleOptions} selected={bodyStyles} onChange={setBodyStyles} placeholder="Sem estilos disponíveis" format={optionLabel} />
           <RangeFilter label="Desempenho · CV" values={powers} min={minPower} max={maxPower} onMin={setMinPower} onMax={setMaxPower} step={10} />
           <RangeFilter label="Preço" values={prices} min={minPrice} max={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} step={500} unit="€" />
           <RangeFilter label="Primeiro registo" values={years} min={minYear} max={maxYear} onMin={setMinYear} onMax={setMaxYear} year />
