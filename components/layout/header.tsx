@@ -23,17 +23,33 @@ export function Header() {
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let cancelled = false;
+
+    // getUser() valida o token no servidor; getSession() lê apenas o que está
+    // guardado no browser. Sem esta validação, uma conta eliminada no
+    // backoffice continuava a mostrar avatar e "Sair" até o token expirar.
+    (async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (error || !data.user) {
+        if (error) await supabase.auth.signOut();
+        setUser(null);
+        return;
+      }
+      setUser(data.user);
+    })();
+
+    // O INITIAL_SESSION vem da sessão local sem validação — é ignorado porque
+    // o getUser() acima já decidiu se a sessão é válida.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
       setUser(session?.user ?? null);
     });
 
-    // Listen for auth changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // O link "Backoffice" aparece a qualquer cargo da equipa (admin, editor ou
@@ -59,9 +75,19 @@ export function Header() {
           supabase.from("site_settings").select("avatar_pool").limit(1).maybeSingle(),
         ]);
         if (cancelled) return;
-        setIsStaff(isStaffRole(profileRes.data?.role));
+        if (!profileRes.data) {
+          // Sem perfil, a conta foi eliminada no backoffice. Limpa também a
+          // sessão guardada no browser para o avatar e o "Sair" desaparecerem
+          // logo, em vez de aparecerem até clicar numa página protegida.
+          await supabase.auth.signOut();
+          setUser(null);
+          setIsStaff(false);
+          setAvatarUrl(null);
+          return;
+        }
+        setIsStaff(isStaffRole(profileRes.data.role));
         const avatar =
-          profileRes.data?.avatar_url ||
+          profileRes.data.avatar_url ||
           pickFromPool(id, (settingsRes.data as { avatar_pool?: string | null } | null)?.avatar_pool);
         setAvatarUrl(avatar || null);
       } catch {
