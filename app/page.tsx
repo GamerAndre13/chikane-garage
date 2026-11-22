@@ -28,7 +28,7 @@ const FALLBACK = {
 };
 
 const PROCESS_STEPS = [
-  { num: "01", title: "Selecção", text: "Critérios rigorosos de escolha: histórico, estado e equipamento." },
+  { num: "01", title: "Seleção", text: "Critérios rigorosos de escolha: histórico, estado e equipamento." },
   { num: "02", title: "Informação", text: "Consulta os dados disponíveis na ficha de cada viatura." },
   { num: "03", title: "Contacto", text: "Esclarece dúvidas e confirma disponibilidade diretamente com a equipa." },
   { num: "04", title: "Condições", text: "Confirma por escrito as condições da viatura antes de avançar." },
@@ -233,7 +233,7 @@ export default async function HomePage() {
           <div className="relative mx-auto max-w-[1400px]">
             <Reveal className="flex items-end justify-between gap-6">
               <div>
-                <p className="kicker">Currently in the garage</p>
+                <p className="kicker">Atualmente na garagem</p>
                 <h2 className="mt-4 font-display text-[clamp(2rem,5vw,3.8rem)] font-bold uppercase leading-[0.9] tracking-tight text-foreground">
                   Em destaque<br />esta semana
                 </h2>

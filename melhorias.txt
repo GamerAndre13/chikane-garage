@@ -1,37 +1,99 @@
 REVISÃO DO SITE — MELHORIAS E PROBLEMAS IDENTIFICADOS
-Data: 8 de novembro de 2026
+Atualizado em: 22 de novembro de 2026 (revisão anterior: 8 de novembro de 2026)
 
-VERIFICAÇÕES
-- TypeScript: npx tsc --noEmit passou sem erros.
-- ESLint em app e components: sem erros; 2 avisos sobre imagens <img> na página de perfil.
-- Revisão feita ao código e às verificações estáticas. Não foi feita validação visual de todas as páginas num navegador com dados reais.
+Legenda: [LAYOUT] = pode ser feito sem mexer na lógica
+         [LÓGICA] = só com autorização explícita do dono (regra de AGENTS.md)
+         [DONO]   = informação ou ação que só o dono pode fornecer/fazer
 
-PROBLEMAS A RESOLVER
+ESTADO GERAL
+- Base técnica sólida (RLS, /admin protegido, HTTPS, cabeçalhos de segurança, testes).
+- O site ainda NÃO deve ser anunciado: falta informação do negócio (secção 1).
+- Esta revisão não conseguiu correr typecheck/testes/build (node_modules é de Windows);
+  têm de ser corridos no PC (secção 2).
 
-1. Prioridade alta — página de teste de newsletter
-Ficheiro: app/test-newsletter/page.tsx
-A página permite enviar um email de teste para o endereço introduzido no formulário. Não foi encontrada uma verificação de autenticação na própria página. Confirmar se está acessível em produção e restringir o acesso ou removê-la. Esta alteração envolve lógica e requer autorização explícita do proprietário.
+----------------------------------------------------------------
+1. INFORMAÇÃO DO NEGÓCIO — FICA PARA DEPOIS [DONO]
+----------------------------------------------------------------
+1.1 Conteúdo de teste visível na home (Campanhas)
+    - "teste teste teste" e "Info teste"; campanha das jantes duplicada, com
+      "desembro" e "ate" sem acento ("até final de dezembro"). Editar/apagar no backoffice.
+1.2 Redes sociais com links de teste
+    - instagram.com/teste e facebook.com/teste (Definições no backoffice).
+1.3 Dados legais por preencher
+    - Termos e Condições, secção 2: "[firma/NIPC e morada da sede a preencher pelo titular]"
+    - Termos e Condições, secção 14: comarca "[a preencher]"
+    - Política de Privacidade, secção 1: "[firma/NIPC e morada da sede a preencher pelo titular]"
+    - Ficheiros: app/termos-e-condicoes/page.tsx e app/politica-de-privacidade/page.tsx
+1.4 Email de contacto
+    - O site mostra garage@chikane.garage.pt (ponto a mais no domínio?). Confirmar.
+    - Confirmar que o domínio chikanegarage.blog está verificado no Resend
+      (a newsletter envia de newsletter@chikanegarage.blog).
 
-2. Informação legal por preencher
-Ficheiros: app/termos-e-condicoes/page.tsx e app/politica-de-privacidade/page.tsx
-Os textos contêm os marcadores “[firma/NIPC e morada da sede a preencher pelo titular]” e “[a preencher]”. Completar os dados da entidade e a informação em falta antes de considerar as páginas legais concluídas.
+----------------------------------------------------------------
+2. ANTES DO LANÇAMENTO — VERIFICAÇÕES E CONFIGURAÇÃO
+----------------------------------------------------------------
+2.1 Correr no PC: npm run typecheck, npm test, e build (npx next build --webpack).
+    Confirmar também o resultado dos workflows Qualidade e Segurança no GitHub.
+2.2 Limpar o repositório [DONO]
+    - Alterações por commitar: AGENTS.md, Tarefas.txt, tests/e2e/public-journeys.spec.ts
+      e testes unitários novos em tests/unit/.
+    - Ficheiros .agents/skills/*.md novos: decidir se vão para o repositório.
+2.3 Cloudflare (sem código) [DONO]
+    - Ligar Bot Fight Mode (grátis).
+    - Regras de Rate limiting em /auth/*, /api/* e /contacto
+      (newsletter, propostas e contacto não têm proteção contra spam).
+    - Turnstile só se aparecer abuso real (isso já é lógica).
+2.4 Testes finais manuais
+    - Telemóvel e desktop: navegação, formulários, estados vazios, backoffice.
+    - Fluxo completo: registo, confirmação por email, proposta, reserva, test drive.
+    - Abrir no browser: /robots.txt, /sitemap.xml e a pré-visualização ao partilhar um link.
+2.5 SECURITY.md ainda é o modelo do GitHub (versões 5.1.x/4.0.x inventadas).
+    Preencher com um contacto real ou remover.
+2.6 .github/workflows/deploy.yml (Cloudflare Pages) é antigo e não serve nada;
+    pode ser removido para não gerar checks falhados confusos.
 
-3. Instrução antiga no erro do backoffice
-Ficheiro: app/admin/contas/page.tsx
-A mensagem de erro indica que se devem executar as migrations 005 e 007. As instruções atuais do projeto dizem que as migrations foram consolidadas em supabase/setup.sql. Atualizar a mensagem para corresponder ao processo atual.
+----------------------------------------------------------------
+3. CÓDIGO — VERIFICADO EM 22/11/2026
+----------------------------------------------------------------
+Estado real no código atual (a revisão de 8/11 e a leitura do site público estavam
+desatualizadas nestes pontos; o site online pode ainda estar numa versão anterior
+até ao próximo deploy):
+3.1 FEITO/JÁ OK  /test-newsletter: a página e a ação já exigem sessão e cargo admin
+    (quem não é admin é redirecionado para a home). Opcional: remover a página
+    antes do lançamento, se já não for precisa.
+3.2 JÁ OK  Confirmação de email de proposta: o código só diz "enviado" quando a API
+    confirma sucesso, sem falhas nem saltos.
+3.3 JÁ OK  Datas do test drive: já calculadas no fuso de Lisboa (hoje + 30 dias).
+3.4 JÁ OK  Meta tags: o app/layout.tsx usa a API de metadata do Next (Open Graph e
+    Twitter válidos). Os prefixos "meta-og:" vistos antes eram da ferramenta de
+    leitura, não do site. Confirmar no deploy com um teste de partilha de link.
+3.5 JÁ OK  Mensagem de erro em admin/contas: já aponta para supabase/setup.sql.
+3.6 FEITO  eslint.config.mjs passou a ignorar .open-next/ e .wrangler/ (ficheiros
+    gerados), por isso "npm run lint" deixa de falhar com milhares de avisos depois
+    de um build. Os erros de react-hooks antigos continuam (pré-existentes).
+3.7 SEM ALTERAÇÃO  Bloqueio de login (5 tentativas) é local ao browser; a proteção
+    real é do Supabase Auth + Cloudflare (ver 2.3).
 
-4. Confirmação de email pode não corresponder ao resultado
-Ficheiro: components/ui/vehicle-purchase.tsx
-A proposta é guardada e a notificação por email é tentada, mas a resposta HTTP da chamada de notificação não é verificada. Assim, a interface pode informar que foi enviada uma confirmação mesmo que o serviço de email tenha falhado. Rever o tratamento do resultado e ajustar a mensagem apresentada.
+----------------------------------------------------------------
+4. TEXTOS E LAYOUT
+----------------------------------------------------------------
+FEITO
+4.1 "Currently in the garage" -> "Atualmente na garagem" (app/page.tsx).
+4.2 "Selecção" -> "Seleção" na home (passos do processo) e em /sobre.
 
-5. Datas de test drive dependem do fuso horário do navegador
-Ficheiro: app/contacto/page.tsx
-A data atual e o limite de 30 dias são calculados com o fuso local do dispositivo. Como os horários são tratados como hora de Lisboa, visitantes noutros fusos podem ver datas disponíveis diferentes. Uniformizar o cálculo com o fuso horário de Lisboa.
+DECISÃO TUA / SEM ALTERAÇÃO
+4.3 Slogan do hero "Precision. Perfected. Passion." fica em inglês de propósito
+    (marca). É editável no backoffice (Definições -> hero.slogan).
+4.4 "Desde 500 €" na campanha das jantes e a descrição do rodapé repetida são
+    dados do backoffice, não do código: editar em Campanhas / Definições.
+4.5 As duas <img> de app/conta/perfil/page.tsx ficam como estão: os avatares podem
+    vir de domínios fora de next.config.ts e o next/image poderia partir imagens.
+    É só um aviso do ESLint.
+4.6 Confirmar no site que os cartões dos usados na home têm fotografia.
 
-MELHORIAS OPCIONAIS
-
-- Rever as duas imagens <img> assinaladas pelo ESLint em app/conta/perfil/page.tsx e avaliar otimização, tendo em conta a origem das imagens.
-- Fazer uma revisão visual em telemóvel e desktop, incluindo navegação, formulários, páginas de estado vazio e backoffice.
-
-NOTA SOBRE O ESTADO DO REPOSITÓRIO
-Já existiam alterações locais antes desta revisão. Foram preservadas e nenhum ficheiro da aplicação foi alterado ao criar este relatório.
+----------------------------------------------------------------
+NOTAS
+----------------------------------------------------------------
+- Alterações locais já existiam antes desta revisão e foram preservadas.
+- Alterados em 22/11: app/page.tsx, app/sobre/page.tsx (textos) e eslint.config.mjs (ignores). Verificado numa cópia: tsc sem erros, 58 testes Vitest a passar, ESLint limpo nos ficheiros alterados. Build completo e e2e não foram corridos.
+- Cópia da versão anterior: melhorias.txt.bak (pode ser apagada).
