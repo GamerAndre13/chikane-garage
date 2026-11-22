@@ -40,11 +40,21 @@ Single Next.js 16 App Router app (React 19, Tailwind v4, strict TS) — no monor
 
 ## Commands
 - `npm run dev` — `next.config.ts` calls `initOpenNextCloudflareForDev()`, so `next dev` runs with the OpenNext/Cloudflare shim.
-- Verify changes: `npx tsc --noEmit` (currently clean) → `npm run lint` → `npm run build` (reads `.env.local`, all routes are dynamic per the build output). **There is no test runner** — none exists, don't add one or look for a test script.
+- Verificação local: `npm run typecheck` → `npm test` → lint apenas nos ficheiros de QA alterados → build, conforme os workflows abaixo. O projeto tem Vitest e Playwright; não afirmes que os testes passaram sem os executar ou sem consultar o resultado do CI.
+- `npm run build` (build Next.js local; pode depender das variáveis de ambiente). O CI usa `npx next build --webpack`.
 - Lint is **not green today** and that's expected:
   - A handful of pre-existing errors in project code (react-hooks rules in `app/admin/pedidos`, `components/ui/favorites-list`, `components/cookie-consent`, `components/ui/vehicle-photo-picker`). Only ensure you add none — scope a change with `npx eslint <paths>`.
   - `.open-next/` (gitignored build output) is missing from the ignores in `eslint.config.mjs`, so after `npm run preview`/`deploy` a full `npm run lint` fails with thousands of generated-file errors.
 - Cloudflare: `npm run preview` / `npm run deploy` (OpenNext build → `.open-next/` → wrangler per `wrangler.toml`). After changing wrangler bindings, run `npm run cf-typegen` to regenerate `cloudflare-env.d.ts` (gitignored).
+
+## Obrigatório: verificações antes de integrar alterações
+- Antes de considerar uma alteração concluída, executa as verificações relevantes definidas em `.github/workflows/deploy.yml` e `.github/workflows/security.yml`; corrige falhas causadas pela alteração e volta a executar os checks afetados.
+- O workflow **Qualidade** corre em push e pull request para `main`: `npm ci`, `npm run typecheck`, `npm test`, ESLint nos ficheiros de QA indicados no workflow e `npx next build --webpack`. O check tem de terminar com sucesso.
+- O workflow **Segurança** corre em push e pull request para `main`: auditoria de dependências (`npm audit --audit-level=high`) e Análise CodeQL. A revisão de dependências corre apenas em pull requests; `Skipped` num push é esperado.
+- Para alterações que afetem os fluxos públicos, staging, autenticação ou integrações, confirma também os checks de staging definidos em `.github/workflows/staging.yml`, quando as variáveis necessárias estiverem configuradas.
+- Não contes como aprovação um check falhado, pendente ou ignorado quando for aplicável ao evento. Se não for possível executar algum check localmente, indica-o claramente e consulta o resultado do CI antes de declarar a tarefa pronta.
+- As alterações devem ser integradas em `main` por pull request com os checks obrigatórios aprovados. A exigência de checks e o bloqueio de push direto são configurados nas regras do repositório GitHub (Rulesets/Branch protection), não neste ficheiro; não afirmes que essa proteção está ativa sem a confirmar.
+- Não exijas checks de serviços antigos/desativados, como o Worker `chikane-garage` ou Cloudflare Pages; a produção usa `chikane-garage1`. Um check antigo falhado deve ser identificado como tal, não tratado como falha da qualidade atual da aplicação.
 
 ## Architecture
 - Request interception is **`proxy.ts` at the repo root** (Next 16 renamed middleware → proxy; don't create `middleware.ts`). It does the HTTP→HTTPS redirect, Supabase cookie session, and is the **only `/admin` auth check** (`profiles.role === 'admin'`; `app/admin/layout.tsx` is nav-only).
