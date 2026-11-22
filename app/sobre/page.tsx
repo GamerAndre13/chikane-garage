@@ -160,7 +160,7 @@ export default async function SobrePage() {
               <span className="font-display text-xl font-bold text-copper">01</span>
             </div>
             <h3 className="mt-5 font-display text-lg font-semibold uppercase text-white">
-              Selecção
+              Seleção
             </h3>
             <p className="mt-3 text-sm leading-6 text-white/70">
               Procuramos ativamente as melhores unidades no mercado. Avaliamos cada
