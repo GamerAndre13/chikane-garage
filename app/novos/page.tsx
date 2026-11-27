@@ -27,8 +27,7 @@ type Vehicle = {
 export default async function NovosPage() {
   let vehicles: Vehicle[] = [];
   try {
-    await expireReservations();
-    await archiveSoldVehicles();
+    await Promise.all([expireReservations(), archiveSoldVehicles()]);
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")

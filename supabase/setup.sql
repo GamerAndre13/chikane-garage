@@ -373,8 +373,8 @@ END $$;
 CREATE POLICY "profiles_select" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_insert" ON public.profiles FOR INSERT WITH CHECK (false);
 CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE
-  USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
-CREATE POLICY "profiles_delete_own" ON public.profiles FOR DELETE USING (auth.uid() = id);
+  USING ((select auth.uid()) = id) WITH CHECK ((select auth.uid()) = id);
+CREATE POLICY "profiles_delete_own" ON public.profiles FOR DELETE USING ((select auth.uid()) = id);
 
 -- ------------------------------------------------------------
 -- 5.2 vehicles — leitura pública (nunca mostra arquivadas)
@@ -387,20 +387,20 @@ DO $$ BEGIN
   DROP POLICY IF EXISTS "vehicles_delete_admin" ON public.vehicles;
 END $$;
 CREATE POLICY "vehicles_select" ON public.vehicles FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
   OR status IN ('available', 'reserved')
   OR (status = 'sold' AND sold_at >= NOW() - INTERVAL '7 days')
 );
 CREATE POLICY "vehicles_insert_admin" ON public.vehicles FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "vehicles_update_admin" ON public.vehicles FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "vehicles_delete_admin" ON public.vehicles FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -414,10 +414,10 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "vehicle_features_select" ON public.vehicle_features FOR SELECT USING (true);
 CREATE POLICY "vehicle_features_insert_admin" ON public.vehicle_features FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "vehicle_features_delete_admin" ON public.vehicle_features FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -431,10 +431,10 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "vehicle_images_select" ON public.vehicle_images FOR SELECT USING (true);
 CREATE POLICY "vehicle_images_insert_admin" ON public.vehicle_images FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "vehicle_images_delete_admin" ON public.vehicle_images FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -446,9 +446,9 @@ DO $$ BEGIN
   DROP POLICY IF EXISTS "favorites_insert_own" ON public.favorites;
   DROP POLICY IF EXISTS "favorites_delete_own" ON public.favorites;
 END $$;
-CREATE POLICY "favorites_select_own" ON public.favorites FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "favorites_insert_own" ON public.favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "favorites_delete_own" ON public.favorites FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "favorites_select_own" ON public.favorites FOR SELECT USING ((select auth.uid()) = user_id);
+CREATE POLICY "favorites_insert_own" ON public.favorites FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+CREATE POLICY "favorites_delete_own" ON public.favorites FOR DELETE USING ((select auth.uid()) = user_id);
 
 -- ------------------------------------------------------------
 -- 5.6 newsletter_subscribers
@@ -462,17 +462,17 @@ DO $$ BEGIN
 END $$;
 -- Leitura dos emails: apenas admin (evita scraping anónimo)
 CREATE POLICY "newsletter_select_admin" ON public.newsletter_subscribers FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 -- Inscrição pública (formulário do site)
 CREATE POLICY "newsletter_insert_anon" ON public.newsletter_subscribers FOR INSERT WITH CHECK (true);
 CREATE POLICY "newsletter_update_admin" ON public.newsletter_subscribers FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "newsletter_delete_admin" ON public.newsletter_subscribers FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -491,17 +491,17 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "contact_requests_insert_anon" ON public.contact_requests FOR INSERT WITH CHECK (true);
 CREATE POLICY "contact_requests_select_admin" ON public.contact_requests FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 -- O utilizador vê os seus pedidos (por user_id OU pelo email da sessão)
 CREATE POLICY "contact_requests_select_own" ON public.contact_requests FOR SELECT USING (
-  auth.uid() = user_id
+  (select auth.uid()) = user_id
   OR lower(email) = lower(auth.jwt() ->> 'email')
 );
 CREATE POLICY "contact_requests_update_admin" ON public.contact_requests FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -519,16 +519,16 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "test_drives_insert_anon" ON public.test_drives FOR INSERT WITH CHECK (true);
 CREATE POLICY "test_drives_select_admin" ON public.test_drives FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "test_drives_select_own" ON public.test_drives FOR SELECT USING (
-  auth.uid() = user_id
+  (select auth.uid()) = user_id
   OR lower(email) = lower(auth.jwt() ->> 'email')
 );
 CREATE POLICY "test_drives_update_admin" ON public.test_drives FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -543,16 +543,16 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "reservations_insert_all" ON public.reservations FOR INSERT WITH CHECK (true);
 CREATE POLICY "reservations_select_admin" ON public.reservations FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "reservations_select_own" ON public.reservations FOR SELECT USING (
-  auth.uid() = user_id
+  (select auth.uid()) = user_id
   OR lower(email) = lower(auth.jwt() ->> 'email')
 );
 CREATE POLICY "reservations_update_admin" ON public.reservations FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -567,15 +567,15 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "site_content_select" ON public.site_content FOR SELECT USING (true);
 CREATE POLICY "site_content_insert_admin" ON public.site_content FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "site_content_update_admin" ON public.site_content FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "site_content_delete_admin" ON public.site_content FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 -- ------------------------------------------------------------
@@ -589,12 +589,12 @@ DO $$ BEGIN
 END $$;
 CREATE POLICY "site_settings_select" ON public.site_settings FOR SELECT USING (true);
 CREATE POLICY "site_settings_insert_admin" ON public.site_settings FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 CREATE POLICY "site_settings_update_admin" ON public.site_settings FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 ) WITH CHECK (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'admin')
 );
 
 
@@ -605,6 +605,14 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_status ON public.vehicles(status);
 CREATE INDEX IF NOT EXISTS idx_vehicles_brand_model ON public.vehicles(brand, model);
 CREATE INDEX IF NOT EXISTS idx_contact_requests_user ON public.contact_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_test_drives_user ON public.test_drives(user_id);
+-- Índices nas chaves estrangeiras e nos filtros mais usados (galeria, extras,
+-- reservas, favoritos, test drives). Idempotentes.
+CREATE INDEX IF NOT EXISTS idx_vehicle_images_vehicle_position ON public.vehicle_images(vehicle_id, position);
+CREATE INDEX IF NOT EXISTS idx_vehicle_features_vehicle ON public.vehicle_features(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_vehicle ON public.favorites(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_vehicle_status ON public.reservations(vehicle_id, status);
+CREATE INDEX IF NOT EXISTS idx_reservations_status_until ON public.reservations(status, reserved_until);
+CREATE INDEX IF NOT EXISTS idx_test_drives_vehicle_date ON public.test_drives(vehicle_id, preferred_date);
 
 -- Garante que só pode existir UMA viatura em destaque (spotlight = true)
 DROP INDEX IF EXISTS public.vehicles_single_spotlight;

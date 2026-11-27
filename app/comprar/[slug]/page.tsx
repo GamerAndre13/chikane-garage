@@ -70,8 +70,7 @@ export default async function ComprarPage({ params }: { params: Promise<{ slug: 
   let vehicle: Vehicle | null = null;
   try {
     // Mantém os estados atualizados (reservas vencidas / vendas antigas).
-    await expireReservations();
-    await archiveSoldVehicles();
+    await Promise.all([expireReservations(), archiveSoldVehicles()]);
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")
