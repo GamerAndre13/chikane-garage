@@ -104,8 +104,7 @@ export default async function HomePage() {
 
   // Reservas vencidas (máx. 7 dias) voltam a "available" e as vendas com mais
   // de 7 dias são arquivadas antes da leitura.
-  await expireReservations();
-  await archiveSoldVehicles();
+  await Promise.all([expireReservations(), archiveSoldVehicles()]);
   const [vehiclesRes, spotlightRes, contentRes, settingsRes, campaignsRes] = await Promise.all([
     supabase
       .from("vehicles")

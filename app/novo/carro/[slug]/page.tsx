@@ -103,8 +103,7 @@ const PROCESS = [
 
 async function loadVehicle(slug: string): Promise<Vehicle | null> {
   try {
-    await expireReservations();
-    await archiveSoldVehicles();
+    await Promise.all([expireReservations(), archiveSoldVehicles()]);
     const supabase = await createClient();
     const { data } = await supabase
       .from("vehicles")

@@ -43,6 +43,10 @@ function getR2Client() {
   return { client: cachedR2Client, bucket };
 }
 
+// Cache longo e imutável: todas as chaves levam Date.now(), por isso um ficheiro
+// nunca é reescrito com o mesmo nome e a CDN/browsers podem guardá-lo 1 ano.
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
 // Upload de ficheiro para R2
 export async function uploadToR2(
   key: string,
@@ -58,7 +62,7 @@ export async function uploadToR2(
   }
 
   if (r2) {
-    await r2.put(key, body, { httpMetadata: { contentType } });
+    await r2.put(key, body, { httpMetadata: { contentType, cacheControl: IMMUTABLE_CACHE_CONTROL } });
   } else {
     const { client, bucket: defaultBucket } = getR2Client();
     const command = new PutObjectCommand({
@@ -66,6 +70,7 @@ export async function uploadToR2(
       Key: key,
       Body: body,
       ContentType: contentType,
+      CacheControl: IMMUTABLE_CACHE_CONTROL,
     });
     await client.send(command);
   }
